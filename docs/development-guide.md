@@ -156,4 +156,3 @@ ASSET_NOT_FOUND scenes[1].assetPath (scene-002): .../assets/missing.png
 完成后运行 typecheck、test、lint；若涉及渲染，实际渲染 demo-project 并修复发现的问题。
 不要破坏已有功能，不要只提供示例代码或教程。
 ```
-

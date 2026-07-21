@@ -1,0 +1,12 @@
+node_modules/
+dist/
+out/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+projects/*/cache/
+projects/*/exports/*
+!projects/*/exports/.gitkeep
+

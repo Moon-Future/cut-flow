@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "project": {
+    "title": "为什么独立项目总是做不完",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationTarget": 15
+  },
+  "style": {
+    "template": "game-dev-log",
+    "fontFamily": "Microsoft YaHei",
+    "captionPosition": "bottom",
+    "captionAnimation": "fade",
+    "transition": "fade",
+    "transitionDuration": 0.35
+  },
+  "narrationAudio": "audio/narration.wav",
+  "scenes": [
+    {
+      "id": "scene-001",
+      "narration": "为什么很多独立项目最终都没有完成？",
+      "caption": "为什么很多独立项目都做不完？",
+      "assetType": "image",
+      "assetPath": "assets/scene-01.svg",
+      "duration": 5,
+      "layout": "full-screen",
+      "motion": "slow-zoom-in"
+    },
+    {
+      "id": "scene-002",
+      "narration": "通常不是技术不够，而是第一版设计得太复杂。",
+      "caption": "不是技术不够，而是第一版太复杂",
+      "assetType": "image",
+      "assetPath": "assets/scene-02.svg",
+      "duration": 5,
+      "layout": "center-card",
+      "motion": "pan-left"
+    },
+    {
+      "id": "scene-003",
+      "narration": "先完成最小闭环，再让每一次迭代都有结果。",
+      "caption": "先跑通闭环，再逐步迭代",
+      "assetType": "image",
+      "assetPath": "assets/scene-03.svg",
+      "duration": 5,
+      "layout": "split-top-bottom",
+      "motion": "slow-zoom-out"
+    }
+  ]
+}
