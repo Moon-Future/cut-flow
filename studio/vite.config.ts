@@ -6,6 +6,7 @@ import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import {defineConfig, type Plugin} from 'vite';
 import {projectFileSchema} from '../src/core/schema';
+import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 const projectRoot = path.join(repositoryRoot, 'projects', 'demo-project');
@@ -87,6 +88,26 @@ const localApi = (): Plugin => ({
             await mkdir(assetsRoot, {recursive: true});
             await writeFile(path.join(assetsRoot, fileName), await readBody(request));
             sendJson(response, 200, {assetPath: `assets/${fileName}`});
+            return;
+          }
+          if (url === '/api/generate' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as WorkflowInput;
+            if (
+              !input.topic?.trim() ||
+              !['mock', 'openai'].includes(input.provider) ||
+              !Number.isFinite(input.targetDuration)
+            ) {
+              sendJson(response, 400, {error: '生成参数不完整'});
+              return;
+            }
+            const currentProject = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const result = await runGenerationWorkflow(input, currentProject, projectRoot);
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(result.project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 200, result);
             return;
           }
           if (url === '/api/render' && request.method === 'POST') {

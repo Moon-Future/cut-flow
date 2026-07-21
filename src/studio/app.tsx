@@ -3,6 +3,7 @@ import {Player, type PlayerRef} from '@remotion/player';
 import {buildTimeline} from '../core/timeline';
 import {VideoComposition} from '../remotion/video-composition';
 import {SceneEditor} from './components/scene-editor';
+import {GenerationPanel} from './components/generation-panel';
 import {SceneList} from './components/scene-list';
 import {useStudioStore} from './store';
 
@@ -20,6 +21,7 @@ export const App = () => {
     progress: 0,
     message: '尚未开始导出',
   });
+  const [audioAvailable, setAudioAvailable] = useState(false);
   const playerRef = useRef<PlayerRef>(null);
 
   useEffect(() => {
@@ -32,6 +34,12 @@ export const App = () => {
         setSaveStatus('error', reason instanceof Error ? reason.message : String(reason)),
       );
   }, [setProject, setSaveStatus]);
+
+  useEffect(() => {
+    fetch('/demo-project/audio/narration.wav', {method: 'HEAD'})
+      .then((response) => setAudioAvailable(response.ok))
+      .catch(() => setAudioAvailable(false));
+  }, []);
 
   useEffect(() => {
     if (!project || saveStatus !== 'saving') return;
@@ -134,6 +142,7 @@ export const App = () => {
             </div>
             <span className="scene-count">{project.scenes.length} 镜头</span>
           </div>
+          <GenerationPanel onGenerated={setProject} onAudioReady={() => setAudioAvailable(true)} />
           <SceneList />
         </aside>
 
@@ -152,7 +161,11 @@ export const App = () => {
             <Player
               ref={playerRef}
               component={VideoComposition}
-              inputProps={{project, narrationAvailable: false, assetBasePath: 'demo-project'}}
+              inputProps={{
+                project,
+                narrationAvailable: audioAvailable,
+                assetBasePath: 'demo-project',
+              }}
               durationInFrames={timeline.durationInFrames}
               compositionWidth={project.project.width}
               compositionHeight={project.project.height}

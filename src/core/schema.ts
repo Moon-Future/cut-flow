@@ -9,6 +9,12 @@ export const motionSchema = z.enum([
   'pan-right',
 ]);
 
+export const captionWordSchema = z.object({
+  text: z.string().min(1),
+  start: z.number().min(0),
+  end: z.number().positive(),
+});
+
 export const sceneSchema = z.object({
   id: z.string().min(1),
   narration: z.string(),
@@ -18,6 +24,7 @@ export const sceneSchema = z.object({
   duration: z.number().positive().max(300),
   layout: layoutSchema,
   motion: motionSchema,
+  words: z.array(captionWordSchema).optional(),
 });
 
 export const projectFileSchema = z
@@ -58,3 +65,4 @@ export const projectFileSchema = z
 
 export type ProjectFile = z.infer<typeof projectFileSchema>;
 export type Scene = z.infer<typeof sceneSchema>;
+export type CaptionWord = z.infer<typeof captionWordSchema>;

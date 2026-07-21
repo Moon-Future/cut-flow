@@ -1,10 +1,12 @@
-import {interpolate, useCurrentFrame} from 'remotion';
+import {interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
+import type {CaptionWord} from '../../core/schema';
 
 type Props = {
   text: string;
   position: 'top' | 'center' | 'bottom';
   animation: 'none' | 'fade';
   fontFamily: string;
+  words?: CaptionWord[];
 };
 
 const positionStyle = (position: Props['position']): React.CSSProperties => {
@@ -13,8 +15,9 @@ const positionStyle = (position: Props['position']): React.CSSProperties => {
   return {bottom: 220};
 };
 
-export const Caption = ({text, position, animation, fontFamily}: Props) => {
+export const Caption = ({text, position, animation, fontFamily, words}: Props) => {
   const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
   const opacity =
     animation === 'fade' ? interpolate(frame, [0, 10], [0, 1], {extrapolateRight: 'clamp'}) : 1;
   return (
@@ -36,7 +39,24 @@ export const Caption = ({text, position, animation, fontFamily}: Props) => {
         ...positionStyle(position),
       }}
     >
-      {text}
+      {words?.length
+        ? words.map((word, index) => {
+            const active = frame / fps >= word.start && frame / fps < word.end;
+            return (
+              <span
+                key={`${word.text}-${index}`}
+                style={{
+                  color: active ? '#72f2ce' : 'white',
+                  transform: active ? 'scale(1.08)' : 'scale(1)',
+                  display: 'inline-block',
+                  marginRight: /[A-Za-z0-9]$/.test(word.text) ? 12 : 2,
+                }}
+              >
+                {word.text}
+              </span>
+            );
+          })
+        : text}
     </div>
   );
 };

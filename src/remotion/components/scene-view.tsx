@@ -40,6 +40,7 @@ export const SceneView = ({
       <Media scene={scene} durationInFrames={durationInFrames} assetBasePath={assetBasePath} />
       <Caption
         text={scene.caption}
+        words={scene.words}
         position={style.captionPosition}
         animation={style.captionAnimation}
         fontFamily={style.fontFamily}
