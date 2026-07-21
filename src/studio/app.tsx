@@ -4,6 +4,7 @@ import {buildTimeline} from '../core/timeline';
 import {VideoComposition} from '../remotion/video-composition';
 import {SceneEditor} from './components/scene-editor';
 import {GenerationPanel} from './components/generation-panel';
+import {AssetLibraryPanel} from './components/asset-library-panel';
 import {SceneList} from './components/scene-list';
 import {useStudioStore} from './store';
 
@@ -22,6 +23,7 @@ export const App = () => {
     message: '尚未开始导出',
   });
   const [audioAvailable, setAudioAvailable] = useState(false);
+  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
   const playerRef = useRef<PlayerRef>(null);
 
   useEffect(() => {
@@ -116,6 +118,9 @@ export const App = () => {
                   ? `保存失败：${error}`
                   : '正在加载'}
           </span>
+          <button className="ghost-button" onClick={() => setAssetLibraryOpen(true)}>
+            素材库
+          </button>
           <button
             className="ghost-button"
             onClick={() => window.open('/api/render/file', '_blank')}
@@ -205,6 +210,7 @@ export const App = () => {
           <SceneEditor />
         </aside>
       </section>
+      <AssetLibraryPanel open={assetLibraryOpen} onClose={() => setAssetLibraryOpen(false)} />
     </main>
   );
 };

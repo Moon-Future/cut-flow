@@ -7,6 +7,7 @@ type Props = {
   animation: 'none' | 'fade';
   fontFamily: string;
   words?: CaptionWord[];
+  activeColor: string;
 };
 
 const positionStyle = (position: Props['position']): React.CSSProperties => {
@@ -15,7 +16,7 @@ const positionStyle = (position: Props['position']): React.CSSProperties => {
   return {bottom: 220};
 };
 
-export const Caption = ({text, position, animation, fontFamily, words}: Props) => {
+export const Caption = ({text, position, animation, fontFamily, words, activeColor}: Props) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const opacity =
@@ -46,7 +47,7 @@ export const Caption = ({text, position, animation, fontFamily, words}: Props) =
               <span
                 key={`${word.text}-${index}`}
                 style={{
-                  color: active ? '#72f2ce' : 'white',
+                  color: active ? activeColor : 'white',
                   transform: active ? 'scale(1.08)' : 'scale(1)',
                   display: 'inline-block',
                   marginRight: /[A-Za-z0-9]$/.test(word.text) ? 12 : 2,

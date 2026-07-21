@@ -1,5 +1,6 @@
 import {useRef, useState} from 'react';
 import type {Scene} from '../../core/schema';
+import type {AssetMetadata} from '../../media/asset-library';
 import {useStudioStore} from '../store';
 
 const layouts: Scene['layout'][] = ['full-screen', 'center-card', 'split-top-bottom'];
@@ -31,6 +32,27 @@ export const SceneEditor = () => {
       });
       const value = (await response.json()) as {assetPath?: string; error?: string};
       if (!response.ok || !value.assetPath) throw new Error(value.error ?? '上传失败');
+      const metadata: AssetMetadata = {
+        id: `asset-${crypto.randomUUID()}`,
+        name: file.name.replace(/\.[^.]+$/, ''),
+        type: file.type.startsWith('video/') ? 'video' : 'image',
+        source: 'local',
+        path: value.assetPath,
+        license: 'user-owned',
+        commercialUse: true,
+        originalUrl: null,
+        createdAt: new Date().toISOString(),
+        keywords: file.name
+          .replace(/\.[^.]+$/, '')
+          .split(/[\s_-]+/)
+          .filter(Boolean),
+      };
+      const metadataResponse = await fetch('/api/assets/library', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(metadata),
+      });
+      if (!metadataResponse.ok) throw new Error('素材元数据保存失败');
       change('assetPath', value.assetPath);
       change('assetType', file.type.startsWith('video/') ? 'video' : 'image');
     } finally {

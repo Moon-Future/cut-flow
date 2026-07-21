@@ -2,6 +2,7 @@ import {AbsoluteFill, interpolate, useCurrentFrame} from 'remotion';
 import type {ProjectFile, Scene} from '../../core/schema';
 import {Caption} from './caption';
 import {Media} from './media';
+import {getTemplate} from '../../templates/registry';
 
 type Props = {
   scene: Scene;
@@ -23,6 +24,7 @@ export const SceneView = ({
   assetBasePath,
 }: Props) => {
   const frame = useCurrentFrame();
+  const template = getTemplate(style.template);
   const shouldFade = style.transition === 'fade' && fadeFrames > 0;
   const fadeIn =
     shouldFade && !isFirst
@@ -36,26 +38,34 @@ export const SceneView = ({
       : 1;
 
   return (
-    <AbsoluteFill style={{opacity: Math.min(fadeIn, fadeOut), backgroundColor: '#080b12'}}>
-      <Media scene={scene} durationInFrames={durationInFrames} assetBasePath={assetBasePath} />
+    <AbsoluteFill
+      style={{opacity: Math.min(fadeIn, fadeOut), backgroundColor: template.backgroundColor}}
+    >
+      <Media
+        scene={scene}
+        durationInFrames={durationInFrames}
+        assetBasePath={assetBasePath}
+        template={template}
+      />
       <Caption
         text={scene.caption}
         words={scene.words}
         position={style.captionPosition}
         animation={style.captionAnimation}
         fontFamily={style.fontFamily}
+        activeColor={template.captionActiveColor}
       />
       <div
         style={{
           position: 'absolute',
           top: 62,
           left: 70,
-          color: '#7fe7ff',
+          color: template.accentColor,
           font: '700 24px system-ui',
           letterSpacing: 4,
         }}
       >
-        CUT FLOW · DEV LOG
+        {template.brandLabel}
       </div>
     </AbsoluteFill>
   );

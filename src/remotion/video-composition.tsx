@@ -2,6 +2,7 @@ import {AbsoluteFill, Audio, Sequence, staticFile} from 'remotion';
 import type {ProjectFile} from '../core/schema';
 import {buildTimeline, secondsToFrames} from '../core/timeline';
 import {SceneView} from './components/scene-view';
+import {getTemplate} from '../templates/registry';
 
 export type VideoCompositionProps = {
   project: ProjectFile;
@@ -16,9 +17,10 @@ export const VideoComposition = ({
 }: VideoCompositionProps) => {
   const timeline = buildTimeline(project);
   const fadeFrames = secondsToFrames(project.style.transitionDuration, project.project.fps);
+  const template = getTemplate(project.style.template);
 
   return (
-    <AbsoluteFill style={{backgroundColor: '#080b12'}}>
+    <AbsoluteFill style={{backgroundColor: template.backgroundColor}}>
       {timeline.scenes.map(({scene, from, durationInFrames}, index) => (
         <Sequence key={scene.id} from={from} durationInFrames={durationInFrames} premountFor={30}>
           <SceneView

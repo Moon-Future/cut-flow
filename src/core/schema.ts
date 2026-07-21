@@ -21,6 +21,7 @@ export const sceneSchema = z.object({
   caption: z.string().min(1),
   assetType: z.enum(['image', 'video']),
   assetPath: z.string().min(1),
+  assetQuery: z.string().optional(),
   duration: z.number().positive().max(300),
   layout: layoutSchema,
   motion: motionSchema,

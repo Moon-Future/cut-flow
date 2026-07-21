@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import type {ProjectFile} from '../core/schema';
+import {assetLibrarySchema, matchAsset} from '../media/asset-library';
 import {createMockProviders} from './mock-provider';
 import {createOpenAIProviders} from './openai-provider';
 import {videoScriptSchema} from './script-schema';
@@ -63,6 +64,9 @@ export const runGenerationWorkflow = async (
   const audioPath = path.join(audioRoot, 'narration.wav');
   await writeFile(audioPath, audio.audio);
   const transcript = await providers.transcription.transcribe(audio.audio, narration);
+  const assetLibrary = await readFile(path.join(projectRoot, 'assets.json'), 'utf8')
+    .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown).assets)
+    .catch(() => []);
 
   const suggestedTotal = script.scenes.reduce((sum, scene) => sum + scene.suggestedDuration, 0);
   let cursor = 0;
@@ -85,16 +89,26 @@ export const runGenerationWorkflow = async (
       }))
       .filter((word) => word.end > word.start);
     cursor = end;
-    const visual = existingAssets[index % Math.max(1, existingAssets.length)] ?? {
+    const matchedAsset = matchAsset(assetLibrary, scene.visualPrompt);
+    const fallbackVisual = existingAssets[index % Math.max(1, existingAssets.length)] ?? {
       assetPath: 'assets/scene-01.svg' as const,
       assetType: 'image' as const,
       layout: 'full-screen' as const,
       motion: 'slow-zoom-in' as const,
     };
+    const visual = matchedAsset
+      ? {
+          assetPath: matchedAsset.path,
+          assetType: matchedAsset.type === 'video' ? ('video' as const) : ('image' as const),
+          layout: fallbackVisual.layout,
+          motion: fallbackVisual.motion,
+        }
+      : fallbackVisual;
     return {
       id: `scene-${String(index + 1).padStart(3, '0')}`,
       narration: scene.narration,
       caption: scene.caption,
+      assetQuery: scene.visualPrompt,
       duration: Math.max(0.5, duration),
       words,
       ...visual,

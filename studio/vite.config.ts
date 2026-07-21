@@ -7,11 +7,13 @@ import react from '@vitejs/plugin-react';
 import {defineConfig, type Plugin} from 'vite';
 import {projectFileSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
+import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 const projectRoot = path.join(repositoryRoot, 'projects', 'demo-project');
 const projectFile = path.join(projectRoot, 'project.json');
 const assetsRoot = path.join(projectRoot, 'assets');
+const assetLibraryFile = path.join(projectRoot, 'assets.json');
 
 type RenderState = {
   status: 'idle' | 'running' | 'success' | 'error';
@@ -70,6 +72,11 @@ const localApi = (): Plugin => ({
             return;
           }
           if (url === '/api/assets' && request.method === 'POST') {
+            const contentLength = Number(request.headers['content-length'] ?? 0);
+            if (contentLength > 500 * 1024 * 1024) {
+              sendJson(response, 413, {error: '单个素材不能超过 500 MB'});
+              return;
+            }
             const rawName = request.headers['x-file-name'];
             const encodedName = Array.isArray(rawName) ? rawName.at(0) : rawName;
             let headerName = encodedName;
@@ -85,9 +92,38 @@ const localApi = (): Plugin => ({
               sendJson(response, 400, {error: '无效的素材文件名'});
               return;
             }
+            const storedName = `${Date.now()}-${fileName}`;
             await mkdir(assetsRoot, {recursive: true});
-            await writeFile(path.join(assetsRoot, fileName), await readBody(request));
-            sendJson(response, 200, {assetPath: `assets/${fileName}`});
+            await writeFile(path.join(assetsRoot, storedName), await readBody(request));
+            sendJson(response, 200, {assetPath: `assets/${storedName}`});
+            return;
+          }
+          if (url === '/api/assets/library' && request.method === 'GET') {
+            sendJson(
+              response,
+              200,
+              assetLibrarySchema.parse(
+                JSON.parse(await readFile(assetLibraryFile, 'utf8')) as unknown,
+              ),
+            );
+            return;
+          }
+          if (url === '/api/assets/library' && request.method === 'POST') {
+            const asset = assetMetadataSchema.parse(
+              JSON.parse((await readBody(request)).toString('utf8')) as unknown,
+            );
+            const library = assetLibrarySchema.parse(
+              JSON.parse(await readFile(assetLibraryFile, 'utf8')) as unknown,
+            );
+            const assets = [...library.assets.filter((item) => item.id !== asset.id), asset];
+            const temporary = `${assetLibraryFile}.tmp`;
+            await writeFile(
+              temporary,
+              `${JSON.stringify({version: 1, assets}, null, 2)}\n`,
+              'utf8',
+            );
+            await rename(temporary, assetLibraryFile);
+            sendJson(response, 200, {version: 1, assets});
             return;
           }
           if (url === '/api/generate' && request.method === 'POST') {
