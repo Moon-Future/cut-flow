@@ -5,8 +5,10 @@
   "type": "module",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "remotion studio src/remotion/index.ts",
-    "preview": "remotion studio src/remotion/index.ts",
+    "dev": "vite --config studio/vite.config.ts",
+    "preview": "vite --config studio/vite.config.ts",
+    "build": "vite build --config studio/vite.config.ts",
+    "remotion:studio": "remotion studio src/remotion/index.ts",
     "validate": "tsx scripts/validate-project.ts",
     "render": "tsx scripts/render-video.ts",
     "typecheck": "tsc --noEmit",
@@ -18,18 +20,21 @@
   "dependencies": {
     "@remotion/bundler": "4.0.495",
     "@remotion/cli": "4.0.495",
+    "@remotion/player": "4.0.495",
     "@remotion/renderer": "4.0.495",
     "@remotion/transitions": "4.0.495",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remotion": "4.0.495",
-    "zod": "4.3.6"
+    "zod": "4.3.6",
+    "zustand": "5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "4.6.0",
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.0",
@@ -38,6 +43,7 @@
     "tsx": "^4.0.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",
+    "vite": "7.0.0",
     "vitest": "^3.0.0"
   }
 }

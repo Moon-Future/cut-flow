@@ -18,6 +18,8 @@ pnpm dev
 pnpm render
 ```
 
+打开 `http://127.0.0.1:4173` 进入本地工作台。可以选择和拖拽镜头，修改字幕、旁白、时长、布局及动效，锁定镜头，上传本地素材，实时预览并直接导出 MP4。修改会通过 Schema 校验后自动保存。
+
 默认项目为 `projects/demo-project/project.json`，默认输出为 `out/demo.mp4`。示例故意不包含旁白文件，用于验证静音降级；把 WAV 音频放到 `projects/demo-project/audio/narration.wav` 即可启用。
 
 自定义路径：
@@ -37,4 +39,4 @@ pnpm render -- --project projects/my-project/project.json --output out/my-video.
 
 ## 当前能力与限制
 
-已实现三种布局、五种图片动效、整句字幕淡入、字幕安全区、无转场/淡入淡出、图片/视频组件、静音降级和 H.264 MP4 导出。当前尚未实现图形化卡片编辑器、AI 脚本、TTS、词级字幕、素材库和 Electron。
+已实现镜头卡片编辑器、拖拽排序、锁定、素材上传、自动保存、Remotion Player 实时预览、导出进度与视频下载；渲染层支持三种布局、五种图片动效、整句字幕淡入、字幕安全区、无转场/淡入淡出、图片/视频组件、静音降级和 H.264 MP4 导出。当前尚未实现 AI 脚本、TTS、词级字幕、完整素材库和 Electron。
