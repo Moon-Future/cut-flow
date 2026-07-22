@@ -47,7 +47,7 @@ pnpm desktop:dev
 pnpm desktop:pack
 ```
 
-安装包输出到 `release/Cut-Flow-0.1.0-Setup.exe`。桌面版首次启动会把示例项目复制到 `%APPDATA%/cut-flow/workspace`，后续编辑不会修改安装目录；运行日志位于 `%APPDATA%/cut-flow/logs/desktop.log`。卸载应用不会自动删除工作区，确认不再需要项目后可手动删除该目录。
+安装包输出到 `release/Cut-Flow-0.1.0-Setup.exe`。桌面版首次启动会把示例项目复制到 `%APPDATA%/cut-flow/workspace`，后续编辑不会修改安装目录；启动日志位于 `%APPDATA%/cut-flow/logs/desktop.log`，渲染日志位于 `%APPDATA%/cut-flow/workspace/logs/render.log`。卸载应用不会自动删除工作区，确认不再需要项目后可手动删除该目录。
 
 ## 项目结构
 

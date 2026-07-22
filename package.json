@@ -58,6 +58,7 @@
   "build": {
     "appId": "com.cutflow.desktop",
     "productName": "Cut Flow",
+    "electronDist": "node_modules/electron/dist",
     "asar": true,
     "asarUnpack": [
       "node_modules/@remotion/**",
@@ -89,6 +90,14 @@
       {
         "from": "scripts",
         "to": "runtime/scripts"
+      },
+      {
+        "from": "studio",
+        "to": "runtime/studio"
+      },
+      {
+        "from": "index.html",
+        "to": "runtime/index.html"
       }
     ],
     "directories": {

@@ -1,21 +1,27 @@
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
+import {createRequire} from 'node:module';
 import {createReadStream} from 'node:fs';
-import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
+import {appendFile, mkdir, readFile, rename, writeFile} from 'node:fs/promises';
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import path from 'node:path';
-import react from '@vitejs/plugin-react';
-import {defineConfig, type Plugin} from 'vite';
+import type {Plugin, UserConfig} from 'vite';
 import {projectFileSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 
-const repositoryRoot = path.resolve(import.meta.dirname, '..');
+const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
+  ? path.resolve(process.env.CUT_FLOW_APP_ROOT)
+  : path.resolve(import.meta.dirname, '..');
 const workspaceRoot = process.env.CUT_FLOW_WORKSPACE_ROOT
   ? path.resolve(process.env.CUT_FLOW_WORKSPACE_ROOT)
   : repositoryRoot;
 const runtimeRoot = process.env.CUT_FLOW_RUNTIME_ROOT
   ? path.resolve(process.env.CUT_FLOW_RUNTIME_ROOT)
   : repositoryRoot;
+const requireFromApp = createRequire(
+  path.join(process.env.CUT_FLOW_APP_ROOT ?? repositoryRoot, 'package.json'),
+);
+const react = (requireFromApp('@vitejs/plugin-react') as {default: () => Plugin}).default;
 const projectRoot = path.join(workspaceRoot, 'projects', 'demo-project');
 const projectFile = path.join(projectRoot, 'project.json');
 const assetsRoot = path.join(projectRoot, 'assets');
@@ -158,18 +164,24 @@ const localApi = (): Plugin => ({
               return;
             }
             renderState = {status: 'running', progress: 0, message: '正在准备视频…'};
+            const renderLog = path.join(workspaceRoot, 'logs', 'render.log');
+            await mkdir(path.dirname(renderLog), {recursive: true});
+            await writeFile(renderLog, `${new Date().toISOString()} render started\n`, 'utf8');
             const tsxCli = path.join(repositoryRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
             renderProcess = spawn(
               process.execPath,
               [
                 tsxCli,
-                path.join(runtimeRoot, 'scripts', 'render-video.ts'),
+                path.join(repositoryRoot, 'scripts', 'render-video.ts'),
                 '--project',
                 projectFile,
                 '--public-dir',
                 path.join(workspaceRoot, 'projects'),
                 '--runtime-root',
                 runtimeRoot,
+                ...(process.env.CUT_FLOW_REMOTION_BINARIES
+                  ? ['--binaries-dir', process.env.CUT_FLOW_REMOTION_BINARIES]
+                  : []),
                 '--output',
                 path.join(workspaceRoot, 'out', 'demo.mp4'),
               ],
@@ -178,11 +190,15 @@ const localApi = (): Plugin => ({
                 env: {
                   ...process.env,
                   ...(process.versions.electron ? {ELECTRON_RUN_AS_NODE: '1'} : {}),
+                  ESBUILD_BINARY_PATH:
+                    process.env.CUT_FLOW_RENDER_ESBUILD_BINARY_PATH ??
+                    process.env.ESBUILD_BINARY_PATH,
                 },
               },
             );
             const update = (chunk: Buffer) => {
               const text = chunk.toString('utf8');
+              void appendFile(renderLog, text, 'utf8');
               const matches = [...text.matchAll(/(\d{1,3})%/g)];
               const latest = matches.at(-1)?.[1];
               if (latest) renderState.progress = Math.min(100, Number(latest));
@@ -232,10 +248,10 @@ const localApi = (): Plugin => ({
   },
 });
 
-export default defineConfig({
+export default {
   root: repositoryRoot,
   publicDir: path.resolve(workspaceRoot, 'projects'),
   plugins: [react(), localApi()],
   build: {outDir: path.resolve(repositoryRoot, 'dist/studio'), emptyOutDir: true},
   server: {host: '127.0.0.1', port: 4173},
-});
+} satisfies UserConfig;

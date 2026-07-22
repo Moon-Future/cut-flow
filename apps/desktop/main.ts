@@ -1,7 +1,8 @@
 import {cp, mkdir, readFile, writeFile} from 'node:fs/promises';
+import Module from 'node:module';
 import path from 'node:path';
 import {app, BrowserWindow, dialog, shell} from 'electron';
-import {createServer, type ViteDevServer} from 'vite';
+import type {ViteDevServer} from 'vite';
 
 let mainWindow: BrowserWindow | null = null;
 let localServer: ViteDevServer | null = null;
@@ -34,12 +35,44 @@ const ensureWorkspace = async (appRoot: string): Promise<string> => {
 };
 
 const startLocalServer = async (appRoot: string, workspaceRoot: string): Promise<string> => {
+  const runtimeRoot = app.isPackaged ? path.join(process.resourcesPath, 'runtime') : appRoot;
+  process.env.CUT_FLOW_APP_ROOT = appRoot;
   process.env.CUT_FLOW_WORKSPACE_ROOT = workspaceRoot;
-  process.env.CUT_FLOW_RUNTIME_ROOT = app.isPackaged
-    ? path.join(process.resourcesPath, 'runtime')
-    : appRoot;
+  process.env.CUT_FLOW_RUNTIME_ROOT = runtimeRoot;
+  if (app.isPackaged) {
+    process.env.NODE_PATH = path.join(appRoot, 'node_modules');
+    (Module as typeof Module & {_initPaths: () => void})._initPaths();
+  }
+  if (app.isPackaged && process.platform === 'win32') {
+    process.env.ESBUILD_BINARY_PATH = path.join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      'vite',
+      'node_modules',
+      '@esbuild',
+      'win32-x64',
+      'esbuild.exe',
+    );
+    process.env.CUT_FLOW_RENDER_ESBUILD_BINARY_PATH = path.join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      '@esbuild',
+      'win32-x64',
+      'esbuild.exe',
+    );
+    process.env.CUT_FLOW_REMOTION_BINARIES = path.join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      '@remotion',
+      'compositor-win32-x64-msvc',
+    );
+  }
+  const {createServer} = await import('vite');
   localServer = await createServer({
-    configFile: path.join(appRoot, 'studio', 'vite.config.ts'),
+    configFile: path.join(runtimeRoot, 'studio', 'vite.config.ts'),
     server: {host: '127.0.0.1', port: 0, strictPort: false},
     clearScreen: false,
   });

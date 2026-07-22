@@ -1,4 +1,4 @@
 import demoProjectJson from '../../projects/demo-project/project.json';
-import {projectFileSchema} from '../core/schema';
+import type {ProjectFile} from '../core/schema';
 
-export const demoProject = projectFileSchema.parse(demoProjectJson);
+export const demoProject = demoProjectJson as ProjectFile;

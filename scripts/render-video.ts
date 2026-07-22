@@ -13,6 +13,10 @@ const projectPath = path.resolve(argument('--project', 'projects/demo-project/pr
 const outputPath = path.resolve(argument('--output', 'out/demo.mp4'));
 const publicDir = path.resolve(argument('--public-dir', 'projects'));
 const runtimeRoot = path.resolve(argument('--runtime-root', '.'));
+const binariesDirectoryArgument = argument('--binaries-dir', '');
+const binariesDirectory = binariesDirectoryArgument
+  ? path.resolve(binariesDirectoryArgument)
+  : undefined;
 const {project, projectRoot, warnings} = await loadProject(projectPath);
 warnings.forEach((warning) => console.warn(`WARNING ${warning.code}: ${warning.message}`));
 
@@ -42,6 +46,7 @@ const composition = await selectComposition({
   id: 'CutFlowVideo',
   inputProps,
   browserExecutable,
+  binariesDirectory,
 });
 
 console.log(`Rendering ${composition.durationInFrames} frames to ${outputPath}...`);
@@ -52,6 +57,7 @@ await renderMedia({
   outputLocation: outputPath,
   inputProps,
   browserExecutable,
+  binariesDirectory,
   onProgress: ({progress}) => process.stdout.write(`\r${Math.round(progress * 100)}%`),
 });
 console.log(`\nRendered: ${outputPath}`);
