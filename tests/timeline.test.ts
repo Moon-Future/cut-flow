@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {projectFileSchema} from '../src/core/schema';
-import {buildTimeline, secondsToFrames} from '../src/core/timeline';
+import {buildShotTimeline, buildTimeline, secondsToFrames} from '../src/core/timeline';
 
 describe('timeline', () => {
   it('rounds seconds to frames and never returns zero', () => {
@@ -48,5 +48,59 @@ describe('timeline', () => {
         {from: 30, durationInFrames: 60},
       ],
     });
+  });
+  it('fits visual shots exactly into their narration scene', () => {
+    const scene = projectFileSchema.parse({
+      version: 1,
+      project: {title: 'T', width: 1080, height: 1920, fps: 30},
+      style: {
+        template: 'x',
+        fontFamily: 'sans',
+        captionPosition: 'bottom',
+        captionAnimation: 'none',
+        transition: 'none',
+      },
+      scenes: [
+        {
+          id: 'a',
+          narration: '',
+          caption: 'A',
+          assetType: 'image',
+          assetPath: 'a',
+          duration: 5,
+          layout: 'full-screen',
+          motion: 'none',
+          shots: [
+            {
+              id: 'one',
+              visualPurpose: 'A',
+              shotType: 'stock-video',
+              assetStrategy: 'stock-search',
+              duration: 2,
+              searchQueries: ['a'],
+              selectedAsset: null,
+              sourceStart: 0,
+              status: 'missing-asset',
+            },
+            {
+              id: 'two',
+              visualPurpose: 'B',
+              shotType: 'science-animation',
+              assetStrategy: 'programmatic',
+              duration: 3,
+              searchQueries: [],
+              selectedAsset: null,
+              sourceStart: 0,
+              status: 'missing-asset',
+            },
+          ],
+        },
+      ],
+    }).scenes[0]!;
+    const shots = buildShotTimeline(scene, 30);
+    expect(shots).toMatchObject([
+      {from: 0, durationInFrames: 60},
+      {from: 60, durationInFrames: 90},
+    ]);
   });
 });

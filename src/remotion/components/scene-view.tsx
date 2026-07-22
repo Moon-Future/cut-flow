@@ -12,6 +12,7 @@ type Props = {
   isFirst: boolean;
   isLast: boolean;
   assetBasePath: string;
+  fps: number;
 };
 
 export const SceneView = ({
@@ -22,6 +23,7 @@ export const SceneView = ({
   isFirst,
   isLast,
   assetBasePath,
+  fps,
 }: Props) => {
   const frame = useCurrentFrame();
   const template = getTemplate(style.template);
@@ -46,6 +48,7 @@ export const SceneView = ({
         durationInFrames={durationInFrames}
         assetBasePath={assetBasePath}
         template={template}
+        fps={fps}
       />
       <Caption
         text={scene.caption}

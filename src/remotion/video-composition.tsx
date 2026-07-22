@@ -31,6 +31,7 @@ export const VideoComposition = ({
             isFirst={index === 0}
             isLast={index === timeline.scenes.length - 1}
             assetBasePath={assetBasePath}
+            fps={project.project.fps}
           />
         </Sequence>
       ))}

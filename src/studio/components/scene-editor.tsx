@@ -13,7 +13,8 @@ const motions: Scene['motion'][] = [
 ];
 
 export const SceneEditor = () => {
-  const {project, selectedSceneId, lockedSceneIds, updateScene} = useStudioStore();
+  const {project, selectedSceneId, lockedSceneIds, updateScene, updateVisualShot} =
+    useStudioStore();
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scene = project?.scenes.find((item) => item.id === selectedSceneId);
@@ -198,6 +199,49 @@ export const SceneEditor = () => {
                 <small>
                   {shot.duration.toFixed(1)} 秒 · {shot.assetStrategy}
                 </small>
+                <label>
+                  <span>选用素材路径</span>
+                  <input
+                    value={shot.selectedAsset ?? ''}
+                    placeholder="assets/sky.mp4"
+                    onChange={(event) =>
+                      updateVisualShot(scene.id, shot.id, {
+                        selectedAsset: event.target.value || null,
+                        status: event.target.value ? 'needs-review' : 'missing-asset',
+                      })
+                    }
+                  />
+                </label>
+                <div className="field-row">
+                  <label>
+                    <span>源片段开始</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={shot.sourceStart}
+                      onChange={(event) =>
+                        updateVisualShot(scene.id, shot.id, {
+                          sourceStart: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>源片段结束</span>
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={shot.sourceEnd ?? ''}
+                      onChange={(event) =>
+                        updateVisualShot(scene.id, shot.id, {
+                          sourceEnd: event.target.value ? Number(event.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </label>
+                </div>
                 {shot.searchQueries.length ? (
                   <div className="query-chips">
                     {shot.searchQueries.map((query) => (

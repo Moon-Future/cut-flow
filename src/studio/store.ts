@@ -1,5 +1,5 @@
 import {create} from 'zustand';
-import type {ProjectFile, Scene} from '../core/schema';
+import type {ProjectFile, Scene, VisualShot} from '../core/schema';
 
 export type SaveStatus = 'loading' | 'saved' | 'saving' | 'error';
 
@@ -12,6 +12,7 @@ type StudioState = {
   setProject: (project: ProjectFile) => void;
   selectScene: (id: string) => void;
   updateScene: (id: string, patch: Partial<Scene>) => void;
+  updateVisualShot: (sceneId: string, shotId: string, patch: Partial<VisualShot>) => void;
   reorderScenes: (sourceId: string, targetId: string) => void;
   toggleLock: (id: string) => void;
   setSaveStatus: (status: SaveStatus, error?: string | null) => void;
@@ -33,6 +34,25 @@ export const useStudioStore = create<StudioState>((set) => ({
             ...state.project,
             scenes: state.project.scenes.map((scene) =>
               scene.id === id ? {...scene, ...patch} : scene,
+            ),
+          }
+        : null,
+      saveStatus: 'saving',
+    })),
+  updateVisualShot: (sceneId, shotId, patch) =>
+    set((state) => ({
+      project: state.project
+        ? {
+            ...state.project,
+            scenes: state.project.scenes.map((scene) =>
+              scene.id === sceneId
+                ? {
+                    ...scene,
+                    shots: scene.shots?.map((shot) =>
+                      shot.id === shotId ? {...shot, ...patch} : shot,
+                    ),
+                  }
+                : scene,
             ),
           }
         : null,
