@@ -489,6 +489,76 @@ select:focus {
   border: 1px dashed #37655f;
   margin-top: 1px;
 }
+.shot-plan {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+.shot-plan-heading,
+.shot-plan-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.shot-plan-heading span,
+.shot-plan-card small {
+  color: #758198;
+  font-size: 10px;
+}
+.shot-plan-card {
+  padding: 12px;
+  border: 1px solid #253145;
+  border-radius: 10px;
+  background: #0d131e;
+}
+.shot-plan-card p {
+  margin: 8px 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.shot-plan-meta b {
+  font-size: 10px;
+  color: #a8b7cf;
+}
+.shot-status {
+  font-size: 9px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #352a17;
+  color: #e8b75d;
+}
+.shot-status.ready {
+  background: #15352f;
+  color: #67d9b8;
+}
+.shot-status.needs-review {
+  background: #292b48;
+  color: #a9afff;
+}
+.query-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 9px;
+}
+.query-chips span {
+  padding: 3px 6px;
+  border: 1px solid #2a3b52;
+  border-radius: 5px;
+  color: #91a4bf;
+  font-size: 9px;
+}
+.shot-plan-card details {
+  margin-top: 8px;
+  color: #7e91ad;
+  font-size: 10px;
+}
+.shot-plan-card details p {
+  color: #9eabc0;
+  font-size: 10px;
+}
+
 .inspector-note {
   margin: 22px;
   background: #101824;

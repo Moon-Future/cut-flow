@@ -12,6 +12,23 @@ export type GeneratedScene = {
   caption: string;
   visualPrompt: string;
   suggestedDuration: number;
+  visualIntent: string;
+  shots: Array<{
+    visualPurpose: string;
+    shotType:
+      | 'real-footage'
+      | 'stock-video'
+      | 'generated-video'
+      | 'generated-image'
+      | 'science-animation'
+      | 'digital-human';
+    assetStrategy:
+      'local-first' | 'stock-search' | 'ai-generate' | 'programmatic' | 'digital-human';
+    durationWeight: number;
+    searchQueries: string[];
+    imagePrompt?: string;
+    videoPrompt?: string;
+  }>;
 };
 
 export type VideoScript = {

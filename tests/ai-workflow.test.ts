@@ -58,9 +58,35 @@ describe('generation workflow', () => {
     expect(second.cacheHit).toBe(true);
     expect(first.project.scenes).toHaveLength(3);
     expect(first.project.scenes.every((scene) => (scene.words?.length ?? 0) > 0)).toBe(true);
+    expect(first.project.scenes.every((scene) => (scene.shots?.length ?? 0) > 0)).toBe(true);
+    expect(
+      first.project.scenes.flatMap((scene) => scene.shots ?? [])[0]?.searchQueries.length,
+    ).toBeGreaterThan(0);
     expect(first.project.scenes.reduce((sum, scene) => sum + scene.duration, 0)).toBeCloseTo(30);
     expect(
       (await readFile(path.join(projectRoot, 'audio', 'narration.wav'))).subarray(0, 4).toString(),
     ).toBe('RIFF');
+  });
+
+  it('creates a multi-shot science plan for the blue sky topic', async () => {
+    const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'cut-flow-science-'));
+    temporaryDirectories.push(projectRoot);
+    const result = await runGenerationWorkflow(
+      {
+        provider: 'mock',
+        topic: '为什么天空是蓝色？',
+        audience: '大众',
+        tone: '轻松科普',
+        targetDuration: 90,
+      },
+      baseProject,
+      projectRoot,
+    );
+    expect(result.project.scenes.flatMap((scene) => scene.shots ?? [])).toHaveLength(7);
+    expect(
+      result.project.scenes.some((scene) =>
+        scene.shots?.some((shot) => shot.shotType === 'science-animation'),
+      ),
+    ).toBe(true);
   });
 });

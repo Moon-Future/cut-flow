@@ -104,6 +104,24 @@ export const runGenerationWorkflow = async (
           motion: fallbackVisual.motion,
         }
       : fallbackVisual;
+    const totalShotWeight = scene.shots.reduce((sum, shot) => sum + shot.durationWeight, 0);
+    const shots = scene.shots.map((shot, shotIndex) => {
+      const shotDuration = duration * (shot.durationWeight / totalShotWeight);
+      return {
+        id: `scene-${String(index + 1).padStart(3, '0')}-shot-${String(shotIndex + 1).padStart(2, '0')}`,
+        visualPurpose: shot.visualPurpose,
+        shotType: shot.shotType,
+        assetStrategy: shot.assetStrategy,
+        duration: Math.max(0.3, shotDuration),
+        searchQueries: shot.searchQueries,
+        imagePrompt: shot.imagePrompt,
+        videoPrompt: shot.videoPrompt,
+        selectedAsset: shotIndex === 0 && matchedAsset ? matchedAsset.path : null,
+        sourceStart: 0,
+        sourceEnd: shotDuration,
+        status: shotIndex === 0 && matchedAsset ? ('ready' as const) : ('missing-asset' as const),
+      };
+    });
     return {
       id: `scene-${String(index + 1).padStart(3, '0')}`,
       narration: scene.narration,
@@ -111,6 +129,8 @@ export const runGenerationWorkflow = async (
       assetQuery: scene.visualPrompt,
       duration: Math.max(0.5, duration),
       words,
+      visualIntent: scene.visualIntent,
+      shots,
       ...visual,
     };
   });

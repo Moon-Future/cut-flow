@@ -25,7 +25,7 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           model: config.textModel ?? 'gpt-5.6-luna',
-          input: `为开发者自媒体生成中文短视频脚本。主题：${input.topic}；受众：${input.audience}；语气：${input.tone}；目标时长：${input.targetDuration}秒。`,
+          input: `生成中文短视频导演脚本。主题：${input.topic}；受众：${input.audience}；语气：${input.tone}；目标时长：${input.targetDuration}秒。每个旁白段拆成1到5个视觉镜头，优先真实视频，其次科学动画、AI生成内容；为每个镜头给出中英文素材搜索词和生成提示词。字幕不是主体。`,
           text: {
             format: {
               type: 'json_schema',
@@ -46,12 +46,66 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
                     items: {
                       type: 'object',
                       additionalProperties: false,
-                      required: ['narration', 'caption', 'visualPrompt', 'suggestedDuration'],
+                      required: [
+                        'narration',
+                        'caption',
+                        'visualPrompt',
+                        'suggestedDuration',
+                        'visualIntent',
+                        'shots',
+                      ],
                       properties: {
                         narration: {type: 'string'},
                         caption: {type: 'string'},
                         visualPrompt: {type: 'string'},
                         suggestedDuration: {type: 'number'},
+                        visualIntent: {type: 'string'},
+                        shots: {
+                          type: 'array',
+                          minItems: 1,
+                          maxItems: 8,
+                          items: {
+                            type: 'object',
+                            additionalProperties: false,
+                            required: [
+                              'visualPurpose',
+                              'shotType',
+                              'assetStrategy',
+                              'durationWeight',
+                              'searchQueries',
+                              'imagePrompt',
+                              'videoPrompt',
+                            ],
+                            properties: {
+                              visualPurpose: {type: 'string'},
+                              shotType: {
+                                type: 'string',
+                                enum: [
+                                  'real-footage',
+                                  'stock-video',
+                                  'generated-video',
+                                  'generated-image',
+                                  'science-animation',
+                                  'digital-human',
+                                ],
+                              },
+                              assetStrategy: {
+                                type: 'string',
+                                enum: [
+                                  'local-first',
+                                  'stock-search',
+                                  'ai-generate',
+                                  'programmatic',
+                                  'digital-human',
+                                ],
+                              },
+                              durationWeight: {type: 'number'},
+                              searchQueries: {type: 'array', items: {type: 'string'}},
+                              imagePrompt: {type: 'string'},
+                              videoPrompt: {type: 'string'},
+                            },
+                          },
+                        },
                       },
                     },
                   },

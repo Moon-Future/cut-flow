@@ -88,6 +88,15 @@ export const SceneEditor = () => {
             onChange={(event) => change('narration', event.target.value)}
           />
         </label>
+        <label>
+          <span>画面表达目的</span>
+          <textarea
+            value={scene.visualIntent ?? ''}
+            rows={2}
+            placeholder="这个旁白段需要让观众看到什么？"
+            onChange={(event) => change('visualIntent', event.target.value)}
+          />
+        </label>
         <div className="field-row">
           <label>
             <span>持续时间</span>
@@ -165,6 +174,53 @@ export const SceneEditor = () => {
         >
           {uploading ? '正在导入素材…' : '替换本地素材'}
         </button>
+        {scene.shots?.length ? (
+          <section className="shot-plan">
+            <div className="shot-plan-heading">
+              <strong>视觉镜头计划</strong>
+              <span>{scene.shots.length} 个镜头</span>
+            </div>
+            {scene.shots.map((shot, index) => (
+              <article className="shot-plan-card" key={shot.id}>
+                <div className="shot-plan-meta">
+                  <b>
+                    #{index + 1} · {shot.shotType}
+                  </b>
+                  <span className={`shot-status ${shot.status}`}>
+                    {shot.status === 'ready'
+                      ? '素材就绪'
+                      : shot.status === 'needs-review'
+                        ? '待审核'
+                        : '缺少素材'}
+                  </span>
+                </div>
+                <p>{shot.visualPurpose}</p>
+                <small>
+                  {shot.duration.toFixed(1)} 秒 · {shot.assetStrategy}
+                </small>
+                {shot.searchQueries.length ? (
+                  <div className="query-chips">
+                    {shot.searchQueries.map((query) => (
+                      <span key={query}>{query}</span>
+                    ))}
+                  </div>
+                ) : null}
+                {shot.imagePrompt ? (
+                  <details>
+                    <summary>图片生成提示词</summary>
+                    <p>{shot.imagePrompt}</p>
+                  </details>
+                ) : null}
+                {shot.videoPrompt ? (
+                  <details>
+                    <summary>视频生成提示词</summary>
+                    <p>{shot.videoPrompt}</p>
+                  </details>
+                ) : null}
+              </article>
+            ))}
+          </section>
+        ) : null}
       </fieldset>
       <div className="inspector-note">
         <strong>自动保存</strong>
