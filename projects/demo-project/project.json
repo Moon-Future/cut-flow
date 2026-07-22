@@ -21,8 +21,12 @@
       "id": "scene-001",
       "narration": "你可能没有意识到，如何让独立开发持续推进真正困难的地方并不是技术。",
       "caption": "如何让独立开发持续推进，难点不只是技术",
+      "assetType": "image",
+      "assetPath": "assets/scene-01.svg",
       "assetQuery": "开发者面对复杂项目界面，深色科技感",
       "duration": 10,
+      "layout": "full-screen",
+      "motion": "slow-zoom-in",
       "words": [
         {
           "text": "你可",
@@ -104,18 +108,18 @@
           "start": 9.456521739130437,
           "end": 10
         }
-      ],
-      "assetPath": "assets/scene-01.svg",
-      "assetType": "image",
-      "layout": "full-screen",
-      "motion": "slow-zoom-in"
+      ]
     },
     {
       "id": "scene-002",
       "narration": "问题往往来自目标过多、反馈太晚，以及每一次修改都牵动整个系统。",
       "caption": "目标过多，反馈太晚",
+      "assetType": "image",
+      "assetPath": "assets/scene-02.svg",
       "assetQuery": "复杂流程图逐渐简化为三个清晰步骤",
       "duration": 10,
+      "layout": "center-card",
+      "motion": "pan-left",
       "words": [
         {
           "text": "术",
@@ -202,18 +206,18 @@
           "start": 9.239130434782602,
           "end": 9.891304347826079
         }
-      ],
-      "assetPath": "assets/scene-02.svg",
-      "assetType": "image",
-      "layout": "center-card",
-      "motion": "pan-left"
+      ]
     },
     {
       "id": "scene-003",
       "narration": "先做出最小闭环，用真实结果决定下一步，项目才会持续向前。",
       "caption": "先完成闭环，再持续迭代",
+      "assetType": "image",
+      "assetPath": "assets/scene-03.svg",
       "assetQuery": "进度条完成，产品成功发布",
       "duration": 10,
+      "layout": "split-top-bottom",
+      "motion": "slow-zoom-out",
       "words": [
         {
           "text": "系统",
@@ -305,11 +309,7 @@
           "start": 9.67391304347823,
           "end": 9.999999999999968
         }
-      ],
-      "assetPath": "assets/scene-03.svg",
-      "assetType": "image",
-      "layout": "split-top-bottom",
-      "motion": "slow-zoom-out"
+      ]
     }
   ]
 }

@@ -10,7 +10,13 @@ import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
-const projectRoot = path.join(repositoryRoot, 'projects', 'demo-project');
+const workspaceRoot = process.env.CUT_FLOW_WORKSPACE_ROOT
+  ? path.resolve(process.env.CUT_FLOW_WORKSPACE_ROOT)
+  : repositoryRoot;
+const runtimeRoot = process.env.CUT_FLOW_RUNTIME_ROOT
+  ? path.resolve(process.env.CUT_FLOW_RUNTIME_ROOT)
+  : repositoryRoot;
+const projectRoot = path.join(workspaceRoot, 'projects', 'demo-project');
 const projectFile = path.join(projectRoot, 'project.json');
 const assetsRoot = path.join(projectRoot, 'assets');
 const assetLibraryFile = path.join(projectRoot, 'assets.json');
@@ -153,10 +159,28 @@ const localApi = (): Plugin => ({
             }
             renderState = {status: 'running', progress: 0, message: '正在准备视频…'};
             const tsxCli = path.join(repositoryRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
-            renderProcess = spawn(process.execPath, [tsxCli, 'scripts/render-video.ts'], {
-              cwd: repositoryRoot,
-              env: process.env,
-            });
+            renderProcess = spawn(
+              process.execPath,
+              [
+                tsxCli,
+                path.join(runtimeRoot, 'scripts', 'render-video.ts'),
+                '--project',
+                projectFile,
+                '--public-dir',
+                path.join(workspaceRoot, 'projects'),
+                '--runtime-root',
+                runtimeRoot,
+                '--output',
+                path.join(workspaceRoot, 'out', 'demo.mp4'),
+              ],
+              {
+                cwd: workspaceRoot,
+                env: {
+                  ...process.env,
+                  ...(process.versions.electron ? {ELECTRON_RUN_AS_NODE: '1'} : {}),
+                },
+              },
+            );
             const update = (chunk: Buffer) => {
               const text = chunk.toString('utf8');
               const matches = [...text.matchAll(/(\d{1,3})%/g)];
@@ -191,7 +215,7 @@ const localApi = (): Plugin => ({
             return;
           }
           if (url === '/api/render/file' && request.method === 'GET') {
-            const output = path.join(repositoryRoot, 'out', 'demo.mp4');
+            const output = path.join(workspaceRoot, 'out', 'demo.mp4');
             response.setHeader('Content-Type', 'video/mp4');
             response.setHeader('Content-Disposition', 'attachment; filename="cut-flow-demo.mp4"');
             createReadStream(output)
@@ -210,7 +234,7 @@ const localApi = (): Plugin => ({
 
 export default defineConfig({
   root: repositoryRoot,
-  publicDir: path.resolve(repositoryRoot, 'projects'),
+  publicDir: path.resolve(workspaceRoot, 'projects'),
   plugins: [react(), localApi()],
   build: {outDir: path.resolve(repositoryRoot, 'dist/studio'), emptyOutDir: true},
   server: {host: '127.0.0.1', port: 4173},

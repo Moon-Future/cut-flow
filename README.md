@@ -33,6 +33,22 @@ pnpm validate -- --project projects/my-project/project.json
 pnpm render -- --project projects/my-project/project.json --output out/my-video.mp4
 ```
 
+## Windows 桌面版
+
+开发模式启动桌面工作台：
+
+```bash
+pnpm desktop:dev
+```
+
+生成 Windows 安装包：
+
+```bash
+pnpm desktop:pack
+```
+
+安装包输出到 `release/Cut-Flow-0.1.0-Setup.exe`。桌面版首次启动会把示例项目复制到 `%APPDATA%/cut-flow/workspace`，后续编辑不会修改安装目录；运行日志位于 `%APPDATA%/cut-flow/logs/desktop.log`。卸载应用不会自动删除工作区，确认不再需要项目后可手动删除该目录。
+
 ## 项目结构
 
 - `src/core`：Schema、项目加载、路径校验和时间轴。
@@ -43,4 +59,4 @@ pnpm render -- --project projects/my-project/project.json --output out/my-video.
 
 ## 当前能力与限制
 
-已实现镜头卡片编辑器、拖拽排序、锁定、素材上传、授权元数据、本地素材库、关键词匹配、自动保存、Remotion Player 实时预览、导出进度与视频下载；生成层支持可替换的文本/TTS/转录 Provider、本地 Mock、OpenAI 适配器、脚本缓存、旁白生成和词级时间对齐；渲染层支持参数化 `game-dev-log` 模板、三种布局、五种图片动效、逐词高亮字幕、字幕安全区、无转场/淡入淡出、图片/视频组件、静音降级和 H.264 MP4 导出。当前尚未实现 AI 图片/视频生成和 Electron。
+已实现镜头卡片编辑器、拖拽排序、锁定、素材上传、授权元数据、本地素材库、关键词匹配、自动保存、Remotion Player 实时预览、导出进度与视频下载；生成层支持可替换的文本/TTS/转录 Provider、本地 Mock、OpenAI 适配器、脚本缓存、旁白生成和词级时间对齐；渲染层支持参数化 `game-dev-log` 模板、三种布局、五种图片动效、逐词高亮字幕、字幕安全区、无转场/淡入淡出、图片/视频组件、静音降级和 H.264 MP4 导出；桌面层支持 Electron 单实例、安全上下文、独立工作区、运行日志和 Windows NSIS 安装包。当前尚未实现 AI 图片/视频生成、自动更新和 macOS 安装包。

@@ -11,10 +11,12 @@ const argument = (name: string, fallback: string): string => {
 
 const projectPath = path.resolve(argument('--project', 'projects/demo-project/project.json'));
 const outputPath = path.resolve(argument('--output', 'out/demo.mp4'));
+const publicDir = path.resolve(argument('--public-dir', 'projects'));
+const runtimeRoot = path.resolve(argument('--runtime-root', '.'));
 const {project, projectRoot, warnings} = await loadProject(projectPath);
 warnings.forEach((warning) => console.warn(`WARNING ${warning.code}: ${warning.message}`));
 
-const projectsRoot = path.resolve('projects');
+const projectsRoot = publicDir;
 const relativeProjectRoot = path.relative(projectsRoot, projectRoot);
 if (relativeProjectRoot.startsWith('..') || path.isAbsolute(relativeProjectRoot)) {
   throw new Error(`Renderable projects must be stored inside ${projectsRoot}: ${projectRoot}`);
@@ -23,8 +25,8 @@ const assetBasePath = relativeProjectRoot.split(path.sep).join('/');
 
 console.log('Bundling Remotion project...');
 const serveUrl = await bundle({
-  entryPoint: path.resolve('src/remotion/index.ts'),
-  publicDir: path.resolve('projects'),
+  entryPoint: path.join(runtimeRoot, 'src', 'remotion', 'index.ts'),
+  publicDir,
 });
 const inputProps = {
   project,

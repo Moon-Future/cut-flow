@@ -5,6 +5,7 @@ out/
 .env.*
 !.env.example
 coverage/
+/release*/
 *.log
 projects/*/cache/
 projects/*/audio/*.wav

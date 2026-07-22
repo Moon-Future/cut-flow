@@ -14,5 +14,13 @@
     "skipLibCheck": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "scripts", "studio", "tests", "remotion.config.ts", "eslint.config.mjs"]
+  "include": [
+    "apps",
+    "src",
+    "scripts",
+    "studio",
+    "tests",
+    "remotion.config.ts",
+    "eslint.config.mjs"
+  ]
 }
