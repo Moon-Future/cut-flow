@@ -13,6 +13,7 @@ export type ProjectSummary = {
 
 type Props = {
   onOpen: (projectId: string) => Promise<void>;
+  embedded?: boolean;
 };
 
 const videoTypeLabels: Record<VideoType, string> = {
@@ -23,7 +24,7 @@ const videoTypeLabels: Record<VideoType, string> = {
   storytelling: '故事叙事',
 };
 
-export const ProjectHub = ({onOpen}: Props) => {
+export const ProjectHub = ({onOpen, embedded = false}: Props) => {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
@@ -60,21 +61,23 @@ export const ProjectHub = ({onOpen}: Props) => {
   };
 
   return (
-    <main className="project-hub">
-      <header className="hub-header">
-        <div className="brand">
-          <span className="brand-mark">CF</span>
-          <div>
-            <strong>Cut Flow</strong>
-            <small>AI 视频生产工作台</small>
+    <main className={`project-hub ${embedded ? 'embedded' : ''}`}>
+      {!embedded ? (
+        <header className="hub-header">
+          <div className="brand">
+            <span className="brand-mark">CF</span>
+            <div>
+              <strong>Cut Flow</strong>
+              <small>AI 视频生产工作台</small>
+            </div>
           </div>
-        </div>
-        <div>
-          <span className="eyebrow">PROJECTS</span>
-          <h1>从一个主题，开始一条完整视频</h1>
-          <p>选择已有项目继续制作，或创建新项目进入文案、脚本、分镜和素材流程。</p>
-        </div>
-      </header>
+          <div>
+            <span className="eyebrow">PROJECTS</span>
+            <h1>从一个主题，开始一条完整视频</h1>
+            <p>选择已有项目继续制作，或创建新项目进入文案、脚本、分镜和素材流程。</p>
+          </div>
+        </header>
+      ) : null}
 
       <section className="new-project-card">
         <div>

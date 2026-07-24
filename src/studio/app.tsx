@@ -1,8 +1,8 @@
 import {useEffect, useState} from 'react';
 import {AssetLibraryPanel} from './components/asset-library-panel';
-import {ProjectHub} from './components/project-hub';
-import {ContentOverview} from './components/content-overview';
 import {EditingWorkspace} from './components/editing-workspace';
+import {ProjectWorkspace} from './components/project-workspace';
+import type {WorkspaceSection} from './components/workspace-sidebar';
 import {useStudioStore} from './store';
 
 type RenderState = {
@@ -23,7 +23,7 @@ export const App = () => {
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
   const [projectId, setProjectId] = useState('');
   const [showProjects, setShowProjects] = useState(true);
-  const [view, setView] = useState<'content' | 'editor'>('content');
+  const [section, setSection] = useState<WorkspaceSection>('overview');
 
   const openProject = async (id: string) => {
     const selected = await fetch('/api/projects/select', {
@@ -37,7 +37,7 @@ export const App = () => {
     setProject((await response.json()) as Parameters<typeof setProject>[0]);
     setProjectId(id);
     setShowProjects(false);
-    setView('content');
+    setSection('overview');
     setAudioAvailable(false);
     void fetch(`/${id}/audio/narration.wav`, {method: 'HEAD'})
       .then((audio) => setAudioAvailable(audio.ok))
@@ -83,48 +83,21 @@ export const App = () => {
     else setRenderState(value);
   };
 
-  if (showProjects) return <ProjectHub onOpen={openProject} />;
+  if (showProjects)
+    return (
+      <ProjectWorkspace
+        onOpen={openProject}
+        onNavigate={(value) => {
+          if (value === 'overview') setShowProjects(true);
+        }}
+      />
+    );
 
   if (!project) {
     return (
       <main className="loading">
         <div className="loading-mark">CF</div>
         <p>{error ?? '正在打开项目…'}</p>
-      </main>
-    );
-  }
-
-  if (view === 'content') {
-    return (
-      <main className="app-shell">
-        <header className="topbar">
-          <div className="brand">
-            <span className="brand-mark">CF</span>
-            <div>
-              <strong>Cut Flow</strong>
-              <small>AI 视频生产工作台</small>
-            </div>
-          </div>
-          <div className="project-title">
-            <span>当前项目</span>
-            <strong>{project.project.title}</strong>
-          </div>
-          <div className="top-actions">
-            <button className="ghost-button" onClick={() => setShowProjects(true)}>
-              全部项目
-            </button>
-            <button className="primary-button" onClick={() => setView('editor')}>
-              剪辑与素材
-            </button>
-          </div>
-        </header>
-        <ContentOverview
-          project={project}
-          onEdit={() => setView('editor')}
-          onGenerated={setProject}
-          onAudioReady={() => setAudioAvailable(true)}
-          onBack={() => setShowProjects(true)}
-        />
       </main>
     );
   }
@@ -136,10 +109,13 @@ export const App = () => {
         projectId={projectId}
         audioAvailable={audioAvailable}
         renderState={renderState}
-        onBack={() => setView('content')}
-        onProjects={() => setShowProjects(true)}
+        section={section}
+        onNavigate={setSection}
+        onNewProject={() => setShowProjects(true)}
         onAssets={() => setAssetLibraryOpen(true)}
         onRender={() => void startRender()}
+        onGenerated={setProject}
+        onAudioReady={() => setAudioAvailable(true)}
       />
       <AssetLibraryPanel
         open={assetLibraryOpen}
