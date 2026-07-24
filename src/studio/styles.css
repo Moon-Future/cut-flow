@@ -578,6 +578,11 @@ select:focus {
   color: #6f8098;
   font-size: 9px;
 }
+.candidate-error {
+  margin: -2px 0 10px;
+  color: #ff8f8f;
+  font-size: 11px;
+}
 .candidate-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

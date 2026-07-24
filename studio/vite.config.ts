@@ -8,7 +8,11 @@ import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
 import {projectFileSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
-import {createMockImageProvider, createMockVideoProvider} from '../src/ai/media-provider';
+import {
+  createMockImageProvider,
+  createMockVideoProvider,
+  createOpenAIImageProvider,
+} from '../src/ai/media-provider';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
@@ -165,13 +169,28 @@ const localApi = (): Plugin => ({
               sceneId?: string;
               shotId?: string;
               kind?: 'image' | 'video';
+              provider?: 'mock' | 'openai';
               count?: number;
             };
-            if (!input.sceneId || !input.shotId || !['image', 'video'].includes(input.kind ?? '')) {
+            if (
+              !input.sceneId ||
+              !input.shotId ||
+              !['image', 'video'].includes(input.kind ?? '') ||
+              !['mock', 'openai'].includes(input.provider ?? 'mock')
+            ) {
               sendJson(response, 400, {error: '镜头生成参数不完整'});
               return;
             }
             const kind = input.kind as 'image' | 'video';
+            const providerChoice = input.provider ?? 'mock';
+            if (kind === 'video' && providerChoice === 'openai') {
+              sendJson(response, 400, {error: '当前尚未配置真实视频生成 Provider'});
+              return;
+            }
+            if (providerChoice === 'openai' && !process.env.OPENAI_API_KEY) {
+              sendJson(response, 400, {error: '使用 OpenAI 图片生成前请设置 OPENAI_API_KEY'});
+              return;
+            }
             const project = projectFileSchema.parse(
               JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
             );
@@ -195,7 +214,21 @@ const localApi = (): Plugin => ({
               ...new Set([...preferred, ...(sceneAssetMatchesKind ? [scene.assetPath] : [])]),
             ];
             const provider =
-              kind === 'video' ? createMockVideoProvider() : createMockImageProvider();
+              providerChoice === 'openai'
+                ? createOpenAIImageProvider({
+                    apiKey: process.env.OPENAI_API_KEY!,
+                    outputDirectory: path.join(assetsRoot, 'generated'),
+                    projectRelativeDirectory: 'assets/generated',
+                    model: process.env.OPENAI_IMAGE_MODEL,
+                    quality:
+                      process.env.OPENAI_IMAGE_QUALITY === 'medium' ||
+                      process.env.OPENAI_IMAGE_QUALITY === 'high'
+                        ? process.env.OPENAI_IMAGE_QUALITY
+                        : 'low',
+                  })
+                : kind === 'video'
+                  ? createMockVideoProvider()
+                  : createMockImageProvider();
             const previousAttempt = shot.generationTask?.attempt ?? 0;
             const generationTask = {
               id: `task-${randomUUID()}`,
@@ -216,6 +249,32 @@ const localApi = (): Plugin => ({
                 fallbackPaths,
               });
               shot.candidates = [...shot.candidates, ...candidates];
+              const generatedAssets = candidates
+                .filter((candidate) => candidate.provider === 'openai-image')
+                .map((candidate) => ({
+                  id: `asset-${candidate.id}`,
+                  name: `${shot.visualPurpose}-${candidate.id.slice(-8)}`,
+                  type: 'image' as const,
+                  source: 'generated' as const,
+                  path: candidate.path,
+                  license: 'licensed' as const,
+                  commercialUse: true,
+                  originalUrl: null,
+                  createdAt: candidate.createdAt,
+                  keywords: [...new Set([...shot.searchQueries, shot.visualPurpose])],
+                  width: 1024,
+                  height: 1536,
+                }));
+              if (generatedAssets.length) {
+                const assets = [...library, ...generatedAssets];
+                const temporaryLibrary = `${assetLibraryFile}.tmp`;
+                await writeFile(
+                  temporaryLibrary,
+                  `${JSON.stringify({version: 1, assets}, null, 2)}\n`,
+                  'utf8',
+                );
+                await rename(temporaryLibrary, assetLibraryFile);
+              }
               shot.generationTask = {
                 ...generationTask,
                 status: 'needs-selection',

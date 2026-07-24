@@ -17,6 +17,10 @@ export const SceneEditor = () => {
     useStudioStore();
   const [uploading, setUploading] = useState(false);
   const [generatingShotId, setGeneratingShotId] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<{
+    shotId: string;
+    message: string;
+  } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scene = project?.scenes.find((item) => item.id === selectedSceneId);
   if (!scene) return <div className="empty-inspector">选择一个镜头开始编辑</div>;
@@ -62,17 +66,27 @@ export const SceneEditor = () => {
     }
   };
 
-  const generateCandidates = async (shotId: string, kind: 'image' | 'video') => {
+  const generateCandidates = async (
+    shotId: string,
+    kind: 'image' | 'video',
+    provider: 'mock' | 'openai',
+  ) => {
     setGeneratingShotId(shotId);
+    setGenerationError(null);
     try {
       const response = await fetch('/api/shots/generate', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({sceneId: scene.id, shotId, kind, count: 3}),
+        body: JSON.stringify({sceneId: scene.id, shotId, kind, provider, count: 3}),
       });
       const value = (await response.json()) as {shot?: VisualShot; error?: string};
       if (!response.ok || !value.shot) throw new Error(value.error ?? '候选生成失败');
       updateVisualShot(scene.id, shotId, value.shot);
+    } catch (error) {
+      setGenerationError({
+        shotId,
+        message: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       setGeneratingShotId(null);
     }
@@ -273,17 +287,24 @@ export const SceneEditor = () => {
                 <div className="candidate-actions">
                   <button
                     type="button"
-                    onClick={() => void generateCandidates(shot.id, 'image')}
+                    onClick={() => void generateCandidates(shot.id, 'image', 'openai')}
                     disabled={generatingShotId === shot.id}
                   >
-                    {generatingShotId === shot.id ? '生成中…' : '生成 3 张图片'}
+                    {generatingShotId === shot.id ? '生成中…' : 'AI 生成 3 张图片'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => void generateCandidates(shot.id, 'video')}
+                    onClick={() => void generateCandidates(shot.id, 'image', 'mock')}
                     disabled={generatingShotId === shot.id}
                   >
-                    生成视频候选
+                    本地图片候选
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void generateCandidates(shot.id, 'video', 'mock')}
+                    disabled={generatingShotId === shot.id}
+                  >
+                    本地视频候选
                   </button>
                   {shot.generationTask ? (
                     <span>
@@ -291,6 +312,12 @@ export const SceneEditor = () => {
                     </span>
                   ) : null}
                 </div>
+                {generationError?.shotId === shot.id ? (
+                  <p className="candidate-error">{generationError.message}</p>
+                ) : null}
+                {shot.generationTask?.error ? (
+                  <p className="candidate-error">{shot.generationTask.error}</p>
+                ) : null}
                 {shot.candidates.length ? (
                   <div className="candidate-grid">
                     {shot.candidates.map((candidate) => (
