@@ -6,9 +6,10 @@ type Props = {
   onEdit: () => void;
   onGenerated: (project: ProjectFile) => void;
   onAudioReady: () => void;
+  onBack: () => void;
 };
 
-export const ContentOverview = ({project, onEdit, onGenerated, onAudioReady}: Props) => {
+export const ContentOverview = ({project, onEdit, onGenerated, onAudioReady, onBack}: Props) => {
   const narration = project.scenes.map((scene) => scene.narration).join('\n\n');
   const shotCount = project.scenes.reduce((sum, scene) => sum + (scene.shots?.length ?? 0), 0);
   const generated = shotCount > 0 || Boolean(project.content?.hook || project.content?.ending);
@@ -16,15 +17,26 @@ export const ContentOverview = ({project, onEdit, onGenerated, onAudioReady}: Pr
   return (
     <section className="content-overview">
       <nav className="workflow-steps" aria-label="视频制作流程">
-        <span className="done">1. 项目主题</span>
-        <span className={generated ? 'done' : 'active'}>2. 文案与脚本</span>
-        <span className={generated ? 'active' : ''}>3. 分镜与素材</span>
-        <span>4. 剪辑与预览</span>
-        <span>5. 导出</span>
+        <button className="done" onClick={onBack}>
+          1. 项目主题
+        </button>
+        <button className={generated ? 'done' : 'active'}>2. 文案与脚本</button>
+        <button className={generated ? 'active' : ''} disabled={!generated} onClick={onEdit}>
+          3. 分镜与素材
+        </button>
+        <button disabled={!generated} onClick={onEdit}>
+          4. 剪辑与预览
+        </button>
+        <button disabled={!generated} onClick={onEdit}>
+          5. 导出
+        </button>
       </nav>
 
       <div className="content-hero">
         <div>
+          <button className="back-button" onClick={onBack}>
+            ← 上一步：项目列表
+          </button>
           <span className="eyebrow">CONTENT & STORYBOARD</span>
           <h1>{project.project.title}</h1>
           <p>{project.content?.topic || '尚未填写主题'}</p>
@@ -47,6 +59,7 @@ export const ContentOverview = ({project, onEdit, onGenerated, onAudioReady}: Pr
             defaultOpen
             prominent
             initialTopic={project.content?.topic ?? project.project.title}
+            initialVideoType={project.content?.videoType}
             onGenerated={onGenerated}
             onAudioReady={onAudioReady}
           />
@@ -119,6 +132,7 @@ export const ContentOverview = ({project, onEdit, onGenerated, onAudioReady}: Pr
           <div className="regenerate-row">
             <GenerationPanel
               initialTopic={project.content?.topic ?? project.project.title}
+              initialVideoType={project.content?.videoType}
               onGenerated={onGenerated}
               onAudioReady={onAudioReady}
             />

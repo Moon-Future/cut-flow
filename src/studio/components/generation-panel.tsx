@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import type {ProjectFile} from '../../core/schema';
+import type {ProjectFile, VideoType} from '../../core/schema';
 
 type Props = {
   onGenerated: (project: ProjectFile) => void;
@@ -7,6 +7,7 @@ type Props = {
   defaultOpen?: boolean;
   initialTopic?: string;
   prominent?: boolean;
+  initialVideoType?: VideoType;
 };
 
 export const GenerationPanel = ({
@@ -15,11 +16,13 @@ export const GenerationPanel = ({
   defaultOpen = false,
   initialTopic = '',
   prominent = false,
+  initialVideoType = 'science-explainer',
 }: Props) => {
   const [open, setOpen] = useState(defaultOpen);
   const [topic, setTopic] = useState(initialTopic);
   const [provider, setProvider] = useState<'mock' | 'openai'>('mock');
   const [targetDuration, setTargetDuration] = useState(30);
+  const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
@@ -34,6 +37,7 @@ export const GenerationPanel = ({
           topic,
           provider,
           targetDuration,
+          videoType,
           audience: '短视频平台的普通观众',
           tone: '清晰、有画面感、节奏紧凑',
         }),
@@ -73,6 +77,19 @@ export const GenerationPanel = ({
             <textarea rows={3} value={topic} onChange={(event) => setTopic(event.target.value)} />
           </label>
           <div className="field-row">
+            <label>
+              <span>视频类型</span>
+              <select
+                value={videoType}
+                onChange={(event) => setVideoType(event.target.value as VideoType)}
+              >
+                <option value="science-explainer">科普讲解</option>
+                <option value="knowledge-narration">知识口播</option>
+                <option value="digital-human">数字人口播</option>
+                <option value="product-showcase">产品展示</option>
+                <option value="storytelling">故事叙事</option>
+              </select>
+            </label>
             <label>
               <span>Provider</span>
               <select

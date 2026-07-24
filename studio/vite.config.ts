@@ -6,7 +6,7 @@ import {appendFile, mkdir, readFile, readdir, rename, stat, writeFile} from 'nod
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
-import {projectFileSchema} from '../src/core/schema';
+import {projectFileSchema, videoTypeSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
 import {
   createMockImageProvider,
@@ -93,6 +93,7 @@ const localApi = (): Plugin => ({
                         sceneCount: project.scenes.length,
                         duration: project.scenes.reduce((sum, scene) => sum + scene.duration, 0),
                         topic: project.content?.topic ?? project.project.title,
+                        videoType: project.content?.videoType ?? 'science-explainer',
                         updatedAt: (await stat(file)).mtime.toISOString(),
                       };
                     } catch {
@@ -121,12 +122,14 @@ const localApi = (): Plugin => ({
             const input = JSON.parse((await readBody(request)).toString('utf8')) as {
               title?: string;
               topic?: string;
+              videoType?: string;
             };
             const title = input.title?.trim() || input.topic?.trim();
             if (!title) {
               sendJson(response, 400, {error: '请输入项目名称或主题'});
               return;
             }
+            const videoType = videoTypeSchema.catch('science-explainer').parse(input.videoType);
             const id = `project-${Date.now()}-${randomUUID().slice(0, 6)}`;
             const projectRoot = path.join(projectsRoot, id);
             await mkdir(path.join(projectRoot, 'assets'), {recursive: true});
@@ -139,7 +142,7 @@ const localApi = (): Plugin => ({
             const project = projectFileSchema.parse({
               version: 1,
               project: {title, width: 1080, height: 1920, fps: 30, durationTarget: 30},
-              content: {topic: input.topic?.trim() ?? title, hook: '', ending: ''},
+              content: {topic: input.topic?.trim() ?? title, videoType, hook: '', ending: ''},
               style: {
                 template: 'game-dev-log',
                 fontFamily: 'Noto Sans SC',
@@ -271,6 +274,9 @@ const localApi = (): Plugin => ({
             const currentProject = projectFileSchema.parse(
               JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
             );
+            input.videoType = videoTypeSchema
+              .catch(currentProject.content?.videoType ?? 'science-explainer')
+              .parse(input.videoType);
             const result = await runGenerationWorkflow(input, currentProject, projectRoot);
             const temporary = `${projectFile}.tmp`;
             await writeFile(temporary, `${JSON.stringify(result.project, null, 2)}\n`, 'utf8');

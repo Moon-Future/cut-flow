@@ -147,6 +147,7 @@ export const runGenerationWorkflow = async (
       },
       content: {
         topic: input.topic,
+        videoType: input.videoType,
         hook: script.hook,
         ending: script.ending,
       },

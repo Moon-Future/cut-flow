@@ -1,6 +1,14 @@
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, TranscriptWord} from './types';
 
+const videoTypeLabels: Record<GenerateInput['videoType'], string> = {
+  'science-explainer': '科普讲解',
+  'knowledge-narration': '知识口播',
+  'digital-human': '数字人口播',
+  'product-showcase': '产品展示',
+  storytelling: '故事叙事',
+};
+
 type OpenAIConfig = {
   apiKey: string;
   textModel?: string;
@@ -25,7 +33,7 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           model: config.textModel ?? 'gpt-5.6-luna',
-          input: `生成中文短视频导演脚本。主题：${input.topic}；受众：${input.audience}；语气：${input.tone}；目标时长：${input.targetDuration}秒。每个旁白段拆成1到5个视觉镜头，优先真实视频，其次科学动画、AI生成内容；为每个镜头给出中英文素材搜索词和生成提示词。字幕不是主体。`,
+          input: `生成中文短视频导演脚本。视频类型：${videoTypeLabels[input.videoType]}；主题：${input.topic}；受众：${input.audience}；语气：${input.tone}；目标时长：${input.targetDuration}秒。根据视频类型选择叙事结构、镜头语言和素材策略。每个旁白段拆成1到5个视觉镜头，优先真实视频，其次科学动画、AI生成内容；为每个镜头给出中英文素材搜索词和生成提示词。字幕不是主体。`,
           text: {
             format: {
               type: 'json_schema',

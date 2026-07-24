@@ -47,7 +47,7 @@ body {
 }
 .new-project-card {
   display: grid;
-  grid-template-columns: 210px 1fr 1fr auto;
+  grid-template-columns: 190px 1fr 1fr 150px auto;
   gap: 14px;
   align-items: center;
   padding: 22px;
@@ -59,13 +59,27 @@ body {
 .section-title h2 {
   margin: 4px 0 0;
 }
-.new-project-card input {
+.new-project-card input,
+.new-project-card select {
   min-width: 0;
   padding: 13px 14px;
   border: 1px solid #29354a;
   border-radius: 10px;
   background: #090e17;
   color: #e9edf7;
+}
+.new-project-card select {
+  appearance: none;
+}
+.project-type {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #172b2d;
+  color: #72d9c0;
+  font-size: 10px;
+  font-style: normal;
 }
 .hub-error {
   grid-column: 2 / -1;
@@ -151,7 +165,7 @@ body {
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 }
-.workflow-steps span {
+.workflow-steps button {
   position: relative;
   padding: 11px 12px;
   border: 1px solid #222d3f;
@@ -159,14 +173,33 @@ body {
   background: #0d131d;
   color: #5f6b7f;
   font-size: 11px;
+  text-align: left;
+  cursor: pointer;
 }
-.workflow-steps span.active {
+.workflow-steps button.active {
   border-color: #4b9b90;
   color: #8ff0d4;
   background: #10231f;
 }
-.workflow-steps span.done {
+.workflow-steps button.done {
   color: #82b8aa;
+}
+.workflow-steps button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.back-button {
+  display: block;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7f90a8;
+  font-size: 11px;
+  cursor: pointer;
+}
+.back-button:hover {
+  color: #78e2c4;
 }
 .generation-gate {
   max-width: 1120px;

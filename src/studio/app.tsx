@@ -132,6 +132,7 @@ export const App = () => {
           onEdit={() => setView('editor')}
           onGenerated={setProject}
           onAudioReady={() => setAudioAvailable(true)}
+          onBack={() => setShowProjects(true)}
         />
       </main>
     );
@@ -156,7 +157,7 @@ export const App = () => {
             全部项目
           </button>
           <button className="ghost-button" onClick={() => setView('content')}>
-            文案与分镜
+            ← 上一步：文案与分镜
           </button>
           <span className={`save-state ${saveStatus}`}>
             {saveStatus === 'saved'

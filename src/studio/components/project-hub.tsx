@@ -1,4 +1,5 @@
 import {useEffect, useState} from 'react';
+import type {VideoType} from '../../core/schema';
 
 export type ProjectSummary = {
   id: string;
@@ -7,16 +8,26 @@ export type ProjectSummary = {
   sceneCount: number;
   duration: number;
   updatedAt: string;
+  videoType: VideoType;
 };
 
 type Props = {
   onOpen: (projectId: string) => Promise<void>;
 };
 
+const videoTypeLabels: Record<VideoType, string> = {
+  'science-explainer': '科普讲解',
+  'knowledge-narration': '知识口播',
+  'digital-human': '数字人口播',
+  'product-showcase': '产品展示',
+  storytelling: '故事叙事',
+};
+
 export const ProjectHub = ({onOpen}: Props) => {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
+  const [videoType, setVideoType] = useState<VideoType>('science-explainer');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,7 +47,7 @@ export const ProjectHub = ({onOpen}: Props) => {
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({title, topic}),
+        body: JSON.stringify({title, topic, videoType}),
       });
       const value = (await response.json()) as {id?: string; error?: string};
       if (!response.ok || !value.id) throw new Error(value.error ?? '创建项目失败');
@@ -75,6 +86,16 @@ export const ProjectHub = ({onOpen}: Props) => {
           onChange={(event) => setTitle(event.target.value)}
           placeholder="项目名称，例如：为什么夕阳是红色？"
         />
+        <select
+          value={videoType}
+          onChange={(event) => setVideoType(event.target.value as VideoType)}
+        >
+          <option value="science-explainer">科普讲解</option>
+          <option value="knowledge-narration">知识口播</option>
+          <option value="digital-human">数字人口播</option>
+          <option value="product-showcase">产品展示</option>
+          <option value="storytelling">故事叙事</option>
+        </select>
         <input
           value={topic}
           onChange={(event) => setTopic(event.target.value)}
@@ -112,6 +133,7 @@ export const ProjectHub = ({onOpen}: Props) => {
               <div>
                 <strong>{project.title}</strong>
                 <p>{project.topic}</p>
+                <em className="project-type">{videoTypeLabels[project.videoType]}</em>
                 <small>
                   {project.sceneCount} 个段落 ·{' '}
                   {new Date(project.updatedAt).toLocaleString('zh-CN')}

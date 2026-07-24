@@ -1,10 +1,11 @@
-import type {CaptionWord} from '../core/schema';
+import type {CaptionWord, VideoType} from '../core/schema';
 
 export type GenerateInput = {
   topic: string;
   audience: string;
   tone: string;
   targetDuration: number;
+  videoType: VideoType;
 };
 
 export type GeneratedScene = {

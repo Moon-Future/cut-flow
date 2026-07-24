@@ -29,6 +29,11 @@ describe('projectFileSchema', () => {
   it('accepts a valid project and supplies transition duration', () => {
     expect(projectFileSchema.parse(valid).style.transitionDuration).toBe(0.35);
   });
+  it('supplies a default video type for older project content', () => {
+    expect(projectFileSchema.parse({...valid, content: {topic: '旧项目'}}).content?.videoType).toBe(
+      'science-explainer',
+    );
+  });
   it('rejects duplicate scene ids', () => {
     expect(
       projectFileSchema.safeParse({...valid, scenes: [valid.scenes[0], valid.scenes[0]]}).success,

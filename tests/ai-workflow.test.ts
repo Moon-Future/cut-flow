@@ -45,6 +45,7 @@ describe('generation workflow', () => {
     temporaryDirectories.push(projectRoot);
     const input = {
       provider: 'mock' as const,
+      videoType: 'science-explainer' as const,
       topic: '如何完成独立项目',
       audience: '开发者',
       tone: '真诚',
@@ -74,6 +75,7 @@ describe('generation workflow', () => {
     const result = await runGenerationWorkflow(
       {
         provider: 'mock',
+        videoType: 'science-explainer',
         topic: '为什么天空是蓝色？',
         audience: '大众',
         tone: '轻松科普',

@@ -8,6 +8,13 @@ export const motionSchema = z.enum([
   'pan-left',
   'pan-right',
 ]);
+export const videoTypeSchema = z.enum([
+  'science-explainer',
+  'knowledge-narration',
+  'digital-human',
+  'product-showcase',
+  'storytelling',
+]);
 
 export const captionWordSchema = z.object({
   text: z.string().min(1),
@@ -94,6 +101,7 @@ export const projectFileSchema = z
     content: z
       .object({
         topic: z.string().default(''),
+        videoType: videoTypeSchema.default('science-explainer'),
         hook: z.string().default(''),
         ending: z.string().default(''),
       })
@@ -130,3 +138,4 @@ export type CaptionWord = z.infer<typeof captionWordSchema>;
 export type VisualShot = z.infer<typeof visualShotSchema>;
 export type GenerationCandidate = z.infer<typeof generationCandidateSchema>;
 export type GenerationTask = z.infer<typeof generationTaskSchema>;
+export type VideoType = z.infer<typeof videoTypeSchema>;
