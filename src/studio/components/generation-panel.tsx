@@ -4,11 +4,20 @@ import type {ProjectFile} from '../../core/schema';
 type Props = {
   onGenerated: (project: ProjectFile) => void;
   onAudioReady: () => void;
+  defaultOpen?: boolean;
+  initialTopic?: string;
+  prominent?: boolean;
 };
 
-export const GenerationPanel = ({onGenerated, onAudioReady}: Props) => {
-  const [open, setOpen] = useState(false);
-  const [topic, setTopic] = useState('为什么独立开发项目容易失控');
+export const GenerationPanel = ({
+  onGenerated,
+  onAudioReady,
+  defaultOpen = false,
+  initialTopic = '',
+  prominent = false,
+}: Props) => {
+  const [open, setOpen] = useState(defaultOpen);
+  const [topic, setTopic] = useState(initialTopic);
   const [provider, setProvider] = useState<'mock' | 'openai'>('mock');
   const [targetDuration, setTargetDuration] = useState(30);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
@@ -25,8 +34,8 @@ export const GenerationPanel = ({onGenerated, onAudioReady}: Props) => {
           topic,
           provider,
           targetDuration,
-          audience: '关注独立开发和产品创作的人',
-          tone: '真实、克制、有行动感',
+          audience: '短视频平台的普通观众',
+          tone: '清晰、有画面感、节奏紧凑',
         }),
       });
       const value = (await response.json()) as {
@@ -48,12 +57,12 @@ export const GenerationPanel = ({onGenerated, onAudioReady}: Props) => {
   };
 
   return (
-    <section className={`generation-panel ${open ? 'open' : ''}`}>
+    <section className={`generation-panel ${open ? 'open' : ''} ${prominent ? 'prominent' : ''}`}>
       <button className="generation-toggle" onClick={() => setOpen((value) => !value)}>
         <span>AI</span>
         <div>
-          <strong>生成视频脚本</strong>
-          <small>脚本 · 配音 · 词级字幕</small>
+          <strong>生成文案与脚本</strong>
+          <small>口播文案 · 脚本段落 · 分镜 · 配音</small>
         </div>
         <b>{open ? '−' : '+'}</b>
       </button>
@@ -91,7 +100,7 @@ export const GenerationPanel = ({onGenerated, onAudioReady}: Props) => {
             disabled={status === 'running' || !topic.trim()}
             onClick={() => void generate()}
           >
-            {status === 'running' ? '正在生成…' : '生成并替换当前分镜'}
+            {status === 'running' ? '正在生成文案、脚本与分镜…' : '生成文案与脚本'}
           </button>
           {message ? <p className={`generation-message ${status}`}>{message}</p> : null}
           <small className="provider-note">

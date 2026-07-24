@@ -144,6 +144,59 @@ body {
   padding: 38px clamp(28px, 5vw, 72px) 72px;
   background: #080b12;
 }
+.workflow-steps {
+  max-width: 1500px;
+  margin: 0 auto 34px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.workflow-steps span {
+  position: relative;
+  padding: 11px 12px;
+  border: 1px solid #222d3f;
+  border-radius: 9px;
+  background: #0d131d;
+  color: #5f6b7f;
+  font-size: 11px;
+}
+.workflow-steps span.active {
+  border-color: #4b9b90;
+  color: #8ff0d4;
+  background: #10231f;
+}
+.workflow-steps span.done {
+  color: #82b8aa;
+}
+.generation-gate {
+  max-width: 1120px;
+  margin: 42px auto 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(440px, 1.2fr);
+  gap: 28px;
+  align-items: start;
+  padding: 28px;
+  border: 1px solid #26374a;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0f1825, #0b111b);
+}
+.generation-gate h2 {
+  margin: 12px 0 10px;
+  font-size: 26px;
+}
+.generation-gate > div > p {
+  color: #8290a8;
+  line-height: 1.8;
+}
+.regenerate-row {
+  max-width: 1500px;
+  margin: 18px auto 0;
+}
+.regenerate-row .generation-panel {
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: 0;
+}
 .content-hero,
 .content-metrics,
 .content-columns {
@@ -385,13 +438,45 @@ select {
 .workspace {
   height: calc(100vh - 76px);
   display: grid;
-  grid-template-columns: 330px minmax(520px, 1fr) 340px;
+  grid-template-columns: minmax(420px, 470px) minmax(620px, 1fr);
 }
 .scene-panel,
 .inspector-panel {
   background: #0b0e17;
   border-right: 1px solid #202638;
   overflow: auto;
+}
+.editor-workflow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 12px;
+  border-bottom: 1px solid #202638;
+  background: #090d15;
+}
+.editor-workflow button,
+.left-panel-tabs button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #77849b;
+  padding: 9px 6px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.editor-workflow button.active,
+.left-panel-tabs button.active {
+  background: #172532;
+  color: #70e4c3;
+}
+.left-panel-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 12px 14px 0;
+  padding: 4px;
+  border-radius: 10px;
+  background: #111722;
 }
 .inspector-panel {
   border-right: 0;
@@ -433,6 +518,18 @@ select {
   border-radius: 13px;
   background: linear-gradient(145deg, #111928, #0e131e);
   overflow: hidden;
+}
+.generation-panel.prominent {
+  margin: 0;
+  border-color: #376779;
+  box-shadow: 0 18px 50px #0006;
+}
+.generation-panel.prominent .generation-toggle {
+  display: none;
+}
+.generation-panel.prominent .generation-form {
+  border-top: 0;
+  padding: 20px;
 }
 .generation-toggle {
   width: 100%;

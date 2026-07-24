@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {useStudioStore} from '../store';
 
-export const SceneList = () => {
+export const SceneList = ({onSelect}: {onSelect?: () => void}) => {
   const {project, selectedSceneId, lockedSceneIds, selectScene, reorderScenes, toggleLock} =
     useStudioStore();
   const [dragging, setDragging] = useState<string | null>(null);
@@ -22,7 +22,10 @@ export const SceneList = () => {
               if (dragging) reorderScenes(dragging, scene.id);
               setDragging(null);
             }}
-            onClick={() => selectScene(scene.id)}
+            onClick={() => {
+              selectScene(scene.id);
+              onSelect?.();
+            }}
           >
             <div className="scene-index">
               <span>{String(index + 1).padStart(2, '0')}</span>

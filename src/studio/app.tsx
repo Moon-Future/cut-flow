@@ -3,7 +3,6 @@ import {Player, type PlayerRef} from '@remotion/player';
 import {buildTimeline} from '../core/timeline';
 import {VideoComposition} from '../remotion/video-composition';
 import {SceneEditor} from './components/scene-editor';
-import {GenerationPanel} from './components/generation-panel';
 import {AssetLibraryPanel} from './components/asset-library-panel';
 import {SceneList} from './components/scene-list';
 import {ProjectHub} from './components/project-hub';
@@ -29,6 +28,7 @@ export const App = () => {
   const [projectId, setProjectId] = useState('');
   const [showProjects, setShowProjects] = useState(true);
   const [view, setView] = useState<'content' | 'editor'>('content');
+  const [leftPanel, setLeftPanel] = useState<'scenes' | 'settings'>('scenes');
   const playerRef = useRef<PlayerRef>(null);
 
   const openProject = async (id: string) => {
@@ -127,7 +127,12 @@ export const App = () => {
             </button>
           </div>
         </header>
-        <ContentOverview project={project} onEdit={() => setView('editor')} />
+        <ContentOverview
+          project={project}
+          onEdit={() => setView('editor')}
+          onGenerated={setProject}
+          onAudioReady={() => setAudioAvailable(true)}
+        />
       </main>
     );
   }
@@ -184,15 +189,40 @@ export const App = () => {
 
       <section className="workspace">
         <aside className="scene-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="eyebrow">STORYBOARD</span>
-              <h2>镜头编排</h2>
-            </div>
-            <span className="scene-count">{project.scenes.length} 镜头</span>
+          <nav className="editor-workflow">
+            <button onClick={() => setView('content')}>文案与脚本</button>
+            <button className="active">分镜与剪辑</button>
+            <button onClick={() => setAssetLibraryOpen(true)}>素材库</button>
+            <button onClick={() => void startRender()}>导出</button>
+          </nav>
+          <div className="left-panel-tabs">
+            <button
+              className={leftPanel === 'scenes' ? 'active' : ''}
+              onClick={() => setLeftPanel('scenes')}
+            >
+              镜头列表
+            </button>
+            <button
+              className={leftPanel === 'settings' ? 'active' : ''}
+              onClick={() => setLeftPanel('settings')}
+            >
+              镜头设置
+            </button>
           </div>
-          <GenerationPanel onGenerated={setProject} onAudioReady={() => setAudioAvailable(true)} />
-          <SceneList />
+          {leftPanel === 'scenes' ? (
+            <>
+              <div className="panel-heading">
+                <div>
+                  <span className="eyebrow">STORYBOARD</span>
+                  <h2>镜头编排</h2>
+                </div>
+                <span className="scene-count">{project.scenes.length} 镜头</span>
+              </div>
+              <SceneList onSelect={() => setLeftPanel('settings')} />
+            </>
+          ) : (
+            <SceneEditor projectId={projectId} />
+          )}
         </aside>
 
         <section className="preview-panel">
@@ -213,7 +243,7 @@ export const App = () => {
               inputProps={{
                 project,
                 narrationAvailable: audioAvailable,
-                assetBasePath: 'demo-project',
+                assetBasePath: projectId,
               }}
               durationInFrames={timeline.durationInFrames}
               compositionWidth={project.project.width}
@@ -232,6 +262,7 @@ export const App = () => {
                 style={{flex: durationInFrames}}
                 onClick={() => {
                   useStudioStore.getState().selectScene(scene.id);
+                  setLeftPanel('settings');
                   playerRef.current?.seekTo(timeline.scenes[index]?.from ?? 0);
                 }}
               >
@@ -249,10 +280,6 @@ export const App = () => {
             ) : null}
           </div>
         </section>
-
-        <aside className="inspector-panel">
-          <SceneEditor projectId={projectId} />
-        </aside>
       </section>
       <AssetLibraryPanel
         open={assetLibraryOpen}
