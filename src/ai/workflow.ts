@@ -120,6 +120,8 @@ export const runGenerationWorkflow = async (
         sourceStart: 0,
         sourceEnd: shotDuration,
         status: shotIndex === 0 && matchedAsset ? ('ready' as const) : ('missing-asset' as const),
+        candidates: [],
+        generationTask: null,
       };
     });
     return {

@@ -35,6 +35,8 @@ const project = {
           sourceStart: 0,
           sourceEnd: 2,
           status: 'ready',
+          candidates: [],
+          generationTask: null,
         },
         {
           id: 'b',
@@ -47,6 +49,8 @@ const project = {
           sourceStart: 0,
           sourceEnd: 2,
           status: 'missing-asset',
+          candidates: [],
+          generationTask: null,
         },
       ],
     },

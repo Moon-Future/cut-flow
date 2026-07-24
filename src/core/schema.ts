@@ -15,6 +15,27 @@ export const captionWordSchema = z.object({
   end: z.number().positive(),
 });
 
+export const generationCandidateSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['image', 'video']),
+  path: z.string().min(1),
+  provider: z.string().min(1),
+  model: z.string().min(1),
+  prompt: z.string().min(1),
+  createdAt: z.string().min(1),
+});
+
+export const generationTaskSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['image', 'video', 'image-to-video', 'digital-human']),
+  status: z.enum(['queued', 'running', 'needs-selection', 'succeeded', 'failed', 'cancelled']),
+  attempt: z.number().int().positive(),
+  provider: z.string().min(1),
+  model: z.string().min(1),
+  error: z.string().nullable().default(null),
+  updatedAt: z.string().min(1),
+});
+
 export const visualShotSchema = z.object({
   id: z.string().min(1),
   visualPurpose: z.string().min(1),
@@ -41,6 +62,8 @@ export const visualShotSchema = z.object({
   sourceStart: z.number().min(0).default(0),
   sourceEnd: z.number().positive().optional(),
   status: z.enum(['ready', 'missing-asset', 'needs-review']).default('missing-asset'),
+  candidates: z.array(generationCandidateSchema).default([]),
+  generationTask: generationTaskSchema.nullable().default(null),
 });
 
 export const sceneSchema = z.object({
@@ -98,3 +121,5 @@ export type ProjectFile = z.infer<typeof projectFileSchema>;
 export type Scene = z.infer<typeof sceneSchema>;
 export type CaptionWord = z.infer<typeof captionWordSchema>;
 export type VisualShot = z.infer<typeof visualShotSchema>;
+export type GenerationCandidate = z.infer<typeof generationCandidateSchema>;
+export type GenerationTask = z.infer<typeof generationTaskSchema>;

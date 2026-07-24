@@ -1,4 +1,5 @@
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
+import {randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {createReadStream} from 'node:fs';
 import {appendFile, mkdir, readFile, rename, writeFile} from 'node:fs/promises';
@@ -7,6 +8,7 @@ import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
 import {projectFileSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
+import {createMockImageProvider, createMockVideoProvider} from '../src/ai/media-provider';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
@@ -156,6 +158,114 @@ const localApi = (): Plugin => ({
             await writeFile(temporary, `${JSON.stringify(result.project, null, 2)}\n`, 'utf8');
             await rename(temporary, projectFile);
             sendJson(response, 200, result);
+            return;
+          }
+          if (url === '/api/shots/generate' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              shotId?: string;
+              kind?: 'image' | 'video';
+              count?: number;
+            };
+            if (!input.sceneId || !input.shotId || !['image', 'video'].includes(input.kind ?? '')) {
+              sendJson(response, 400, {error: '镜头生成参数不完整'});
+              return;
+            }
+            const kind = input.kind as 'image' | 'video';
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const scene = project.scenes.find((item) => item.id === input.sceneId);
+            const shot = scene?.shots?.find((item) => item.id === input.shotId);
+            if (!scene || !shot) {
+              sendJson(response, 404, {error: '找不到指定视觉镜头'});
+              return;
+            }
+            const library = await readFile(assetLibraryFile, 'utf8')
+              .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown).assets)
+              .catch(() => []);
+            const preferred = library
+              .filter((asset) => asset.type === kind)
+              .map((asset) => asset.path);
+            const sceneAssetMatchesKind =
+              kind === 'video'
+                ? /\.(mp4|mov|webm|mkv)$/i.test(scene.assetPath)
+                : /\.(png|jpe?g|webp|gif|svg)$/i.test(scene.assetPath);
+            const fallbackPaths = [
+              ...new Set([...preferred, ...(sceneAssetMatchesKind ? [scene.assetPath] : [])]),
+            ];
+            const provider =
+              kind === 'video' ? createMockVideoProvider() : createMockImageProvider();
+            const previousAttempt = shot.generationTask?.attempt ?? 0;
+            const generationTask = {
+              id: `task-${randomUUID()}`,
+              kind,
+              status: 'running' as const,
+              attempt: previousAttempt + 1,
+              provider: provider.id,
+              model: provider.model,
+              error: null,
+              updatedAt: new Date().toISOString(),
+            };
+            shot.generationTask = generationTask;
+            try {
+              const candidates = await provider.generate({
+                shot,
+                kind,
+                count: Math.min(4, Math.max(1, input.count ?? 3)),
+                fallbackPaths,
+              });
+              shot.candidates = [...shot.candidates, ...candidates];
+              shot.generationTask = {
+                ...generationTask,
+                status: 'needs-selection',
+                updatedAt: new Date().toISOString(),
+              };
+              shot.status = 'needs-review';
+            } catch (error) {
+              shot.generationTask = {
+                ...generationTask,
+                status: 'failed',
+                error: error instanceof Error ? error.message : String(error),
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 200, {shot, task: shot.generationTask});
+            return;
+          }
+          if (url === '/api/shots/select' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              shotId?: string;
+              candidateId?: string;
+            };
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const shot = project.scenes
+              .find((item) => item.id === input.sceneId)
+              ?.shots?.find((item) => item.id === input.shotId);
+            const candidate = shot?.candidates.find((item) => item.id === input.candidateId);
+            if (!shot || !candidate) {
+              sendJson(response, 404, {error: '找不到候选素材'});
+              return;
+            }
+            shot.selectedAsset = candidate.path;
+            shot.status = 'ready';
+            if (shot.generationTask) {
+              shot.generationTask = {
+                ...shot.generationTask,
+                status: 'succeeded',
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 200, {shot});
             return;
           }
           if (url === '/api/render' && request.method === 'POST') {

@@ -81,6 +81,8 @@ describe('timeline', () => {
               selectedAsset: null,
               sourceStart: 0,
               status: 'missing-asset',
+              candidates: [],
+              generationTask: null,
             },
             {
               id: 'two',
@@ -92,6 +94,8 @@ describe('timeline', () => {
               selectedAsset: null,
               sourceStart: 0,
               status: 'missing-asset',
+              candidates: [],
+              generationTask: null,
             },
           ],
         },

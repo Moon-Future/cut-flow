@@ -182,3 +182,36 @@ Provider 统一处理超时、取消、重试、速率限制和错误映射。�
 | 视频渲染     | Remotion              | React 组件化、预览与程序化渲染统一   |
 | 媒体处理     | FFmpeg/ffprobe        | 成熟、跨平台、覆盖探测与转码         |
 | AI 接入      | 可替换 Provider       | 避免供应商绑定并便于测试             |
+
+## 14. AI 素材与异步任务架构
+
+```text
+VisualShot
+  ↓ GenerationRequest
+ImageProvider / VideoProvider / ImageToVideoProvider / DigitalHumanProvider
+  ↓ async job
+GenerationCandidate[] → 用户选择 → selectedAsset
+  ↓
+Remotion + FFmpeg 最终剪辑
+```
+
+Provider 除文本、TTS 和转录外扩展为：
+
+```ts
+interface ImageProvider {
+  generate(input: ImageGenerationInput): Promise<GenerationJob>;
+}
+interface VideoProvider {
+  generate(input: VideoGenerationInput): Promise<GenerationJob>;
+}
+interface ImageToVideoProvider {
+  generate(input: ImageToVideoInput): Promise<GenerationJob>;
+}
+interface DigitalHumanProvider {
+  generate(input: DigitalHumanInput): Promise<GenerationJob>;
+}
+```
+
+生成任务状态为 `queued | running | needs-selection | succeeded | failed | cancelled`。候选版本不可被重试覆盖；选择候选只更新镜头当前引用。任务和候选写入项目目录，API 密钥不进入项目。
+
+参考视频分析流水线为：媒体探测 → 音频提取与转录 → 场景切分 → 关键帧抽取 → 视觉分类 → 字幕/包装分析 → 叙事结构分析 → 风格档案。风格档案只保存统计和抽象规则。

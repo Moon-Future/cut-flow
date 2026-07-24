@@ -1,5 +1,5 @@
 import {useRef, useState} from 'react';
-import type {Scene} from '../../core/schema';
+import type {Scene, VisualShot} from '../../core/schema';
 import type {AssetMetadata} from '../../media/asset-library';
 import {useStudioStore} from '../store';
 
@@ -16,6 +16,7 @@ export const SceneEditor = () => {
   const {project, selectedSceneId, lockedSceneIds, updateScene, updateVisualShot} =
     useStudioStore();
   const [uploading, setUploading] = useState(false);
+  const [generatingShotId, setGeneratingShotId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scene = project?.scenes.find((item) => item.id === selectedSceneId);
   if (!scene) return <div className="empty-inspector">选择一个镜头开始编辑</div>;
@@ -59,6 +60,33 @@ export const SceneEditor = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const generateCandidates = async (shotId: string, kind: 'image' | 'video') => {
+    setGeneratingShotId(shotId);
+    try {
+      const response = await fetch('/api/shots/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sceneId: scene.id, shotId, kind, count: 3}),
+      });
+      const value = (await response.json()) as {shot?: VisualShot; error?: string};
+      if (!response.ok || !value.shot) throw new Error(value.error ?? '候选生成失败');
+      updateVisualShot(scene.id, shotId, value.shot);
+    } finally {
+      setGeneratingShotId(null);
+    }
+  };
+
+  const selectCandidate = async (shotId: string, candidateId: string) => {
+    const response = await fetch('/api/shots/select', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sceneId: scene.id, shotId, candidateId}),
+    });
+    const value = (await response.json()) as {shot?: VisualShot; error?: string};
+    if (!response.ok || !value.shot) throw new Error(value.error ?? '选择候选失败');
+    updateVisualShot(scene.id, shotId, value.shot);
   };
 
   return (
@@ -242,6 +270,50 @@ export const SceneEditor = () => {
                     />
                   </label>
                 </div>
+                <div className="candidate-actions">
+                  <button
+                    type="button"
+                    onClick={() => void generateCandidates(shot.id, 'image')}
+                    disabled={generatingShotId === shot.id}
+                  >
+                    {generatingShotId === shot.id ? '生成中…' : '生成 3 张图片'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void generateCandidates(shot.id, 'video')}
+                    disabled={generatingShotId === shot.id}
+                  >
+                    生成视频候选
+                  </button>
+                  {shot.generationTask ? (
+                    <span>
+                      {shot.generationTask.status} · 第 {shot.generationTask.attempt} 次
+                    </span>
+                  ) : null}
+                </div>
+                {shot.candidates.length ? (
+                  <div className="candidate-grid">
+                    {shot.candidates.map((candidate) => (
+                      <button
+                        type="button"
+                        className={
+                          shot.selectedAsset === candidate.path ? 'candidate selected' : 'candidate'
+                        }
+                        key={candidate.id}
+                        onClick={() => void selectCandidate(shot.id, candidate.id)}
+                      >
+                        {candidate.kind === 'video' ? (
+                          <video src={`/demo-project/${candidate.path}`} muted />
+                        ) : (
+                          <img src={`/demo-project/${candidate.path}`} alt={candidate.prompt} />
+                        )}
+                        <span>
+                          {candidate.provider} · {candidate.model}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 {shot.searchQueries.length ? (
                   <div className="query-chips">
                     {shot.searchQueries.map((query) => (
