@@ -38,4 +38,27 @@ describe('projectFileSchema', () => {
     const scenes = [{...valid.scenes[0], motion: 'spin'}];
     expect(projectFileSchema.safeParse({...valid, scenes}).success).toBe(false);
   });
+  it('upgrades legacy visual shots with generation defaults', () => {
+    const scenes = [
+      {
+        ...valid.scenes[0],
+        shots: [
+          {
+            id: 'legacy-shot',
+            visualPurpose: '旧项目镜头',
+            shotType: 'generated-image',
+            assetStrategy: 'ai-generate',
+            duration: 2,
+          },
+        ],
+      },
+    ];
+    const shot = projectFileSchema.parse({...valid, scenes}).scenes[0]?.shots?.[0];
+    expect(shot).toMatchObject({
+      candidates: [],
+      generationTask: null,
+      selectedAsset: null,
+      status: 'missing-asset',
+    });
+  });
 });

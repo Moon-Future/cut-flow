@@ -68,7 +68,11 @@ const localApi = (): Plugin => ({
         const url = request.url?.split('?')[0];
         try {
           if (url === '/api/project' && request.method === 'GET') {
-            sendJson(response, 200, JSON.parse(await readFile(projectFile, 'utf8')) as unknown);
+            sendJson(
+              response,
+              200,
+              projectFileSchema.parse(JSON.parse(await readFile(projectFile, 'utf8')) as unknown),
+            );
             return;
           }
           if (url === '/api/project' && request.method === 'PUT') {

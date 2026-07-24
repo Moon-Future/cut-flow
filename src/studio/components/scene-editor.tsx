@@ -318,7 +318,7 @@ export const SceneEditor = () => {
                 {shot.generationTask?.error ? (
                   <p className="candidate-error">{shot.generationTask.error}</p>
                 ) : null}
-                {shot.candidates.length ? (
+                {shot.candidates?.length ? (
                   <div className="candidate-grid">
                     {shot.candidates.map((candidate) => (
                       <button
