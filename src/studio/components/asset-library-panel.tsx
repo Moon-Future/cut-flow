@@ -5,7 +5,7 @@ import {useStudioStore} from '../store';
 type Props = {open: boolean; projectId: string; onClose: () => void};
 
 export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
-  const {selectedSceneId, updateScene} = useStudioStore();
+  const {selectedSceneId, replaceSceneAsset} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
@@ -32,10 +32,7 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
 
   const apply = (asset: AssetMetadata) => {
     if (!selectedSceneId || asset.type === 'audio') return;
-    updateScene(selectedSceneId, {
-      assetPath: asset.path,
-      assetType: asset.type,
-    });
+    replaceSceneAsset(selectedSceneId, asset.path, asset.type);
     onClose();
   };
 

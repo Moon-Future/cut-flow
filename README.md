@@ -45,6 +45,11 @@ pnpm render -- --project projects/my-project/project.json --output out/my-video.
 pnpm desktop:dev
 ```
 
+剪辑工作台采用单一左侧流程导航，并将分镜列表、当前镜头素材、竖屏预览、
+属性面板和视频/字幕/配音/音乐时间线放在同一页面。素材支持预览替换、
+替换当前镜头、插入为新镜头和历史版本回退；替换画面不会改动字幕、
+配音和镜头时长。
+
 生成 Windows 安装包：
 
 ```bash

@@ -64,6 +64,17 @@ describe('studio store', () => {
     expect(useStudioStore.getState().lockedSceneIds).toEqual(['b']);
   });
 
+  it('replaces an asset without changing timing or narration and keeps history', () => {
+    useStudioStore.getState().setProject(project);
+    useStudioStore.getState().replaceSceneAsset('a', 'replacement.mp4', 'video');
+    const scene = useStudioStore.getState().project?.scenes[0];
+    expect(scene?.assetPath).toBe('replacement.mp4');
+    expect(scene?.assetType).toBe('video');
+    expect(scene?.assetHistory).toEqual(['a.svg']);
+    expect(scene?.duration).toBe(1);
+    expect(scene?.narration).toBe('A');
+  });
+
   it('syncs a background generation result without triggering autosave', () => {
     const projectWithShot = projectFileSchema.parse({
       ...project,

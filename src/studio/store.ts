@@ -12,6 +12,9 @@ type StudioState = {
   setProject: (project: ProjectFile) => void;
   selectScene: (id: string) => void;
   updateScene: (id: string, patch: Partial<Scene>) => void;
+  replaceSceneAsset: (id: string, assetPath: string, assetType: Scene['assetType']) => void;
+  duplicateScene: (id: string) => void;
+  deleteScene: (id: string) => void;
   updateVisualShot: (sceneId: string, shotId: string, patch: Partial<VisualShot>) => void;
   syncVisualShot: (sceneId: string, shotId: string, shot: VisualShot) => void;
   reorderScenes: (sourceId: string, targetId: string) => void;
@@ -40,6 +43,69 @@ export const useStudioStore = create<StudioState>((set) => ({
         : null,
       saveStatus: 'saving',
     })),
+  replaceSceneAsset: (id, assetPath, assetType) =>
+    set((state) => ({
+      project: state.project
+        ? {
+            ...state.project,
+            scenes: state.project.scenes.map((scene) =>
+              scene.id === id
+                ? {
+                    ...scene,
+                    assetPath,
+                    assetType,
+                    assetHistory:
+                      scene.assetPath === assetPath
+                        ? scene.assetHistory
+                        : [
+                            scene.assetPath,
+                            ...(scene.assetHistory ?? []).filter((path) => path !== assetPath),
+                          ]
+                            .filter(Boolean)
+                            .slice(0, 12),
+                  }
+                : scene,
+            ),
+          }
+        : null,
+      saveStatus: 'saving',
+    })),
+  duplicateScene: (id) =>
+    set((state) => {
+      if (!state.project) return state;
+      const index = state.project.scenes.findIndex((scene) => scene.id === id);
+      const source = state.project.scenes[index];
+      if (!source) return state;
+      const copy = {
+        ...source,
+        id: `${source.id}-copy-${Date.now()}`,
+        caption: `${source.caption}（副本）`,
+        shots: source.shots?.map((shot) => ({
+          ...shot,
+          id: `${shot.id}-copy-${Date.now()}`,
+          candidates: [...shot.candidates],
+        })),
+      };
+      const scenes = [...state.project.scenes];
+      scenes.splice(index + 1, 0, copy);
+      return {
+        project: {...state.project, scenes},
+        selectedSceneId: copy.id,
+        saveStatus: 'saving',
+      };
+    }),
+  deleteScene: (id) =>
+    set((state) => {
+      if (!state.project || state.project.scenes.length <= 1) return state;
+      const index = state.project.scenes.findIndex((scene) => scene.id === id);
+      if (index < 0) return state;
+      const scenes = state.project.scenes.filter((scene) => scene.id !== id);
+      return {
+        project: {...state.project, scenes},
+        selectedSceneId: scenes[Math.min(index, scenes.length - 1)]?.id ?? null,
+        saveStatus: 'saving',
+      };
+    }),
   updateVisualShot: (sceneId, shotId, patch) =>
     set((state) => ({
       project: state.project
