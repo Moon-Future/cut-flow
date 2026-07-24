@@ -12,8 +12,10 @@ const motions: Scene['motion'][] = [
   'pan-right',
 ];
 
-export const SceneEditor = () => {
-  const {project, selectedSceneId, lockedSceneIds, updateScene, updateVisualShot} =
+type Props = {projectId: string};
+
+export const SceneEditor = ({projectId}: Props) => {
+  const {project, selectedSceneId, lockedSceneIds, updateScene, updateVisualShot, syncVisualShot} =
     useStudioStore();
   const [uploading, setUploading] = useState(false);
   const [generatingShotId, setGeneratingShotId] = useState<string | null>(null);
@@ -93,6 +95,9 @@ export const SceneEditor = () => {
   };
 
   const selectCandidate = async (shotId: string, candidateId: string) => {
+    const selectedCandidate = scene.shots
+      ?.find((shot) => shot.id === shotId)
+      ?.candidates.find((candidate) => candidate.id === candidateId);
     const response = await fetch('/api/shots/select', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -101,6 +106,51 @@ export const SceneEditor = () => {
     const value = (await response.json()) as {shot?: VisualShot; error?: string};
     if (!response.ok || !value.shot) throw new Error(value.error ?? '选择候选失败');
     updateVisualShot(scene.id, shotId, value.shot);
+    if (selectedCandidate?.kind === 'video') {
+      change('assetPath', selectedCandidate.path);
+      change('assetType', 'video');
+    }
+  };
+
+  const imageToVideo = async (shotId: string) => {
+    setGeneratingShotId(shotId);
+    setGenerationError(null);
+    try {
+      const response = await fetch('/api/shots/image-to-video', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sceneId: scene.id, shotId}),
+      });
+      const value = (await response.json()) as {
+        task?: VisualShot['generationTask'];
+        error?: string;
+      };
+      if (!response.ok || !value.task) throw new Error(value.error ?? '图生视频任务创建失败');
+      updateVisualShot(scene.id, shotId, {generationTask: value.task});
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 5_000));
+        const projectResponse = await fetch('/api/project');
+        const latest = (await projectResponse.json()) as {scenes?: Scene[]};
+        const latestShot = latest.scenes
+          ?.find((item) => item.id === scene.id)
+          ?.shots?.find((item) => item.id === shotId);
+        if (!latestShot) continue;
+        syncVisualShot(scene.id, shotId, latestShot);
+        if (
+          latestShot.generationTask?.status === 'needs-selection' ||
+          latestShot.generationTask?.status === 'failed'
+        ) {
+          break;
+        }
+      }
+    } catch (error) {
+      setGenerationError({
+        shotId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setGeneratingShotId(null);
+    }
   };
 
   return (
@@ -306,6 +356,18 @@ export const SceneEditor = () => {
                   >
                     本地视频候选
                   </button>
+                  <button
+                    type="button"
+                    className="image-to-video-button"
+                    onClick={() => void imageToVideo(shot.id)}
+                    disabled={
+                      generatingShotId === shot.id ||
+                      !shot.selectedAsset ||
+                      !/\.(png|jpe?g|webp)$/i.test(shot.selectedAsset)
+                    }
+                  >
+                    选中图片生成视频
+                  </button>
                   {shot.generationTask ? (
                     <span>
                       {shot.generationTask.status} · 第 {shot.generationTask.attempt} 次
@@ -330,9 +392,9 @@ export const SceneEditor = () => {
                         onClick={() => void selectCandidate(shot.id, candidate.id)}
                       >
                         {candidate.kind === 'video' ? (
-                          <video src={`/demo-project/${candidate.path}`} muted />
+                          <video src={`/${projectId}/${candidate.path}`} muted />
                         ) : (
-                          <img src={`/demo-project/${candidate.path}`} alt={candidate.prompt} />
+                          <img src={`/${projectId}/${candidate.path}`} alt={candidate.prompt} />
                         )}
                         <span>
                           {candidate.provider} · {candidate.model}

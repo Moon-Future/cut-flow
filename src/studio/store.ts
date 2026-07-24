@@ -13,6 +13,7 @@ type StudioState = {
   selectScene: (id: string) => void;
   updateScene: (id: string, patch: Partial<Scene>) => void;
   updateVisualShot: (sceneId: string, shotId: string, patch: Partial<VisualShot>) => void;
+  syncVisualShot: (sceneId: string, shotId: string, shot: VisualShot) => void;
   reorderScenes: (sourceId: string, targetId: string) => void;
   toggleLock: (id: string) => void;
   setSaveStatus: (status: SaveStatus, error?: string | null) => void;
@@ -57,6 +58,22 @@ export const useStudioStore = create<StudioState>((set) => ({
           }
         : null,
       saveStatus: 'saving',
+    })),
+  syncVisualShot: (sceneId, shotId, shot) =>
+    set((state) => ({
+      project: state.project
+        ? {
+            ...state.project,
+            scenes: state.project.scenes.map((scene) =>
+              scene.id === sceneId
+                ? {
+                    ...scene,
+                    shots: scene.shots?.map((item) => (item.id === shotId ? shot : item)),
+                  }
+                : scene,
+            ),
+          }
+        : null,
     })),
   reorderScenes: (sourceId, targetId) =>
     set((state) => {

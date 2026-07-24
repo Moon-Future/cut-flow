@@ -6,6 +6,8 @@ import {SceneEditor} from './components/scene-editor';
 import {GenerationPanel} from './components/generation-panel';
 import {AssetLibraryPanel} from './components/asset-library-panel';
 import {SceneList} from './components/scene-list';
+import {ProjectHub} from './components/project-hub';
+import {ContentOverview} from './components/content-overview';
 import {useStudioStore} from './store';
 
 type RenderState = {
@@ -24,24 +26,29 @@ export const App = () => {
   });
   const [audioAvailable, setAudioAvailable] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [projectId, setProjectId] = useState('');
+  const [showProjects, setShowProjects] = useState(true);
+  const [view, setView] = useState<'content' | 'editor'>('content');
   const playerRef = useRef<PlayerRef>(null);
 
-  useEffect(() => {
-    fetch('/api/project')
-      .then(async (response) => {
-        if (!response.ok) throw new Error('项目加载失败');
-        setProject((await response.json()) as Parameters<typeof setProject>[0]);
-      })
-      .catch((reason: unknown) =>
-        setSaveStatus('error', reason instanceof Error ? reason.message : String(reason)),
-      );
-  }, [setProject, setSaveStatus]);
-
-  useEffect(() => {
-    fetch('/demo-project/audio/narration.wav', {method: 'HEAD'})
-      .then((response) => setAudioAvailable(response.ok))
+  const openProject = async (id: string) => {
+    const selected = await fetch('/api/projects/select', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id}),
+    });
+    if (!selected.ok) throw new Error('项目切换失败');
+    const response = await fetch('/api/project');
+    if (!response.ok) throw new Error('项目加载失败');
+    setProject((await response.json()) as Parameters<typeof setProject>[0]);
+    setProjectId(id);
+    setShowProjects(false);
+    setView('content');
+    setAudioAvailable(false);
+    void fetch(`/${id}/audio/narration.wav`, {method: 'HEAD'})
+      .then((audio) => setAudioAvailable(audio.ok))
       .catch(() => setAudioAvailable(false));
-  }, []);
+  };
 
   useEffect(() => {
     if (!project || saveStatus !== 'saving') return;
@@ -85,11 +92,42 @@ export const App = () => {
     else setRenderState(value);
   };
 
+  if (showProjects) return <ProjectHub onOpen={openProject} />;
+
   if (!project || !timeline) {
     return (
       <main className="loading">
         <div className="loading-mark">CF</div>
         <p>{error ?? '正在打开项目…'}</p>
+      </main>
+    );
+  }
+
+  if (view === 'content') {
+    return (
+      <main className="app-shell">
+        <header className="topbar">
+          <div className="brand">
+            <span className="brand-mark">CF</span>
+            <div>
+              <strong>Cut Flow</strong>
+              <small>AI 视频生产工作台</small>
+            </div>
+          </div>
+          <div className="project-title">
+            <span>当前项目</span>
+            <strong>{project.project.title}</strong>
+          </div>
+          <div className="top-actions">
+            <button className="ghost-button" onClick={() => setShowProjects(true)}>
+              全部项目
+            </button>
+            <button className="primary-button" onClick={() => setView('editor')}>
+              剪辑与素材
+            </button>
+          </div>
+        </header>
+        <ContentOverview project={project} onEdit={() => setView('editor')} />
       </main>
     );
   }
@@ -109,6 +147,12 @@ export const App = () => {
           <strong>{project.project.title}</strong>
         </div>
         <div className="top-actions">
+          <button className="ghost-button" onClick={() => setShowProjects(true)}>
+            全部项目
+          </button>
+          <button className="ghost-button" onClick={() => setView('content')}>
+            文案与分镜
+          </button>
           <span className={`save-state ${saveStatus}`}>
             {saveStatus === 'saved'
               ? '● 已保存'
@@ -207,10 +251,14 @@ export const App = () => {
         </section>
 
         <aside className="inspector-panel">
-          <SceneEditor />
+          <SceneEditor projectId={projectId} />
         </aside>
       </section>
-      <AssetLibraryPanel open={assetLibraryOpen} onClose={() => setAssetLibraryOpen(false)} />
+      <AssetLibraryPanel
+        open={assetLibraryOpen}
+        projectId={projectId}
+        onClose={() => setAssetLibraryOpen(false)}
+      />
     </main>
   );
 };

@@ -2,9 +2,9 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import type {AssetLibrary, AssetMetadata} from '../../media/asset-library';
 import {useStudioStore} from '../store';
 
-type Props = {open: boolean; onClose: () => void};
+type Props = {open: boolean; projectId: string; onClose: () => void};
 
-export const AssetLibraryPanel = ({open, onClose}: Props) => {
+export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
   const {selectedSceneId, updateScene} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [query, setQuery] = useState('');
@@ -123,9 +123,9 @@ export const AssetLibraryPanel = ({open, onClose}: Props) => {
             <article key={asset.id} className="asset-card">
               <div className="asset-preview">
                 {asset.type === 'image' ? (
-                  <img src={`/demo-project/${asset.path}`} alt={asset.name} />
+                  <img src={`/${projectId}/${asset.path}`} alt={asset.name} />
                 ) : (
-                  <video src={`/demo-project/${asset.path}`} muted />
+                  <video src={`/${projectId}/${asset.path}`} muted />
                 )}
                 <span>{asset.type === 'image' ? 'IMG' : 'VIDEO'}</span>
               </div>

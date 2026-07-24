@@ -2,7 +2,7 @@ import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {createReadStream} from 'node:fs';
-import {appendFile, mkdir, readFile, rename, writeFile} from 'node:fs/promises';
+import {appendFile, mkdir, readFile, readdir, rename, stat, writeFile} from 'node:fs/promises';
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
@@ -12,6 +12,7 @@ import {
   createMockImageProvider,
   createMockVideoProvider,
   createOpenAIImageProvider,
+  createOpenAIVideoProvider,
 } from '../src/ai/media-provider';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 
@@ -28,10 +29,17 @@ const requireFromApp = createRequire(
   path.join(process.env.CUT_FLOW_APP_ROOT ?? repositoryRoot, 'package.json'),
 );
 const react = (requireFromApp('@vitejs/plugin-react') as {default: () => Plugin}).default;
-const projectRoot = path.join(workspaceRoot, 'projects', 'demo-project');
-const projectFile = path.join(projectRoot, 'project.json');
-const assetsRoot = path.join(projectRoot, 'assets');
-const assetLibraryFile = path.join(projectRoot, 'assets.json');
+const projectsRoot = path.join(workspaceRoot, 'projects');
+let activeProjectId = 'demo-project';
+const activeProjectPaths = () => {
+  const projectRoot = path.join(projectsRoot, activeProjectId);
+  return {
+    projectRoot,
+    projectFile: path.join(projectRoot, 'project.json'),
+    assetsRoot: path.join(projectRoot, 'assets'),
+    assetLibraryFile: path.join(projectRoot, 'assets.json'),
+  };
+};
 
 type RenderState = {
   status: 'idle' | 'running' | 'success' | 'error';
@@ -67,6 +75,108 @@ const localApi = (): Plugin => ({
       void (async () => {
         const url = request.url?.split('?')[0];
         try {
+          if (url === '/api/projects' && request.method === 'GET') {
+            const directories = await readdir(projectsRoot, {withFileTypes: true});
+            const projects = (
+              await Promise.all(
+                directories
+                  .filter((entry) => entry.isDirectory())
+                  .map(async (entry) => {
+                    try {
+                      const file = path.join(projectsRoot, entry.name, 'project.json');
+                      const project = projectFileSchema.parse(
+                        JSON.parse(await readFile(file, 'utf8')) as unknown,
+                      );
+                      return {
+                        id: entry.name,
+                        title: project.project.title,
+                        sceneCount: project.scenes.length,
+                        duration: project.scenes.reduce((sum, scene) => sum + scene.duration, 0),
+                        topic: project.content?.topic ?? project.project.title,
+                        updatedAt: (await stat(file)).mtime.toISOString(),
+                      };
+                    } catch {
+                      return null;
+                    }
+                  }),
+              )
+            )
+              .filter((project) => project !== null)
+              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+            sendJson(response, 200, {activeProjectId, projects});
+            return;
+          }
+          if (url === '/api/projects/select' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {id?: string};
+            if (!input.id || !/^[a-zA-Z0-9_-]+$/.test(input.id)) {
+              sendJson(response, 400, {error: '项目标识无效'});
+              return;
+            }
+            await stat(path.join(projectsRoot, input.id, 'project.json'));
+            activeProjectId = input.id;
+            sendJson(response, 200, {activeProjectId});
+            return;
+          }
+          if (url === '/api/projects' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              title?: string;
+              topic?: string;
+            };
+            const title = input.title?.trim() || input.topic?.trim();
+            if (!title) {
+              sendJson(response, 400, {error: '请输入项目名称或主题'});
+              return;
+            }
+            const id = `project-${Date.now()}-${randomUUID().slice(0, 6)}`;
+            const projectRoot = path.join(projectsRoot, id);
+            await mkdir(path.join(projectRoot, 'assets'), {recursive: true});
+            const placeholder = 'assets/placeholder.svg';
+            await writeFile(
+              path.join(projectRoot, placeholder),
+              `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920"><rect width="100%" height="100%" fill="#111827"/><text x="50%" y="50%" fill="#6de8c5" font-size="54" text-anchor="middle">CUT FLOW</text></svg>`,
+              'utf8',
+            );
+            const project = projectFileSchema.parse({
+              version: 1,
+              project: {title, width: 1080, height: 1920, fps: 30, durationTarget: 30},
+              content: {topic: input.topic?.trim() ?? title, hook: '', ending: ''},
+              style: {
+                template: 'game-dev-log',
+                fontFamily: 'Noto Sans SC',
+                captionPosition: 'bottom',
+                captionAnimation: 'fade',
+                transition: 'fade',
+              },
+              narrationAudio: null,
+              scenes: [
+                {
+                  id: 'scene-001',
+                  narration: '在左侧生成视频脚本，AI 会在这里创建完整文案。',
+                  caption: title,
+                  assetType: 'image',
+                  assetPath: placeholder,
+                  duration: 5,
+                  layout: 'full-screen',
+                  motion: 'slow-zoom-in',
+                  visualIntent: '等待生成脚本和分镜',
+                },
+              ],
+            });
+            await writeFile(
+              path.join(projectRoot, 'project.json'),
+              `${JSON.stringify(project, null, 2)}\n`,
+              'utf8',
+            );
+            await writeFile(
+              path.join(projectRoot, 'assets.json'),
+              `${JSON.stringify({version: 1, assets: []}, null, 2)}\n`,
+              'utf8',
+            );
+            activeProjectId = id;
+            sendJson(response, 201, {id, project});
+            return;
+          }
+          const {projectRoot, projectFile, assetsRoot, assetLibraryFile} = activeProjectPaths();
           if (url === '/api/project' && request.method === 'GET') {
             sendJson(
               response,
@@ -267,7 +377,7 @@ const localApi = (): Plugin => ({
                   createdAt: candidate.createdAt,
                   keywords: [...new Set([...shot.searchQueries, shot.visualPurpose])],
                   width: 1024,
-                  height: 1536,
+                  height: 1792,
                 }));
               if (generatedAssets.length) {
                 const assets = [...library, ...generatedAssets];
@@ -299,6 +409,108 @@ const localApi = (): Plugin => ({
             sendJson(response, 200, {shot, task: shot.generationTask});
             return;
           }
+          if (url === '/api/shots/image-to-video' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              shotId?: string;
+            };
+            if (!input.sceneId || !input.shotId) {
+              sendJson(response, 400, {error: '缺少场景或镜头标识'});
+              return;
+            }
+            if (!process.env.OPENAI_API_KEY) {
+              sendJson(response, 400, {error: '使用 Sora 图生视频前请设置 OPENAI_API_KEY'});
+              return;
+            }
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const shot = project.scenes
+              .find((scene) => scene.id === input.sceneId)
+              ?.shots?.find((item) => item.id === input.shotId);
+            if (!shot?.selectedAsset || !/\.(png|jpe?g|webp)$/i.test(shot.selectedAsset)) {
+              sendJson(response, 400, {error: '请先选中一张 PNG、JPEG 或 WebP 图片候选'});
+              return;
+            }
+            const provider = createOpenAIVideoProvider({
+              apiKey: process.env.OPENAI_API_KEY,
+              projectRoot,
+              outputDirectory: path.join(assetsRoot, 'generated'),
+              projectRelativeDirectory: 'assets/generated',
+              model: process.env.OPENAI_VIDEO_MODEL,
+            });
+            const task = {
+              id: `task-${randomUUID()}`,
+              kind: 'image-to-video' as const,
+              status: 'queued' as const,
+              attempt: (shot.generationTask?.attempt ?? 0) + 1,
+              provider: provider.id,
+              model: provider.model,
+              error: null,
+              updatedAt: new Date().toISOString(),
+            };
+            shot.generationTask = task;
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 202, {task});
+
+            void provider
+              .generate({shot, kind: 'video', count: 1, fallbackPaths: []})
+              .then(async (candidates) => {
+                const latest = projectFileSchema.parse(
+                  JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+                );
+                const latestShot = latest.scenes
+                  .find((scene) => scene.id === input.sceneId)
+                  ?.shots?.find((item) => item.id === input.shotId);
+                if (!latestShot) return;
+                latestShot.candidates = [...latestShot.candidates, ...candidates];
+                latestShot.generationTask = {
+                  ...task,
+                  status: 'needs-selection',
+                  updatedAt: new Date().toISOString(),
+                };
+                latestShot.status = 'needs-review';
+                const library = await readFile(assetLibraryFile, 'utf8')
+                  .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown))
+                  .catch(() => assetLibrarySchema.parse({version: 1, assets: []}));
+                library.assets.push(
+                  ...candidates.map((candidate) => ({
+                    id: `asset-${candidate.id}`,
+                    name: `${latestShot.visualPurpose}-视频`,
+                    type: 'video' as const,
+                    source: 'generated' as const,
+                    path: candidate.path,
+                    license: 'licensed' as const,
+                    commercialUse: true,
+                    originalUrl: null,
+                    createdAt: candidate.createdAt,
+                    keywords: latestShot.searchQueries,
+                    duration: 8,
+                  })),
+                );
+                await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
+                await writeFile(projectFile, `${JSON.stringify(latest, null, 2)}\n`, 'utf8');
+              })
+              .catch(async (error: unknown) => {
+                const latest = projectFileSchema.parse(
+                  JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+                );
+                const latestShot = latest.scenes
+                  .find((scene) => scene.id === input.sceneId)
+                  ?.shots?.find((item) => item.id === input.shotId);
+                if (!latestShot) return;
+                latestShot.generationTask = {
+                  ...task,
+                  status: 'failed',
+                  error: error instanceof Error ? error.message : String(error),
+                  updatedAt: new Date().toISOString(),
+                };
+                await writeFile(projectFile, `${JSON.stringify(latest, null, 2)}\n`, 'utf8');
+              });
+            return;
+          }
           if (url === '/api/shots/select' && request.method === 'POST') {
             const input = JSON.parse((await readBody(request)).toString('utf8')) as {
               sceneId?: string;
@@ -318,6 +530,11 @@ const localApi = (): Plugin => ({
             }
             shot.selectedAsset = candidate.path;
             shot.status = 'ready';
+            const scene = project.scenes.find((item) => item.id === input.sceneId);
+            if (candidate.kind === 'video' && scene) {
+              scene.assetPath = candidate.path;
+              scene.assetType = 'video';
+            }
             if (shot.generationTask) {
               shot.generationTask = {
                 ...shot.generationTask,

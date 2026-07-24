@@ -91,6 +91,13 @@ export const projectFileSchema = z
       fps: z.number().int().min(1).max(120),
       durationTarget: z.number().positive().max(3600).optional(),
     }),
+    content: z
+      .object({
+        topic: z.string().default(''),
+        hook: z.string().default(''),
+        ending: z.string().default(''),
+      })
+      .optional(),
     style: z.object({
       template: z.string().min(1),
       fontFamily: z.string().min(1),

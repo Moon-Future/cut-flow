@@ -22,7 +22,9 @@ pnpm render
 
 展开左侧“生成视频脚本”可以从主题生成脚本、三段分镜、旁白 WAV 和词级字幕。默认使用本地 Mock Provider，不需要密钥；它生成静音占位配音以验证完整流程。使用 OpenAI Provider 前，在启动进程中设置 `OPENAI_API_KEY`，可按 `.env.example` 覆盖文本、TTS 和转录模型。
 
-视觉镜头卡片支持复用本地图片/视频候选，也支持使用 OpenAI Image API 生成 3 张竖屏图片草稿。AI 图片默认使用 `gpt-image-2`、`1024x1536` 和低质量模式，生成文件会保存到 `projects/demo-project/assets/generated` 并登记到素材库。可通过 `OPENAI_IMAGE_MODEL` 和 `OPENAI_IMAGE_QUALITY` 调整；真实视频生成 Provider 尚未接入。
+应用启动后先进入项目列表，可以创建、选择和切换视频项目。进入项目后默认展示视频主题、完整口播文案、脚本段落和视觉分镜，再进入剪辑与素材工作台。
+
+视觉镜头卡片支持复用本地图片/视频候选，也支持使用 OpenAI Image API 生成 3 张竖屏图片草稿。AI 图片默认使用 `gpt-image-2`、`1024x1792` 和低质量模式，生成文件会保存到当前项目的 `assets/generated` 并登记到素材库。选中图片后可创建 Sora 图生视频任务；任务在后台排队并轮询，完成的 MP4 进入视频候选，选中后自动回填当前镜头和场景。可通过 `OPENAI_IMAGE_MODEL`、`OPENAI_IMAGE_QUALITY` 和 `OPENAI_VIDEO_MODEL` 调整模型配置。
 
 点击顶部“素材库”可以搜索和筛选本地图片或视频，查看来源、授权方式及商用许可，并应用到当前镜头。新导入素材会写入 `projects/demo-project/assets.json`；脚本生成时会根据 `visualPrompt` 和素材关键词自动选择可商用素材。
 

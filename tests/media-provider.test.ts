@@ -1,8 +1,12 @@
-import {mkdtemp, readFile, rm} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {describe, expect, it} from 'vitest';
-import {createMockImageProvider, createOpenAIImageProvider} from '../src/ai/media-provider';
+import {
+  createMockImageProvider,
+  createOpenAIImageProvider,
+  createOpenAIVideoProvider,
+} from '../src/ai/media-provider';
 import {visualShotSchema} from '../src/core/schema';
 
 describe('media generation provider', () => {
@@ -84,7 +88,7 @@ describe('media generation provider', () => {
           model: 'gpt-image-2',
           n: 2,
           quality: 'low',
-          size: '1024x1536',
+          size: '1024x1792',
         },
       });
       expect(candidates).toHaveLength(2);
@@ -94,6 +98,61 @@ describe('media generation provider', () => {
       ).toBe('first-image');
     } finally {
       await rm(outputDirectory, {recursive: true, force: true});
+    }
+  });
+
+  it('polls a Sora image-to-video job and stores the completed MP4', async () => {
+    const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'cut-flow-video-'));
+    const outputDirectory = path.join(projectRoot, 'assets', 'generated');
+    await mkdir(path.join(projectRoot, 'assets'), {recursive: true});
+    await writeFile(path.join(projectRoot, 'assets', 'first-frame.png'), 'image');
+    const shot = visualShotSchema.parse({
+      id: 'shot-video',
+      visualPurpose: '云层缓慢移动',
+      shotType: 'generated-video',
+      assetStrategy: 'ai-generate',
+      duration: 8,
+      selectedAsset: 'assets/first-frame.png',
+      videoPrompt: '仰拍云层缓慢移动，镜头轻微推进',
+    });
+    let call = 0;
+    const provider = createOpenAIVideoProvider({
+      apiKey: 'test-key',
+      projectRoot,
+      outputDirectory,
+      pollIntervalMs: 1,
+      fetch: (input) => {
+        call += 1;
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        if (url.endsWith('/content')) return Promise.resolve(new Response('video-bytes'));
+        if (call === 1) {
+          return Promise.resolve(
+            new Response(JSON.stringify({id: 'video-1', status: 'queued'}), {
+              headers: {'Content-Type': 'application/json'},
+            }),
+          );
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({id: 'video-1', status: 'completed'}), {
+            headers: {'Content-Type': 'application/json'},
+          }),
+        );
+      },
+    });
+    try {
+      const candidates = await provider.generate({
+        shot,
+        kind: 'video',
+        count: 1,
+        fallbackPaths: [],
+      });
+      expect(candidates[0]).toMatchObject({kind: 'video', provider: 'openai-video'});
+      expect(
+        await readFile(path.join(outputDirectory, path.basename(candidates[0]!.path)), 'utf8'),
+      ).toBe('video-bytes');
+    } finally {
+      await rm(projectRoot, {recursive: true, force: true});
     }
   });
 });

@@ -145,6 +145,11 @@ export const runGenerationWorkflow = async (
         title: script.title,
         durationTarget: input.targetDuration,
       },
+      content: {
+        topic: input.topic,
+        hook: script.hook,
+        ending: script.ending,
+      },
       style: {...currentProject.style, captionAnimation: 'fade'},
       narrationAudio: 'audio/narration.wav',
       scenes,

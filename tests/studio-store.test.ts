@@ -63,4 +63,33 @@ describe('studio store', () => {
     expect(useStudioStore.getState().project?.scenes.map((scene) => scene.id)).toEqual(['b', 'a']);
     expect(useStudioStore.getState().lockedSceneIds).toEqual(['b']);
   });
+
+  it('syncs a background generation result without triggering autosave', () => {
+    const projectWithShot = projectFileSchema.parse({
+      ...project,
+      scenes: [
+        {
+          ...project.scenes[0],
+          shots: [
+            {
+              id: 'shot-1',
+              visualPurpose: '测试镜头',
+              shotType: 'generated-image',
+              assetStrategy: 'ai-generate',
+              duration: 1,
+            },
+          ],
+        },
+      ],
+    });
+    useStudioStore.getState().setProject(projectWithShot);
+    const shot = projectWithShot.scenes[0]!.shots![0]!;
+    useStudioStore.getState().syncVisualShot('a', 'shot-1', {
+      ...shot,
+      status: 'ready',
+      selectedAsset: 'assets/generated/result.mp4',
+    });
+    expect(useStudioStore.getState().project?.scenes[0]?.shots?.[0]?.status).toBe('ready');
+    expect(useStudioStore.getState().saveStatus).toBe('saved');
+  });
 });
