@@ -134,12 +134,16 @@ const localApi = (): Plugin => ({
               topic?: string;
               videoType?: string;
               description?: string;
+              sourceText?: string;
+              keywords?: string;
               creationMode?: string;
               platform?: string;
               width?: number;
               height?: number;
               fps?: number;
               durationTarget?: number;
+              tone?: string;
+              captionStyle?: string;
             };
             const title = input.title?.trim() || input.topic?.trim();
             if (!title) {
@@ -190,6 +194,8 @@ const localApi = (): Plugin => ({
                 topic: input.topic?.trim() ?? title,
                 videoType,
                 description: input.description?.trim() ?? '',
+                sourceText: input.sourceText?.trim() ?? '',
+                keywords: input.keywords?.trim() ?? '',
                 hook: '',
                 ending: '',
               },
@@ -199,6 +205,8 @@ const localApi = (): Plugin => ({
                 captionPosition: 'bottom',
                 captionAnimation: 'fade',
                 transition: 'fade',
+                tone: input.tone?.trim() ?? '自然清晰',
+                captionStyle: input.captionStyle?.trim() ?? '粗体描边',
               },
               narrationAudio: null,
               scenes: [

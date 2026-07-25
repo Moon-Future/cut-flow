@@ -108,6 +108,8 @@ export const projectFileSchema = z
         topic: z.string().default(''),
         videoType: videoTypeSchema.default('science-explainer'),
         description: z.string().optional(),
+        sourceText: z.string().optional(),
+        keywords: z.string().optional(),
         hook: z.string().default(''),
         ending: z.string().default(''),
       })
@@ -120,6 +122,8 @@ export const projectFileSchema = z
       transition: z.enum(['none', 'fade']),
       transitionDuration: z.number().min(0).max(2).default(0.35),
       backgroundMusicVolume: z.number().min(0).max(1).optional(),
+      tone: z.string().optional(),
+      captionStyle: z.string().optional(),
     }),
     narrationAudio: z.string().min(1).nullable().optional(),
     scenes: z.array(sceneSchema).min(1),
