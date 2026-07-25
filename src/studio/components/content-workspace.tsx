@@ -1,0 +1,249 @@
+import type {ProjectFile, VideoType} from '../../core/schema';
+import {useStudioStore} from '../store';
+import {GenerationPanel} from './generation-panel';
+
+type Props = {
+  project: ProjectFile;
+  onGenerated: (project: ProjectFile) => void;
+  onAudioReady: () => void;
+};
+
+const platformLabels: Record<string, string> = {
+  douyin: '抖音 / 快手',
+  xiaohongshu: '小红书',
+  'wechat-video': '视频号',
+  bilibili: 'B站',
+  youtube: 'YouTube',
+  custom: '自定义',
+};
+
+export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) => {
+  const {
+    updateContent,
+    updateProjectSettings,
+    updateStyle,
+    updateScene,
+    duplicateScene,
+    deleteScene,
+  } = useStudioStore();
+  const totalChars = project.scenes.reduce((sum, scene) => sum + scene.narration.length, 0);
+  const totalDuration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
+  const hookScore = Math.min(100, 62 + Math.min(32, (project.content?.hook.length ?? 0) * 1.5));
+  const clarityScore = Math.min(100, 72 + Math.min(20, project.scenes.length * 3));
+  const rhythmScore = Math.min(100, 68 + Math.min(24, project.scenes.length * 4));
+
+  return (
+    <section className="content-studio">
+      <aside className="copy-config stage-panel">
+        <header>
+          <div>
+            <strong>文案配置信息</strong>
+            <span>定义主题、受众和表达方式</span>
+          </div>
+        </header>
+        <div className="stage-form">
+          <label>
+            <span>视频主题</span>
+            <input
+              value={project.content?.topic ?? ''}
+              onChange={(event) => updateContent({topic: event.target.value})}
+            />
+          </label>
+          <label>
+            <span>视频类型</span>
+            <select
+              value={project.content?.videoType ?? 'science-explainer'}
+              onChange={(event) => updateContent({videoType: event.target.value as VideoType})}
+            >
+              <option value="science-explainer">科普讲解</option>
+              <option value="knowledge-narration">知识口播</option>
+              <option value="digital-human">数字人口播</option>
+              <option value="product-showcase">产品展示</option>
+              <option value="storytelling">故事叙事</option>
+            </select>
+          </label>
+          <label>
+            <span>发布平台</span>
+            <select
+              value={project.project.platform ?? 'douyin'}
+              onChange={(event) =>
+                updateProjectSettings({
+                  platform: event.target.value as ProjectFile['project']['platform'],
+                })
+              }
+            >
+              {Object.entries(platformLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="form-pair">
+            <label>
+              <span>目标时长</span>
+              <select
+                value={project.project.durationTarget ?? 60}
+                onChange={(event) =>
+                  updateProjectSettings({durationTarget: Number(event.target.value)})
+                }
+              >
+                <option value={30}>30 秒</option>
+                <option value={60}>60 秒</option>
+                <option value={90}>90 秒</option>
+                <option value={180}>3 分钟</option>
+              </select>
+            </label>
+            <label>
+              <span>叙事语气</span>
+              <select
+                value={project.style.tone ?? '自然清晰'}
+                onChange={(event) => updateStyle({tone: event.target.value})}
+              >
+                <option>自然清晰</option>
+                <option>轻松幽默</option>
+                <option>专业严谨</option>
+                <option>情绪故事感</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            <span>核心观点</span>
+            <textarea
+              rows={5}
+              value={project.content?.description ?? ''}
+              onChange={(event) => updateContent({description: event.target.value})}
+              placeholder="希望观众记住的核心结论"
+            />
+          </label>
+        </div>
+        <div className="copy-generation">
+          <header>
+            <strong>AI 文案生成</strong>
+            <span>基于当前配置重新生成</span>
+          </header>
+          <GenerationPanel
+            initialTopic={project.content?.topic ?? project.project.title}
+            initialVideoType={project.content?.videoType}
+            onGenerated={onGenerated}
+            onAudioReady={onAudioReady}
+          />
+        </div>
+      </aside>
+
+      <main className="copy-editor stage-panel">
+        <header>
+          <div>
+            <strong>文案编辑器</strong>
+            <span>
+              {project.scenes.length} 个段落 · {totalChars} 字 · 约 {Math.round(totalDuration)} 秒
+            </span>
+          </div>
+          <button onClick={() => duplicateScene(project.scenes.at(-1)!.id)}>＋ 添加段落</button>
+        </header>
+        <div className="copy-segments">
+          {project.scenes.map((scene, index) => (
+            <article key={scene.id}>
+              <header>
+                <b>
+                  {index === 0
+                    ? '开头 Hook'
+                    : index === project.scenes.length - 1
+                      ? '结尾 CTA'
+                      : `正文 ${String(index).padStart(2, '0')}`}
+                </b>
+                <span>{scene.duration.toFixed(1)} 秒</span>
+                <div>
+                  <button onClick={() => duplicateScene(scene.id)}>复制</button>
+                  <button
+                    disabled={project.scenes.length <= 1}
+                    onClick={() => deleteScene(scene.id)}
+                  >
+                    删除
+                  </button>
+                </div>
+              </header>
+              <input
+                value={scene.caption}
+                onChange={(event) => updateScene(scene.id, {caption: event.target.value})}
+              />
+              <textarea
+                rows={index === 0 || index === project.scenes.length - 1 ? 4 : 7}
+                value={scene.narration}
+                onChange={(event) => updateScene(scene.id, {narration: event.target.value})}
+              />
+              <footer>
+                <span>画面意图</span>
+                <input
+                  value={scene.visualIntent ?? ''}
+                  onChange={(event) => updateScene(scene.id, {visualIntent: event.target.value})}
+                />
+                <small>{scene.narration.length} 字</small>
+              </footer>
+            </article>
+          ))}
+        </div>
+      </main>
+
+      <aside className="copy-analysis">
+        <section className="stage-panel">
+          <header>
+            <strong>文案分析</strong>
+            <span>实时估算</span>
+          </header>
+          <div className="analysis-summary">
+            <div>
+              <span>预计时长</span>
+              <b>{Math.round(totalDuration)} 秒</b>
+            </div>
+            <div>
+              <span>预计字数</span>
+              <b>{totalChars} 字</b>
+            </div>
+          </div>
+          <div className="score-grid">
+            <i style={{'--score': `${hookScore * 3.6}deg`} as React.CSSProperties}>
+              <b>{Math.round(hookScore)}</b>
+              <span>开头吸引力</span>
+            </i>
+            <i style={{'--score': `${clarityScore * 3.6}deg`} as React.CSSProperties}>
+              <b>{clarityScore}</b>
+              <span>口语化程度</span>
+            </i>
+            <i style={{'--score': `${rhythmScore * 3.6}deg`} as React.CSSProperties}>
+              <b>{rhythmScore}</b>
+              <span>节奏评分</span>
+            </i>
+          </div>
+          <ul>
+            <li>✓ 包含明确开场 Hook</li>
+            <li>✓ 段落结构清晰</li>
+            <li>✓ 已配置画面意图</li>
+          </ul>
+        </section>
+        <section className="stage-panel cover-preview">
+          <header>
+            <strong>视频封面预览</strong>
+            <span>{project.project.width < project.project.height ? '9:16' : '16:9'}</span>
+          </header>
+          <div>
+            <strong>{project.project.title}</strong>
+            <small>{project.content?.hook || project.scenes[0]?.caption}</small>
+          </div>
+        </section>
+        <section className="stage-panel outline-panel">
+          <header>
+            <strong>文案结构大纲</strong>
+          </header>
+          {project.scenes.map((scene, index) => (
+            <button key={scene.id}>
+              <b>{index + 1}</b>
+              <span>{scene.caption}</span>
+              <small>{scene.duration.toFixed(0)}s</small>
+            </button>
+          ))}
+        </section>
+      </aside>
+    </section>
+  );
+};

@@ -549,6 +549,7 @@ export const EditingWorkspace = ({
             currentProjectId={projectId}
             onNewProject={onNewProject}
             onOpenProject={onOpenProject}
+            audioAvailable={audioAvailable}
           />
         )}
         <div className={`render-toast ${renderState.status}`}>{renderState.message}</div>

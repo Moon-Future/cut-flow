@@ -12,6 +12,9 @@ type StudioState = {
   setProject: (project: ProjectFile) => void;
   selectScene: (id: string) => void;
   updateScene: (id: string, patch: Partial<Scene>) => void;
+  updateContent: (patch: Partial<NonNullable<ProjectFile['content']>>) => void;
+  updateProjectSettings: (patch: Partial<ProjectFile['project']>) => void;
+  updateStyle: (patch: Partial<ProjectFile['style']>) => void;
   replaceSceneAsset: (id: string, assetPath: string, assetType: Scene['assetType']) => void;
   duplicateScene: (id: string) => void;
   deleteScene: (id: string) => void;
@@ -41,6 +44,35 @@ export const useStudioStore = create<StudioState>((set) => ({
             ),
           }
         : null,
+      saveStatus: 'saving',
+    })),
+  updateContent: (patch) =>
+    set((state) => ({
+      project: state.project
+        ? {
+            ...state.project,
+            content: {
+              topic: '',
+              videoType: 'science-explainer',
+              hook: '',
+              ending: '',
+              ...state.project.content,
+              ...patch,
+            },
+          }
+        : null,
+      saveStatus: 'saving',
+    })),
+  updateProjectSettings: (patch) =>
+    set((state) => ({
+      project: state.project
+        ? {...state.project, project: {...state.project.project, ...patch}}
+        : null,
+      saveStatus: 'saving',
+    })),
+  updateStyle: (patch) =>
+    set((state) => ({
+      project: state.project ? {...state.project, style: {...state.project.style, ...patch}} : null,
       saveStatus: 'saving',
     })),
   replaceSceneAsset: (id, assetPath, assetType) =>

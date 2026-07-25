@@ -75,6 +75,18 @@ describe('studio store', () => {
     expect(scene?.narration).toBe('A');
   });
 
+  it('updates project-level content and style settings', () => {
+    useStudioStore.getState().setProject(project);
+    useStudioStore.getState().updateContent({topic: '新的主题'});
+    useStudioStore.getState().updateProjectSettings({durationTarget: 60});
+    useStudioStore.getState().updateStyle({tone: '轻松幽默'});
+    const state = useStudioStore.getState();
+    expect(state.project?.content?.topic).toBe('新的主题');
+    expect(state.project?.project.durationTarget).toBe(60);
+    expect(state.project?.style.tone).toBe('轻松幽默');
+    expect(state.saveStatus).toBe('saving');
+  });
+
   it('syncs a background generation result without triggering autosave', () => {
     const projectWithShot = projectFileSchema.parse({
       ...project,
