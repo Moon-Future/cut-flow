@@ -1,5 +1,6 @@
 import type {ProjectFile} from '../../core/schema';
 import {GenerationPanel} from './generation-panel';
+import {ProjectDashboard} from './project-dashboard';
 import type {WorkspaceSection} from './workspace-sidebar';
 
 type Props = {
@@ -10,6 +11,9 @@ type Props = {
   onAudioReady: () => void;
   onAssets: () => void;
   onRender: () => void;
+  currentProjectId: string;
+  onNewProject: () => void;
+  onOpenProject: (projectId: string) => Promise<void>;
 };
 
 const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]> = {
@@ -29,6 +33,9 @@ export const ProjectStage = ({
   onAudioReady,
   onAssets,
   onRender,
+  currentProjectId,
+  onNewProject,
+  onOpenProject,
 }: Props) => {
   const narration = project.scenes.map((scene) => scene.narration).join('\n\n');
   const shotCount = project.scenes.reduce((sum, scene) => sum + (scene.shots?.length ?? 0), 0);
@@ -38,106 +45,42 @@ export const ProjectStage = ({
 
   return (
     <section className="project-stage">
-      <header className="stage-heading">
-        <div>
-          <span className="eyebrow">CUT FLOW WORKSPACE</span>
-          <h1>{title}</h1>
-          <p>{description}</p>
-        </div>
-        {section !== 'export' ? (
-          <button
-            className="primary-button"
-            onClick={() =>
-              onNavigate(
-                section === 'assets'
-                  ? 'edit'
-                  : section === 'storyboard'
-                    ? 'voice'
-                    : section === 'content'
-                      ? 'storyboard'
-                      : section === 'overview'
-                        ? 'content'
+      {section !== 'overview' ? (
+        <header className="stage-heading">
+          <div>
+            <span className="eyebrow">CUT FLOW WORKSPACE</span>
+            <h1>{title}</h1>
+            <p>{description}</p>
+          </div>
+          {section !== 'export' ? (
+            <button
+              className="primary-button"
+              onClick={() =>
+                onNavigate(
+                  section === 'assets'
+                    ? 'edit'
+                    : section === 'storyboard'
+                      ? 'voice'
+                      : section === 'content'
+                        ? 'storyboard'
                         : 'assets',
-              )
-            }
-          >
-            下一步 →
-          </button>
-        ) : null}
-      </header>
+                )
+              }
+            >
+              下一步 →
+            </button>
+          ) : null}
+        </header>
+      ) : null}
 
       {section === 'overview' ? (
-        <>
-          <div className="stage-metrics">
-            <article>
-              <span>视频主题</span>
-              <strong>{project.content?.topic || project.project.title}</strong>
-            </article>
-            <article>
-              <span>脚本段落</span>
-              <strong>{project.scenes.length}</strong>
-            </article>
-            <article>
-              <span>视觉镜头</span>
-              <strong>{shotCount}</strong>
-            </article>
-            <article>
-              <span>预计时长</span>
-              <strong>{Math.round(totalDuration)} 秒</strong>
-            </article>
-          </div>
-          <div className="overview-grid">
-            <article className="stage-card">
-              <span className="eyebrow">PROJECT</span>
-              <h2>{project.project.title}</h2>
-              <p>{project.content?.hook || '主题已创建，可继续生成和完善视频文案。'}</p>
-              <dl>
-                <div>
-                  <dt>视频类型</dt>
-                  <dd>{project.content?.videoType || 'science-explainer'}</dd>
-                </div>
-                <div>
-                  <dt>画面尺寸</dt>
-                  <dd>
-                    {project.project.width} × {project.project.height}
-                  </dd>
-                </div>
-                <div>
-                  <dt>帧率</dt>
-                  <dd>{project.project.fps} FPS</dd>
-                </div>
-              </dl>
-            </article>
-            <article className="stage-card progress-card">
-              <span className="eyebrow">PROGRESS</span>
-              <h2>制作进度</h2>
-              {['主题与类型', '视频文案', '脚本与分镜', '配音与素材', '剪辑与导出'].map(
-                (item, index) => (
-                  <button
-                    key={item}
-                    onClick={() =>
-                      onNavigate(
-                        (
-                          [
-                            'overview',
-                            'content',
-                            'storyboard',
-                            'voice',
-                            'edit',
-                          ] as WorkspaceSection[]
-                        )[index]!,
-                      )
-                    }
-                  >
-                    <b>{index < 3 ? '✓' : index + 1}</b>
-                    <span>{item}</span>
-                    <i>→</i>
-                  </button>
-                ),
-              )}
-            </article>
-          </div>
-        </>
+        <ProjectDashboard
+          project={project}
+          currentProjectId={currentProjectId}
+          onNewProject={onNewProject}
+          onOpenProject={onOpenProject}
+          onNavigate={onNavigate}
+        />
       ) : null}
 
       {section === 'content' ? (

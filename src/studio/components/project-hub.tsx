@@ -9,6 +9,10 @@ export type ProjectSummary = {
   duration: number;
   updatedAt: string;
   videoType: VideoType;
+  width: number;
+  height: number;
+  coverPath: string | null;
+  assetCount: number;
 };
 
 type Props = {

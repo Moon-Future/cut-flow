@@ -26,6 +26,7 @@ type Props = {
   onRender: () => void;
   onGenerated: (project: ProjectFile) => void;
   onAudioReady: () => void;
+  onOpenProject: (projectId: string) => Promise<void>;
 };
 
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
@@ -57,6 +58,7 @@ export const EditingWorkspace = ({
   onRender,
   onGenerated,
   onAudioReady,
+  onOpenProject,
 }: Props) => {
   const {
     selectedSceneId,
@@ -544,6 +546,9 @@ export const EditingWorkspace = ({
             onAudioReady={onAudioReady}
             onAssets={onAssets}
             onRender={onRender}
+            currentProjectId={projectId}
+            onNewProject={onNewProject}
+            onOpenProject={onOpenProject}
           />
         )}
         <div className={`render-toast ${renderState.status}`}>{renderState.message}</div>

@@ -2129,3 +2129,266 @@ select:focus {
   margin: 20px 0 0;
   text-align: left;
 }
+
+.dashboard-page {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.dashboard-heading h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+.dashboard-heading p {
+  margin: 0;
+  color: #778195;
+  font-size: 11px;
+}
+.dashboard-heading > button {
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #8b5cf6, #7046db);
+  box-shadow: 0 8px 24px #754ddb3d;
+  color: #fff;
+  cursor: pointer;
+}
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.dashboard-stats article {
+  position: relative;
+  min-height: 116px;
+  padding: 17px;
+  border: 1px solid #222a39;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #111722, #0d121a);
+}
+.dashboard-stats span,
+.dashboard-stats strong,
+.dashboard-stats small {
+  display: block;
+}
+.dashboard-stats span {
+  color: #858fa1;
+  font-size: 10px;
+}
+.dashboard-stats strong {
+  margin: 10px 0;
+  font-size: 26px;
+}
+.dashboard-stats small {
+  color: #647086;
+  font-size: 8px;
+}
+.dashboard-stats i {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-style: normal;
+}
+.dashboard-stats i.purple {
+  background: #302052;
+  color: #a779ff;
+}
+.dashboard-stats i.green {
+  background: #15372e;
+  color: #4ee1aa;
+}
+.dashboard-stats i.orange {
+  background: #3a2a16;
+  color: #ffb648;
+}
+.dashboard-stats i.blue {
+  background: #142d4d;
+  color: #5aa5ff;
+}
+.recent-projects,
+.current-project-card,
+.quick-start {
+  border: 1px solid #222a39;
+  border-radius: 11px;
+  background: #0d121a;
+}
+.recent-projects {
+  margin-top: 14px;
+  padding: 15px;
+}
+.recent-projects > header,
+.current-project-card > header,
+.quick-start > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 13px;
+}
+.recent-projects header span,
+.current-project-card header span,
+.quick-start header span {
+  margin-left: 8px;
+  color: #667186;
+  font-size: 9px;
+}
+.recent-projects header button,
+.current-project-card header button {
+  border: 0;
+  background: transparent;
+  color: #9b89ca;
+  font-size: 9px;
+  cursor: pointer;
+}
+.recent-projects > div {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.recent-projects > div > button {
+  min-width: 0;
+  padding: 0 0 10px;
+  overflow: hidden;
+  border: 1px solid #262e3d;
+  border-radius: 8px;
+  background: #111720;
+  color: #dce1e9;
+  text-align: left;
+  cursor: pointer;
+}
+.recent-projects > div > button.current {
+  border-color: #8058e6;
+}
+.recent-cover {
+  position: relative;
+  height: 98px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 9px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #28213d, #172b3c);
+}
+.recent-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.recent-cover > b {
+  color: #ac90e9;
+  font-size: 34px;
+}
+.recent-cover span {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: #05070bbb;
+  font-size: 8px;
+}
+.recent-projects > div > button > strong,
+.recent-projects > div > button > small,
+.recent-projects > div > button > em {
+  display: block;
+  margin: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-projects > div > button > strong {
+  font-size: 10px;
+}
+.recent-projects > div > button > small,
+.recent-projects > div > button > em {
+  margin-top: 5px;
+  color: #697488;
+  font-size: 8px;
+  font-style: normal;
+}
+.dashboard-lower {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+.current-project-card,
+.quick-start {
+  padding: 16px;
+}
+.current-project-card h2 {
+  margin: 8px 0 5px;
+  font-size: 17px;
+}
+.current-project-card > p {
+  margin: 0 0 14px;
+  color: #737e91;
+  font-size: 10px;
+}
+.current-project-card > div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.current-project-card > div button {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #242d3d;
+  border-radius: 7px;
+  background: #121822;
+  color: #c7cedb;
+  text-align: left;
+  cursor: pointer;
+}
+.current-project-card > div b {
+  color: #9671e8;
+}
+.current-project-card > div span,
+.current-project-card > div small {
+  display: block;
+}
+.current-project-card > div span {
+  font-size: 9px;
+}
+.current-project-card > div small {
+  margin-top: 3px;
+  color: #687389;
+  font-size: 8px;
+}
+.quick-start > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.quick-start > div button {
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  min-height: 70px;
+  border: 1px solid #252d3d;
+  border-radius: 8px;
+  background: #121822;
+  color: #abb4c4;
+  font-size: 9px;
+  cursor: pointer;
+}
+.quick-start i {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+  background: #30234e;
+  color: #b496f2;
+  font-style: normal;
+}

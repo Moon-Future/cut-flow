@@ -116,6 +116,7 @@ export const App = () => {
         onRender={() => void startRender()}
         onGenerated={setProject}
         onAudioReady={() => setAudioAvailable(true)}
+        onOpenProject={openProject}
       />
       <AssetLibraryPanel
         open={assetLibraryOpen}

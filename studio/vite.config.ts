@@ -87,6 +87,12 @@ const localApi = (): Plugin => ({
                       const project = projectFileSchema.parse(
                         JSON.parse(await readFile(file, 'utf8')) as unknown,
                       );
+                      const assetLibraryPath = path.join(projectsRoot, entry.name, 'assets.json');
+                      const assetCount = await readFile(assetLibraryPath, 'utf8')
+                        .then(
+                          (content) => assetLibrarySchema.parse(JSON.parse(content)).assets.length,
+                        )
+                        .catch(() => 0);
                       return {
                         id: entry.name,
                         title: project.project.title,
@@ -94,6 +100,10 @@ const localApi = (): Plugin => ({
                         duration: project.scenes.reduce((sum, scene) => sum + scene.duration, 0),
                         topic: project.content?.topic ?? project.project.title,
                         videoType: project.content?.videoType ?? 'science-explainer',
+                        width: project.project.width,
+                        height: project.project.height,
+                        coverPath: project.scenes[0]?.assetPath ?? null,
+                        assetCount,
                         updatedAt: (await stat(file)).mtime.toISOString(),
                       };
                     } catch {
