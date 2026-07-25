@@ -133,7 +133,13 @@ export const App = () => {
   if (showProjects)
     return (
       <ProjectWorkspace
-        onOpen={openProject}
+        onOpen={async (id, startInContent) => {
+          await openProject(id);
+          if (startInContent) setSection('content');
+        }}
+        onClose={() => {
+          if (project) setShowProjects(false);
+        }}
         onNavigate={(value) => {
           if (value === 'overview') setShowProjects(true);
         }}

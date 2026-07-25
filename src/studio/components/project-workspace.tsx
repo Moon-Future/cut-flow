@@ -1,12 +1,13 @@
-import {ProjectHub} from './project-hub';
+import {CreateProjectPage} from './create-project-page';
 import {WorkspaceSidebar, type WorkspaceSection} from './workspace-sidebar';
 
 type Props = {
-  onOpen: (projectId: string) => Promise<void>;
+  onOpen: (projectId: string, startInContent: boolean) => Promise<void>;
   onNavigate: (section: WorkspaceSection) => void;
+  onClose: () => void;
 };
 
-export const ProjectWorkspace = ({onOpen, onNavigate}: Props) => (
+export const ProjectWorkspace = ({onOpen, onNavigate, onClose}: Props) => (
   <div className="edit-app">
     <WorkspaceSidebar
       section="overview"
@@ -14,17 +15,8 @@ export const ProjectWorkspace = ({onOpen, onNavigate}: Props) => (
       onNavigate={onNavigate}
       onNewProject={() => undefined}
     />
-    <main className="edit-main stage-mode">
-      <header className="edit-header">
-        <div>
-          <strong>我的项目</strong>
-        </div>
-        <span />
-        <div>
-          <span className="workspace-hint">创建项目后，在左侧完成整条视频流程</span>
-        </div>
-      </header>
-      <ProjectHub embedded onOpen={onOpen} />
+    <main className="edit-main stage-mode create-workspace">
+      <CreateProjectPage onOpen={onOpen} onClose={onClose} />
     </main>
   </div>
 );

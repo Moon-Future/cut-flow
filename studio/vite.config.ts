@@ -133,6 +133,13 @@ const localApi = (): Plugin => ({
               title?: string;
               topic?: string;
               videoType?: string;
+              description?: string;
+              creationMode?: string;
+              platform?: string;
+              width?: number;
+              height?: number;
+              fps?: number;
+              durationTarget?: number;
             };
             const title = input.title?.trim() || input.topic?.trim();
             if (!title) {
@@ -140,6 +147,25 @@ const localApi = (): Plugin => ({
               return;
             }
             const videoType = videoTypeSchema.catch('science-explainer').parse(input.videoType);
+            const creationMode = ['ai-generate', 'import-copy', 'import-script', 'blank'].includes(
+              input.creationMode ?? '',
+            )
+              ? input.creationMode
+              : 'ai-generate';
+            const platform = [
+              'douyin',
+              'xiaohongshu',
+              'wechat-video',
+              'bilibili',
+              'youtube',
+              'custom',
+            ].includes(input.platform ?? '')
+              ? input.platform
+              : 'douyin';
+            const width = Math.max(320, Math.min(7680, Math.round(input.width ?? 1080)));
+            const height = Math.max(320, Math.min(7680, Math.round(input.height ?? 1920)));
+            const fps = Math.max(1, Math.min(120, Math.round(input.fps ?? 30)));
+            const durationTarget = Math.max(5, Math.min(3600, input.durationTarget ?? 60));
             const id = `project-${Date.now()}-${randomUUID().slice(0, 6)}`;
             const projectRoot = path.join(projectsRoot, id);
             await mkdir(path.join(projectRoot, 'assets'), {recursive: true});
@@ -151,8 +177,22 @@ const localApi = (): Plugin => ({
             );
             const project = projectFileSchema.parse({
               version: 1,
-              project: {title, width: 1080, height: 1920, fps: 30, durationTarget: 30},
-              content: {topic: input.topic?.trim() ?? title, videoType, hook: '', ending: ''},
+              project: {
+                title,
+                width,
+                height,
+                fps,
+                durationTarget,
+                creationMode,
+                platform,
+              },
+              content: {
+                topic: input.topic?.trim() ?? title,
+                videoType,
+                description: input.description?.trim() ?? '',
+                hook: '',
+                ending: '',
+              },
               style: {
                 template: 'game-dev-log',
                 fontFamily: 'Noto Sans SC',

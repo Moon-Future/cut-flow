@@ -98,11 +98,16 @@ export const projectFileSchema = z
       height: z.number().int().min(320).max(7680),
       fps: z.number().int().min(1).max(120),
       durationTarget: z.number().positive().max(3600).optional(),
+      creationMode: z.enum(['ai-generate', 'import-copy', 'import-script', 'blank']).optional(),
+      platform: z
+        .enum(['douyin', 'xiaohongshu', 'wechat-video', 'bilibili', 'youtube', 'custom'])
+        .optional(),
     }),
     content: z
       .object({
         topic: z.string().default(''),
         videoType: videoTypeSchema.default('science-explainer'),
+        description: z.string().optional(),
         hook: z.string().default(''),
         ending: z.string().default(''),
       })
