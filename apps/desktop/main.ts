@@ -40,7 +40,7 @@ const startLocalServer = async (appRoot: string, workspaceRoot: string): Promise
   process.env.CUT_FLOW_WORKSPACE_ROOT = workspaceRoot;
   process.env.CUT_FLOW_RUNTIME_ROOT = runtimeRoot;
   // 开发服务器、桌面开发版和安装版统一使用同一目录，避免切换启动方式后配置“消失”。
-  process.env.CUT_FLOW_USER_DATA_ROOT = path.join(workspaceRoot, '.cut-flow');
+  process.env.CUT_FLOW_USER_DATA_ROOT = path.join(workspaceRoot, 'cut-flow-data');
   if (app.isPackaged) {
     process.env.NODE_PATH = path.join(appRoot, 'node_modules');
     (Module as typeof Module & {_initPaths: () => void})._initPaths();

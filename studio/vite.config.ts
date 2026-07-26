@@ -41,7 +41,7 @@ const requireFromApp = createRequire(
 );
 const react = (requireFromApp('@vitejs/plugin-react') as {default: () => Plugin}).default;
 const projectsRoot = path.join(workspaceRoot, 'projects');
-const hiddenProjectsFile = path.join(workspaceRoot, '.cut-flow', 'hidden-projects.json');
+const hiddenProjectsFile = path.join(workspaceRoot, 'cut-flow-data', 'hidden-projects.json');
 let activeProjectId = 'demo-project';
 const loadHiddenProjects = async (): Promise<string[]> =>
   readFile(hiddenProjectsFile, 'utf8')
@@ -55,6 +55,36 @@ const saveHiddenProjects = async (ids: string[]) => {
   await writeFile(
     hiddenProjectsFile,
     `${JSON.stringify({ids: [...new Set(ids)]}, null, 2)}\n`,
+    'utf8',
+  );
+};
+const syncProjectTitleMarker = async (
+  projectRoot: string,
+  projectId: string,
+  title: string,
+): Promise<void> => {
+  const safeTitle =
+    title
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/[. ]+$/g, '')
+      .trim()
+      .slice(0, 80) || '未命名项目';
+  const markerName = `项目-${safeTitle}.txt`;
+  const entries = await readdir(projectRoot, {withFileTypes: true}).catch(() => []);
+  await Promise.all(
+    entries
+      .filter(
+        (entry) =>
+          entry.isFile() &&
+          /^项目-.*\.txt$/u.test(entry.name) &&
+          entry.name !== markerName,
+      )
+      .map((entry) => rm(path.join(projectRoot, entry.name), {force: true})),
+  );
+  await writeFile(
+    path.join(projectRoot, markerName),
+    `项目标题：${title}\n项目 ID：${projectId}\n更新时间：${new Date().toLocaleString('zh-CN')}\n`,
     'utf8',
   );
 };
@@ -166,6 +196,11 @@ const localApi = (): Plugin => ({
                       const project = projectFileSchema.parse(
                         JSON.parse(await readFile(file, 'utf8')) as unknown,
                       );
+                      await syncProjectTitleMarker(
+                        path.join(projectsRoot, entry.name),
+                        entry.name,
+                        project.project.title,
+                      );
                       const assetLibraryPath = path.join(projectsRoot, entry.name, 'assets.json');
                       const assetCount = await readFile(assetLibraryPath, 'utf8')
                         .then(
@@ -223,6 +258,7 @@ const localApi = (): Plugin => ({
               `${JSON.stringify(sourceProject, null, 2)}\n`,
               'utf8',
             );
+            await syncProjectTitleMarker(destination, id, sourceProject.project.title);
             sendJson(response, 200, {id, title: sourceProject.project.title});
             return;
           }
@@ -369,6 +405,7 @@ const localApi = (): Plugin => ({
               `${JSON.stringify({version: 1, assets: []}, null, 2)}\n`,
               'utf8',
             );
+            await syncProjectTitleMarker(projectRoot, id, project.project.title);
             activeProjectId = id;
             sendJson(response, 201, {id, project});
             return;
@@ -397,6 +434,11 @@ const localApi = (): Plugin => ({
             const temporary = `${projectFile}.tmp`;
             await writeFile(temporary, `${JSON.stringify(parsed.data, null, 2)}\n`, 'utf8');
             await rename(temporary, projectFile);
+            await syncProjectTitleMarker(
+              projectRoot,
+              activeProjectId,
+              parsed.data.project.title,
+            );
             sendJson(response, 200, {savedAt: new Date().toISOString()});
             return;
           }
@@ -498,6 +540,11 @@ const localApi = (): Plugin => ({
             const temporary = `${projectFile}.tmp`;
             await writeFile(temporary, `${JSON.stringify(result.project, null, 2)}\n`, 'utf8');
             await rename(temporary, projectFile);
+            await syncProjectTitleMarker(
+              projectRoot,
+              activeProjectId,
+              result.project.project.title,
+            );
             sendJson(response, 200, result);
             return;
           }

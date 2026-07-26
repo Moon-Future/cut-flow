@@ -47,7 +47,7 @@ const defaults: AiSettings = {
 const settingsRoot = () =>
   process.env.CUT_FLOW_USER_DATA_ROOT
     ? path.resolve(process.env.CUT_FLOW_USER_DATA_ROOT)
-    : path.join(process.cwd(), '.cut-flow');
+    : path.join(process.cwd(), 'cut-flow-data');
 
 export const aiSettingsFile = () => path.join(settingsRoot(), 'ai-settings.json');
 
@@ -71,21 +71,27 @@ export const loadAiSettings = async (): Promise<AiSettings> => {
     const saved = JSON.parse(await readFile(aiSettingsFile(), 'utf8')) as Partial<AiSettings>;
     return mergeSettings(saved);
   } catch {
-    try {
-      const legacyFile = path.join(os.homedir(), '.cut-flow', 'ai-settings.json');
-      if (path.resolve(legacyFile) === path.resolve(aiSettingsFile())) return structuredClone(defaults);
-      const migrated = mergeSettings(
-        JSON.parse(await readFile(legacyFile, 'utf8')) as Partial<AiSettings>,
-      );
-      await mkdir(settingsRoot(), {recursive: true});
-      await writeFile(aiSettingsFile(), `${JSON.stringify(migrated, null, 2)}\n`, {
-        encoding: 'utf8',
-        mode: 0o600,
-      });
-      return migrated;
-    } catch {
-      return structuredClone(defaults);
+    const legacyFiles = [
+      path.join(path.dirname(settingsRoot()), '.cut-flow', 'ai-settings.json'),
+      path.join(os.homedir(), '.cut-flow', 'ai-settings.json'),
+    ];
+    for (const legacyFile of legacyFiles) {
+      try {
+        if (path.resolve(legacyFile) === path.resolve(aiSettingsFile())) continue;
+        const migrated = mergeSettings(
+          JSON.parse(await readFile(legacyFile, 'utf8')) as Partial<AiSettings>,
+        );
+        await mkdir(settingsRoot(), {recursive: true});
+        await writeFile(aiSettingsFile(), `${JSON.stringify(migrated, null, 2)}\n`, {
+          encoding: 'utf8',
+          mode: 0o600,
+        });
+        return migrated;
+      } catch {
+        // Try the next legacy location.
+      }
     }
+    return structuredClone(defaults);
   }
 };
 

@@ -30,19 +30,25 @@ export const loadTopicRecommendations = async (): Promise<SavedTopicRecommendati
       ? {...value, topics: value.topics.slice(0, 10)}
       : null;
   } catch {
-    try {
-      const legacyFile = path.join(os.homedir(), '.cut-flow', 'topic-recommendations.json');
-      if (path.resolve(legacyFile) === path.resolve(topicRecommendationsFile())) return null;
-      const value = JSON.parse(
-        await readFile(legacyFile, 'utf8'),
-      ) as SavedTopicRecommendations;
-      if (!Array.isArray(value.topics) || !value.topics.length) return null;
-      const migrated = {...value, topics: value.topics.slice(0, 10)};
-      await saveTopicRecommendations(migrated);
-      return migrated;
-    } catch {
-      return null;
+    const legacyFiles = [
+      path.join(path.dirname(path.dirname(topicRecommendationsFile())), '.cut-flow', 'topic-recommendations.json'),
+      path.join(os.homedir(), '.cut-flow', 'topic-recommendations.json'),
+    ];
+    for (const legacyFile of legacyFiles) {
+      try {
+        if (path.resolve(legacyFile) === path.resolve(topicRecommendationsFile())) continue;
+        const value = JSON.parse(
+          await readFile(legacyFile, 'utf8'),
+        ) as SavedTopicRecommendations;
+        if (!Array.isArray(value.topics) || !value.topics.length) continue;
+        const migrated = {...value, topics: value.topics.slice(0, 10)};
+        await saveTopicRecommendations(migrated);
+        return migrated;
+      } catch {
+        // Try the next legacy location.
+      }
     }
+    return null;
   }
 };
 

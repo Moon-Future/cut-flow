@@ -1,7 +1,7 @@
 node_modules/
 dist/
 out/
-.cut-flow/
+cut-flow-data/
 projects/
 .env
 .env.*
