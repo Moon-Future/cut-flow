@@ -5,6 +5,11 @@ import type {
   PixabaySearchResponse,
   PixabaySearchResult,
 } from '../../media/pixabay';
+import {
+  countVideoPromptCharacters,
+  limitVideoPrompt,
+  normalizeVideoPromptDuration,
+} from '../../ai/video-generation-prompt';
 import {useStudioStore} from '../store';
 
 type Props = {project: ProjectFile; projectId: string; onAssets: () => void};
@@ -158,7 +163,10 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
         : {
             provider: 'volcengine-pippit' as const,
             duration: videoDefaultDuration,
-            prompt: shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
+            prompt: normalizeVideoPromptDuration(
+              shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
+              videoDefaultDuration,
+            ),
           };
     setGeneratingVideoShotId(shot.id);
     setVideoGenerationError(null);
@@ -171,7 +179,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
           shotId: shot.id,
           provider: draft.provider,
           duration: draft.duration,
-          prompt: draft.prompt,
+          prompt: limitVideoPrompt(normalizeVideoPromptDuration(draft.prompt, draft.duration)),
         }),
       });
       const value = (await response.json()) as {
@@ -561,10 +569,12 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                     shotId: shot.id,
                     provider: 'volcengine-pippit',
                     duration: videoDefaultDuration,
-                    prompt:
+                    prompt: normalizeVideoPromptDuration(
                       (shot.videoPromptZh?.trim().length ?? 0) >= 260
                         ? shot.videoPromptZh!
                         : fallbackVideoPromptZh(shot),
+                      videoDefaultDuration,
+                    ),
                   });
                 }}
               >
@@ -600,6 +610,10 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                             setVideoDraft({
                               ...videoDraft,
                               duration: event.target.value as '～15s' | '～30s' | '40～60s',
+                              prompt: normalizeVideoPromptDuration(
+                                videoDraft.prompt,
+                                event.target.value as '～15s' | '～30s' | '40～60s',
+                              ),
                             })
                           }
                         >
@@ -616,16 +630,30 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                     <label className="final-video-prompt">
                       <span>
                         最终发送给视频模型的提示词
-                        <em>{videoDraft.prompt.length} / 2000</em>
+                        <em
+                          className={
+                            countVideoPromptCharacters(videoDraft.prompt) >= 1900
+                              ? 'near-limit'
+                              : ''
+                          }
+                        >
+                          {countVideoPromptCharacters(videoDraft.prompt)} / 2000，剩余{' '}
+                          {Math.max(0, 2000 - countVideoPromptCharacters(videoDraft.prompt))}
+                        </em>
                       </span>
                       <textarea
                         rows={12}
-                        maxLength={2000}
                         value={videoDraft.prompt}
                         onChange={(event) =>
-                          setVideoDraft({...videoDraft, prompt: event.target.value})
+                          setVideoDraft({
+                            ...videoDraft,
+                            prompt: limitVideoPrompt(event.target.value),
+                          })
                         }
                       />
+                      <small>
+                        字数必须不超过 2000；提示词过长可能导致接口异常或部分指令不生效。
+                      </small>
                     </label>
                     <div className="video-generation-footer">
                       <p>

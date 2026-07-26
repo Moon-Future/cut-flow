@@ -29,6 +29,7 @@ import {
   createOpenAIImageProvider,
 } from '../src/ai/media-provider';
 import {createVolcengineVideoProvider} from '../src/ai/volcengine-video-provider';
+import {limitVideoPrompt, normalizeVideoPromptDuration} from '../src/ai/video-generation-prompt';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 import type {
   PixabayMediaKind,
@@ -1056,6 +1057,16 @@ const localApi = (): Plugin => ({
               duration: input.duration ?? aiSettings.volcengineVideo.defaultDuration,
               enableWatermark: aiSettings.volcengineVideo.enableWatermark,
             });
+            const targetDuration = input.duration ?? aiSettings.volcengineVideo.defaultDuration;
+            const finalPrompt = limitVideoPrompt(
+              normalizeVideoPromptDuration(
+                input.prompt?.trim() ||
+                  shot.videoPromptZh ||
+                  shot.videoPrompt ||
+                  shot.visualPurpose,
+                targetDuration,
+              ),
+            );
             const task = {
               id: `task-${randomUUID()}`,
               kind: 'image-to-video' as const,
@@ -1075,7 +1086,7 @@ const localApi = (): Plugin => ({
             void provider
               .generate({
                 ...shot,
-                videoPromptZh: input.prompt?.trim().slice(0, 2000) || shot.videoPromptZh,
+                videoPromptZh: finalPrompt,
               })
               .then(async (candidates) => {
                 const latest = projectFileSchema.parse(
@@ -1108,11 +1119,7 @@ const localApi = (): Plugin => ({
                     createdAt: candidate.createdAt,
                     keywords: latestShot.searchQueries,
                     duration:
-                      (input.duration ?? aiSettings.volcengineVideo.defaultDuration) === '～15s'
-                        ? 15
-                        : (input.duration ?? aiSettings.volcengineVideo.defaultDuration) === '～30s'
-                          ? 30
-                          : 50,
+                      targetDuration === '～15s' ? 15 : targetDuration === '～30s' ? 30 : 50,
                   })),
                 );
                 await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');

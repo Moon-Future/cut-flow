@@ -1,0 +1,25 @@
+export type VideoTargetDuration = '～15s' | '～30s' | '40～60s';
+
+export const videoDurationLabel = (duration: VideoTargetDuration) =>
+  duration === '～15s' ? '约 15 秒' : duration === '～30s' ? '约 30 秒' : '40～60 秒';
+
+export const normalizeVideoPromptDuration = (
+  prompt: string,
+  duration: VideoTargetDuration,
+): string => {
+  const cleaned = prompt
+    .replace(/^【目标输出时长】[^\n]*\n?/u, '')
+    .replace(
+      /(?:视频)?(?:总)?时长\s*(?:控制在|设置为|设为|为|约|：|:)?\s*\d+(?:\.\d+)?\s*(?:～|-|至)?\s*\d*(?:\.\d+)?\s*秒[，。；;]?/giu,
+      '',
+    )
+    .replace(/(?:approximately|about)\s+\d+(?:\.\d+)?\s+seconds?[,.]?/giu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return `【目标输出时长】${videoDurationLabel(duration)}。以接口 duration 参数为准，不要采用正文中的其他总时长描述。\n${cleaned}`;
+};
+
+export const limitVideoPrompt = (prompt: string, maximum = 2000) =>
+  Array.from(prompt).slice(0, maximum).join('');
+
+export const countVideoPromptCharacters = (prompt: string) => Array.from(prompt).length;

@@ -2,6 +2,7 @@ import {createHash, createHmac, randomUUID} from 'node:crypto';
 import {mkdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import type {GenerationCandidate, VisualShot} from '../core/schema';
+import {limitVideoPrompt} from './video-generation-prompt';
 
 const endpoint = 'https://visual.volcengineapi.com';
 const region = 'cn-north-1';
@@ -102,13 +103,12 @@ export const createVolcengineVideoProvider = (config: Config) => {
     id: 'volcengine-pippit-video',
     model: reqKey,
     generate: async (shot: VisualShot): Promise<GenerationCandidate[]> => {
-      const prompt = (shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose)
-        .trim()
-        .slice(0, 2000);
+      const prompt = (shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose).trim();
+      const limitedPrompt = limitVideoPrompt(prompt);
       if (!prompt) throw new Error('视频提示词不能为空');
       const created = await requestApi(request, config, 'CVSync2AsyncSubmitTask', {
         req_key: reqKey,
-        prompt,
+        prompt: limitedPrompt,
         ratio: config.ratio,
         duration: config.duration ?? '～15s',
         language: 'Chinese',
@@ -149,7 +149,7 @@ export const createVolcengineVideoProvider = (config: Config) => {
             path: path.posix.join(relativeDirectory, filename),
             provider: 'volcengine-pippit-video',
             model: reqKey,
-            prompt,
+            prompt: limitedPrompt,
             createdAt: new Date().toISOString(),
           },
         ];

@@ -4844,6 +4844,13 @@ select:focus {
   color: #786c94;
   font-style: normal;
 }
+.final-video-prompt em.near-limit {
+  color: #ef9d6b;
+}
+.final-video-prompt > small {
+  color: #81758e;
+  font-size: 9px;
+}
 .video-generation-footer {
   display: flex;
   align-items: center;
