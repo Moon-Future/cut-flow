@@ -215,63 +215,6 @@ export const ProjectDashboard = ({
         </footer>
       </section>
 
-      <div className="dashboard-lower">
-        <section className="current-project-card">
-          <header>
-            <div>
-              <strong>当前项目</strong>
-              <span>继续上次的制作进度</span>
-            </div>
-            <button onClick={() => onNavigate('edit')}>进入剪辑 →</button>
-          </header>
-          <h2>{project.project.title}</h2>
-          <p>{project.content?.topic || project.project.title}</p>
-          <div>
-            <button onClick={() => onNavigate('content')}>
-              <b>01</b>
-              <span>
-                视频文案<small>审核口播内容</small>
-              </span>
-            </button>
-            <button onClick={() => onNavigate('storyboard')}>
-              <b>02</b>
-              <span>
-                脚本与分镜<small>完善镜头画面</small>
-              </span>
-            </button>
-            <button onClick={() => onNavigate('edit')}>
-              <b>03</b>
-              <span>
-                剪辑工作台<small>素材与时间线</small>
-              </span>
-            </button>
-          </div>
-        </section>
-        <section className="quick-start">
-          <header>
-            <strong>快速开始</strong>
-            <span>当前项目</span>
-          </header>
-          <div>
-            <button onClick={() => onNavigate('content')}>
-              <i>AI</i>
-              <span>生成文案</span>
-            </button>
-            <button onClick={() => onNavigate('assets')}>
-              <i>＋</i>
-              <span>导入素材</span>
-            </button>
-            <button onClick={() => onNavigate('voice')}>
-              <i>◉</i>
-              <span>生成配音</span>
-            </button>
-            <button onClick={() => onNavigate('edit')}>
-              <i>✂</i>
-              <span>继续剪辑</span>
-            </button>
-          </div>
-        </section>
-      </div>
     </section>
   );
 };

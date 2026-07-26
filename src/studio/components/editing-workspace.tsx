@@ -167,7 +167,7 @@ export const EditingWorkspace = ({
       />
 
       <main className={`edit-main ${section === 'edit' ? '' : 'stage-mode'}`}>
-        <header className="edit-header">
+        {section !== 'overview' ? <header className="edit-header">
           <div>
             <button onClick={onNewProject}>我的项目</button>
             <span>/</span>
@@ -192,7 +192,7 @@ export const EditingWorkspace = ({
               </>
             ) : null}
           </div>
-        </header>
+        </header> : null}
 
         {section === 'edit' ? (
           <>
