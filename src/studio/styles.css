@@ -2979,12 +2979,38 @@ select:focus {
   color: #798497;
   font-size: 11px;
 }
-.create-heading > button {
-  border: 0;
-  background: transparent;
-  color: #d6dae4;
-  font-size: 26px;
+.create-heading-actions {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.create-heading-actions button {
+  height: 42px;
+  border-radius: 9px;
   cursor: pointer;
+}
+.create-heading-actions .back {
+  padding: 0 14px;
+  border: 1px solid #363f52;
+  background: #131925;
+  color: #b8c1d0;
+}
+.create-heading-actions .close {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  padding: 0;
+  border: 1px solid #443a51;
+  background: #1a1620;
+  color: #e1dce8;
+  font-size: 30px !important;
+  line-height: 1;
+}
+.create-heading-actions .close:hover,
+.create-heading-actions .back:hover {
+  border-color: #7557ad;
+  background: #211a31;
+  color: #fff;
 }
 .create-layout {
   max-width: 1320px;

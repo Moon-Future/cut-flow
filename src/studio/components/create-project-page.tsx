@@ -123,9 +123,14 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
           <h1>新建项目</h1>
           <p>从一个好点子开始，快速生成你的第一条视频</p>
         </div>
-        <button onClick={onClose} aria-label="关闭">
-          ×
-        </button>
+        <div className="create-heading-actions">
+          <button className="back" onClick={onClose}>
+            ← 返回项目概览
+          </button>
+          <button className="close" onClick={onClose} aria-label="关闭新建项目页面">
+            ×
+          </button>
+        </div>
       </header>
       <div className="create-layout">
         <nav className="create-steps">

@@ -173,7 +173,7 @@ export const EditingWorkspace = ({
       >
         {section !== 'overview' ? <header className="edit-header">
           <div>
-            <button onClick={onNewProject}>我的项目</button>
+            <button onClick={() => onNavigate('overview')}>我的项目</button>
             <span>/</span>
             <strong>{project.project.title}</strong>
           </div>

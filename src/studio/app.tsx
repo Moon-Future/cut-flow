@@ -138,7 +138,10 @@ export const App = () => {
           if (startInContent) setSection('content');
         }}
         onClose={() => {
-          if (project) setShowProjects(false);
+          if (project) {
+            setSection('overview');
+            setShowProjects(false);
+          }
         }}
         onNavigate={(value) => {
           if (value === 'overview') setShowProjects(true);
