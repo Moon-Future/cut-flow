@@ -198,10 +198,9 @@ export const GenerationPanel = ({
           <label>
             <span>目标字数</span>
             <input
-              type="number"
-              min={100}
-              max={5000}
-              step={100}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={targetWordCount}
               onChange={(event) => setTargetWordCount(event.target.value.replace(/[^\d]/g, ''))}
               onBlur={() =>
