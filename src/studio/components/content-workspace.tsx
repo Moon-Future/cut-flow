@@ -96,34 +96,18 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
               ))}
             </select>
           </label>
-          <div className="form-pair">
-            <label>
-              <span>目标时长</span>
-              <select
-                value={project.project.durationTarget ?? 60}
-                onChange={(event) =>
-                  updateProjectSettings({durationTarget: Number(event.target.value)})
-                }
-              >
-                <option value={30}>30 秒</option>
-                <option value={60}>60 秒</option>
-                <option value={90}>90 秒</option>
-                <option value={180}>3 分钟</option>
-              </select>
-            </label>
-            <label>
-              <span>叙事语气</span>
-              <select
-                value={project.style.tone ?? '自然清晰'}
-                onChange={(event) => updateStyle({tone: event.target.value})}
-              >
-                <option>自然清晰</option>
-                <option>轻松幽默</option>
-                <option>专业严谨</option>
-                <option>情绪故事感</option>
-              </select>
-            </label>
-          </div>
+          <label>
+            <span>叙事语气</span>
+            <select
+              value={project.style.tone ?? '自然清晰'}
+              onChange={(event) => updateStyle({tone: event.target.value})}
+            >
+              <option>自然清晰</option>
+              <option>轻松幽默</option>
+              <option>专业严谨</option>
+              <option>情绪故事感</option>
+            </select>
+          </label>
           <label>
             <span>核心观点</span>
             <textarea
@@ -145,7 +129,6 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
             generationContext={{
               topic: project.content?.topic?.trim() || project.project.title,
               videoType: project.content?.videoType ?? 'science-explainer',
-              targetDuration: project.project.durationTarget ?? 60,
               tone: project.style.tone ?? '自然清晰',
               platformLabel:
                 platformLabels[project.project.platform ?? 'douyin'] ?? '自定义平台',

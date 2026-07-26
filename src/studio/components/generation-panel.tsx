@@ -12,7 +12,6 @@ type Props = {
   generationContext?: {
     topic: string;
     videoType: VideoType;
-    targetDuration: number;
     tone: string;
     platformLabel?: string;
   };
@@ -54,7 +53,7 @@ export const GenerationPanel = ({
     {id: 'deepseek', name: 'DeepSeek', enabled: false, configured: false},
     {id: 'doubao', name: '豆包', enabled: false, configured: false},
   ]);
-  const [targetDuration, setTargetDuration] = useState(30);
+  const [targetWordCount, setTargetWordCount] = useState(500);
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
@@ -92,9 +91,8 @@ export const GenerationPanel = ({
   const generate = async () => {
     const effectiveTopic = generationContext?.topic ?? topic;
     const effectiveVideoType = generationContext?.videoType ?? videoType;
-    const effectiveDuration = generationContext?.targetDuration ?? targetDuration;
     setStatus('running');
-    setMessage('正在生成脚本、配音和词级字幕…');
+    setMessage('正在生成文案…');
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -103,7 +101,7 @@ export const GenerationPanel = ({
           topic: effectiveTopic,
           customPrompt,
           provider,
-          targetDuration: effectiveDuration,
+          targetWordCount,
           videoType: effectiveVideoType,
           audience: '短视频平台的普通观众',
           tone: generationContext?.tone ?? '清晰、有画面感、节奏紧凑',
@@ -113,12 +111,10 @@ export const GenerationPanel = ({
       const value = (await response.json()) as {
         project?: ProjectFile;
         cacheHit?: boolean;
-        audioGenerated?: boolean;
         error?: string;
       };
       if (!response.ok || !value.project) throw new Error(value.error ?? '生成失败');
       onGenerated(value.project);
-      if (value.audioGenerated) onAudioReady();
       setStatus('success');
       const providerName =
         provider === 'mock'
@@ -129,7 +125,7 @@ export const GenerationPanel = ({
               ? 'DeepSeek'
               : '豆包';
       setMessage(
-        `${providerName} 文案生成完成${value.audioGenerated ? '，已生成配音与字幕' : '，已根据文本生成字幕时间轴'}，可继续编辑或再次生成`,
+        `${providerName} 文案生成完成，可继续编辑或再次生成。字幕和音频将在后续步骤单独生成`,
       );
     } catch (error) {
       setStatus('error');
@@ -142,8 +138,8 @@ export const GenerationPanel = ({
       <button className="generation-toggle" onClick={() => setOpen((value) => !value)}>
         <span>AI</span>
         <div>
-          <strong>生成文案与脚本</strong>
-          <small>口播文案 · 脚本段落 · 分镜 · 配音</small>
+          <strong>生成视频文案</strong>
+          <small>仅生成可编辑文案，不生成字幕和音频</small>
         </div>
         <b>{open ? '−' : '+'}</b>
       </button>
@@ -155,11 +151,10 @@ export const GenerationPanel = ({
               <div>
                 <b>{generationContext.topic || '请先填写选题与内容方向'}</b>
                 <em>{videoTypeLabels[generationContext.videoType]}</em>
-                <em>{generationContext.targetDuration} 秒</em>
                 <em>{generationContext.tone}</em>
                 {generationContext.platformLabel ? <em>{generationContext.platformLabel}</em> : null}
               </div>
-              <small>如需修改主题、类型、时长或语气，请在左侧“内容设定”中调整。</small>
+              <small>如需修改主题、类型或语气，请在左侧“内容设定”中调整。</small>
             </div>
           ) : (
             <label>
@@ -177,6 +172,20 @@ export const GenerationPanel = ({
               placeholder="补充文案结构、语气、重点、禁用内容等要求"
             />
           </label>
+          <label>
+            <span>目标字数</span>
+            <input
+              type="number"
+              min={100}
+              max={5000}
+              step={100}
+              value={targetWordCount}
+              onChange={(event) =>
+                setTargetWordCount(Math.max(100, Math.min(5000, Number(event.target.value) || 500)))
+              }
+            />
+            <small className="word-count-help">默认约 500 字，AI 可在目标值上下浮动 10%</small>
+          </label>
           {!generationContext ? (
             <div className="field-row">
             <label>
@@ -190,17 +199,6 @@ export const GenerationPanel = ({
                 <option value="digital-human">数字人口播</option>
                 <option value="product-showcase">产品展示</option>
                 <option value="storytelling">故事叙事</option>
-              </select>
-            </label>
-            <label>
-              <span>目标时长</span>
-              <select
-                value={targetDuration}
-                onChange={(event) => setTargetDuration(Number(event.target.value))}
-              >
-                <option value={30}>30 秒</option>
-                <option value={45}>45 秒</option>
-                <option value={60}>60 秒</option>
               </select>
             </label>
           </div>
@@ -236,14 +234,14 @@ export const GenerationPanel = ({
             onClick={() => void generate()}
           >
             {status === 'running'
-              ? '正在生成文案、脚本与分镜…'
+              ? '正在生成文案…'
               : status === 'success'
                 ? '再次生成'
                 : '按提示词生成'}
           </button>
           {message ? <p className={`generation-message ${status}`}>{message}</p> : null}
           <small className="provider-note">
-            只有点击按钮才会调用 AI。再次生成会覆盖当前文案，已编辑内容请先确认；Mock 模式不会消耗 Token。
+            只有点击按钮才会调用 AI。每次结果都会保留为历史版本；本地演示模式不会消耗 Token。
           </small>
         </div>
       ) : null}

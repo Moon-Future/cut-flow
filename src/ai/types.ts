@@ -5,7 +5,7 @@ export type GenerateInput = {
   customPrompt?: string;
   audience: string;
   tone: string;
-  targetDuration: number;
+  targetWordCount: number;
   videoType: VideoType;
 };
 

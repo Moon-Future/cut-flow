@@ -342,7 +342,9 @@ const localApi = (): Plugin => ({
             if (
               !input.topic?.trim() ||
               !['mock', 'openai', 'deepseek', 'doubao'].includes(input.provider) ||
-              !Number.isFinite(input.targetDuration)
+              !Number.isFinite(input.targetWordCount) ||
+              input.targetWordCount < 100 ||
+              input.targetWordCount > 5000
             ) {
               sendJson(response, 400, {error: '生成参数不完整'});
               return;

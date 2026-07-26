@@ -111,7 +111,7 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
 视频类型：${videoTypeLabels[input.videoType]}
 受众：${input.audience}
 语气：${input.tone}
-目标时长：${input.targetDuration}秒
+目标字数：约 ${input.targetWordCount} 个中文字符（允许上下浮动 10%）
 
 用户补充要求：
 ${input.customPrompt?.trim() || '从标题提炼核心观点，开头快速建立悬念，正文层层推进，结尾给出明确收束。'}

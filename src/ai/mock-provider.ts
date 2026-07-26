@@ -21,7 +21,7 @@ const createSilentWav = (durationSeconds: number, sampleRate = 24000): Buffer =>
 };
 
 const mockScript = (input: GenerateInput): VideoScript => {
-  const duration = Math.max(3, input.targetDuration / 3);
+  const duration = Math.min(30, Math.max(3, input.targetWordCount / 12));
   const isSky = input.topic.includes('天空') && input.topic.includes('蓝');
   const shot = (visualPurpose: string, searchQueries: string[], animation = false) => ({
     visualPurpose,

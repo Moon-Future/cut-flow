@@ -8,18 +8,12 @@ import {createOpenAIProviders} from './openai-provider';
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, VideoScript} from './types';
 import type {AiProviderId, AiProviderSetting} from './settings';
-import {distributeWords} from './text-utils';
 
 export type WorkflowInput = GenerateInput & {
   provider: 'mock' | AiProviderId;
   forceRegenerate?: boolean;
 };
-export type WorkflowResult = {
-  project: ProjectFile;
-  cacheHit: boolean;
-  provider: string;
-  audioGenerated: boolean;
-};
+export type WorkflowResult = {project: ProjectFile; cacheHit: boolean; provider: string};
 
 const cacheKey = (input: WorkflowInput): string =>
   createHash('sha256')
@@ -31,7 +25,7 @@ const providersFor = (
   input: WorkflowInput,
   providerSetting?: AiProviderSetting,
 ): ProviderSet => {
-  if (input.provider === 'mock') return createMockProviders(input.targetDuration);
+  if (input.provider === 'mock') return createMockProviders(Math.max(10, input.targetWordCount / 4));
   const apiKey =
     providerSetting?.apiKey ||
     providerSetting?.secretKey ||
@@ -47,7 +41,7 @@ const providersFor = (
     disableThinking: input.provider === 'deepseek',
   });
   if (input.provider === 'openai') return remote;
-  const localAudio = createMockProviders(input.targetDuration);
+  const localAudio = createMockProviders(Math.max(10, input.targetWordCount / 4));
   return {...localAudio, text: remote.text};
 };
 
@@ -80,26 +74,13 @@ export const runGenerationWorkflow = async (
 ): Promise<WorkflowResult> => {
   const providers = providersFor(input, providerSetting);
   const cacheRoot = path.join(projectRoot, 'cache');
-  const audioRoot = path.join(projectRoot, 'audio');
   await mkdir(cacheRoot, {recursive: true});
-  await mkdir(audioRoot, {recursive: true});
 
   const {script, cacheHit} = await loadOrGenerateScript(input, providers, cacheRoot);
-  const narration = script.scenes.map((scene) => scene.narration).join(' ');
-  const audioGenerated = input.provider === 'openai' || input.provider === 'mock';
-  const transcript = audioGenerated
-    ? await providers.tts.synthesize(narration).then(async (audio) => {
-        const audioPath = path.join(audioRoot, 'narration.wav');
-        await writeFile(audioPath, audio.audio);
-        return providers.transcription.transcribe(audio.audio, narration);
-      })
-    : distributeWords(narration, input.targetDuration);
   const assetLibrary = await readFile(path.join(projectRoot, 'assets.json'), 'utf8')
     .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown).assets)
     .catch(() => []);
 
-  const suggestedTotal = script.scenes.reduce((sum, scene) => sum + scene.suggestedDuration, 0);
-  let cursor = 0;
   const existingAssets = currentProject.scenes.map((scene) => ({
     assetPath: scene.assetPath,
     assetType: scene.assetType,
@@ -107,18 +88,7 @@ export const runGenerationWorkflow = async (
     motion: scene.motion,
   }));
   const scenes = script.scenes.map((scene, index) => {
-    const duration = input.targetDuration * (scene.suggestedDuration / suggestedTotal);
-    const start = cursor;
-    const end = cursor + duration;
-    const words = transcript
-      .filter((word) => (word.start + word.end) / 2 >= start && (word.start + word.end) / 2 < end)
-      .map((word) => ({
-        text: word.text,
-        start: Math.max(0, word.start - start),
-        end: Math.min(duration, word.end - start),
-      }))
-      .filter((word) => word.end > word.start);
-    cursor = end;
+    const duration = Math.max(1.5, [...scene.narration].length / 4);
     const matchedAsset = matchAsset(assetLibrary, scene.visualPrompt);
     const fallbackVisual = existingAssets[index % Math.max(1, existingAssets.length)] ?? {
       assetPath: 'assets/scene-01.svg' as const,
@@ -160,7 +130,6 @@ export const runGenerationWorkflow = async (
       caption: scene.caption,
       assetQuery: scene.visualPrompt,
       duration: Math.max(0.5, duration),
-      words,
       visualIntent: scene.visualIntent,
       shots,
       ...visual,
@@ -186,7 +155,6 @@ export const runGenerationWorkflow = async (
       project: {
         ...currentProject.project,
         title: script.title,
-        durationTarget: input.targetDuration,
       },
       content: {
         topic: input.topic,
@@ -195,13 +163,12 @@ export const runGenerationWorkflow = async (
         ending: script.ending,
       },
       style: {...currentProject.style, captionAnimation: 'fade'},
-      narrationAudio: audioGenerated ? 'audio/narration.wav' : null,
+      narrationAudio: null,
       scenes,
       copyVersions: [...(currentProject.copyVersions ?? []), copyVersion],
       activeCopyVersionId: versionId,
     },
     cacheHit,
     provider: input.provider,
-    audioGenerated,
   };
 };

@@ -1,4 +1,4 @@
-import {mkdtemp, readFile, rm} from 'node:fs/promises';
+import {access, mkdtemp, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {afterEach, describe, expect, it} from 'vitest';
@@ -49,7 +49,7 @@ describe('generation workflow', () => {
       topic: '如何完成独立项目',
       audience: '开发者',
       tone: '真诚',
-      targetDuration: 30,
+      targetWordCount: 500,
     };
 
     const first = await runGenerationWorkflow(input, baseProject, projectRoot);
@@ -69,15 +69,14 @@ describe('generation workflow', () => {
       projectRoot,
     );
     expect(regenerated.project.copyVersions).toHaveLength(2);
-    expect(first.project.scenes.every((scene) => (scene.words?.length ?? 0) > 0)).toBe(true);
+    expect(first.project.scenes.every((scene) => scene.words === undefined)).toBe(true);
     expect(first.project.scenes.every((scene) => (scene.shots?.length ?? 0) > 0)).toBe(true);
     expect(
       first.project.scenes.flatMap((scene) => scene.shots ?? [])[0]?.searchQueries.length,
     ).toBeGreaterThan(0);
-    expect(first.project.scenes.reduce((sum, scene) => sum + scene.duration, 0)).toBeCloseTo(30);
-    expect(
-      (await readFile(path.join(projectRoot, 'audio', 'narration.wav'))).subarray(0, 4).toString(),
-    ).toBe('RIFF');
+    expect(first.project.scenes.reduce((sum, scene) => sum + scene.duration, 0)).toBeGreaterThan(0);
+    await expect(access(path.join(projectRoot, 'audio', 'narration.wav'))).rejects.toThrow();
+    expect(first.project.narrationAudio).toBeNull();
   });
 
   it('creates a multi-shot science plan for the blue sky topic', async () => {
@@ -90,7 +89,7 @@ describe('generation workflow', () => {
         topic: '为什么天空是蓝色？',
         audience: '大众',
         tone: '轻松科普',
-        targetDuration: 90,
+        targetWordCount: 800,
       },
       baseProject,
       projectRoot,
