@@ -2119,6 +2119,19 @@ select:focus {
   margin: 0;
   color: #7d8799;
 }
+.stage-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.stage-heading-actions .secondary-button {
+  padding: 9px 14px;
+  border: 1px solid #39445a;
+  border-radius: 7px;
+  background: #151b27;
+  color: #aab4c5;
+  cursor: pointer;
+}
 .stage-metrics {
   max-width: 1280px;
   margin: 0 auto 18px;
@@ -4556,6 +4569,53 @@ select:focus {
 .shot-editor-list article > header span.ready {
   background: #17362e;
   color: #65d5ae;
+}
+.online-material-search {
+  padding: 11px;
+  border: 1px solid #315346;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #10221e, #0c1818);
+}
+.online-material-search-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.online-material-search-heading strong,
+.online-material-search-heading span {
+  display: block;
+}
+.online-material-search-heading strong {
+  color: #d7eee7;
+  font-size: 11px;
+}
+.online-material-search-heading span {
+  margin-top: 4px;
+  color: #76948a;
+  font-size: 9px;
+}
+.online-material-search-heading > div:last-child {
+  display: flex;
+  gap: 7px;
+}
+.online-material-search-heading button {
+  padding: 7px 10px;
+  border: 1px solid #3c806e;
+  border-radius: 7px;
+  background: #174034;
+  color: #8ae8ca;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.online-material-results {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #29443b;
+}
+.online-material-results .pixabay-grid {
+  margin-top: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .shot-assets {
   display: grid;

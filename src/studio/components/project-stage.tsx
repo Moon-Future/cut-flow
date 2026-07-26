@@ -31,6 +31,14 @@ const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]>
   settings: ['设置', '配置本机 AI 服务与密钥'],
 };
 
+const previousSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
+  content: 'overview',
+  storyboard: 'content',
+  voice: 'storyboard',
+  assets: 'voice',
+  export: 'edit',
+};
+
 export const ProjectStage = ({
   section,
   project,
@@ -56,24 +64,34 @@ export const ProjectStage = ({
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
-          {section !== 'export' ? (
-            <button
-              className="primary-button"
-              onClick={() =>
-                onNavigate(
-                  section === 'assets'
-                    ? 'edit'
-                    : section === 'storyboard'
-                      ? 'voice'
-                      : section === 'content'
-                        ? 'storyboard'
-                        : 'assets',
-                )
-              }
-            >
-              下一步 →
-            </button>
-          ) : null}
+          <div className="stage-heading-actions">
+            {previousSection[section] ? (
+              <button
+                className="secondary-button"
+                onClick={() => onNavigate(previousSection[section]!)}
+              >
+                ← 上一步
+              </button>
+            ) : null}
+            {section !== 'export' ? (
+              <button
+                className="primary-button"
+                onClick={() =>
+                  onNavigate(
+                    section === 'assets'
+                      ? 'edit'
+                      : section === 'storyboard'
+                        ? 'voice'
+                        : section === 'content'
+                          ? 'storyboard'
+                          : 'assets',
+                  )
+                }
+              >
+                下一步 →
+              </button>
+            ) : null}
+          </div>
         </header>
       ) : null}
 

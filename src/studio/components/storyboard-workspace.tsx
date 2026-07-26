@@ -1,4 +1,10 @@
+import {useState} from 'react';
 import type {ProjectFile, VisualShot} from '../../core/schema';
+import type {
+  PixabayMediaKind,
+  PixabaySearchResponse,
+  PixabaySearchResult,
+} from '../../media/pixabay';
 import {useStudioStore} from '../store';
 
 type Props = {project: ProjectFile; projectId: string; onAssets: () => void};
@@ -6,6 +12,15 @@ const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 
 export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
   const {selectedSceneId, selectScene, updateScene, updateVisualShot} = useStudioStore();
+  const [onlineSearch, setOnlineSearch] = useState<{
+    shotId: string;
+    query: string;
+    kind: PixabayMediaKind;
+    loading: boolean;
+    downloadingId?: string;
+    results: PixabaySearchResult[];
+    error?: string;
+  } | null>(null);
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
   const selectedIndex = project.scenes.findIndex((scene) => scene.id === selected.id);
@@ -18,6 +33,73 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     `${aspectRatio} 画面，${shot.visualPurpose || chineseSceneDescription}。主体位置清晰，完整呈现场景环境、关键物体和动作定格；使用稳定构图、层次明确的光线和统一色彩，采用适合内容表达的景别，高细节，为后续动态效果留出空间，不要文字、字幕、标志和水印。`;
   const fallbackVideoPromptZh = (shot: VisualShot) =>
     `${aspectRatio} 画面，约 ${Math.max(3, Math.min(8, shot.duration || 5))} 秒。初始画面展示${shot.visualPurpose || chineseSceneDescription}，主体短暂停顿后完成与旁白对应的自然动作，环境产生轻微动态；镜头先稳定建立场景，再缓慢推近或平滑横移。保持主体、物体、光线、色彩和空间布局一致，不要文字、字幕、标志和水印。`;
+
+  const searchOnline = async (
+    shot: VisualShot,
+    kind: PixabayMediaKind,
+    query = shot.searchQueries[0] || shot.visualPurpose,
+  ) => {
+    setOnlineSearch({shotId: shot.id, query, kind, loading: true, results: []});
+    try {
+      const response = await fetch('/api/pixabay/search', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sceneId: selected.id, shotId: shot.id, query, kind}),
+      });
+      const value = (await response.json()) as PixabaySearchResponse & {error?: string};
+      if (!response.ok) throw new Error(value.error ?? '在线素材搜索失败');
+      setOnlineSearch({
+        shotId: shot.id,
+        query: value.query,
+        kind: value.kind,
+        loading: false,
+        results: value.results,
+      });
+    } catch (error) {
+      setOnlineSearch({
+        shotId: shot.id,
+        query,
+        kind,
+        loading: false,
+        results: [],
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  const downloadOnline = async (shot: VisualShot, result: PixabaySearchResult) => {
+    if (!onlineSearch) return;
+    setOnlineSearch({...onlineSearch, downloadingId: result.id, error: undefined});
+    try {
+      const response = await fetch('/api/pixabay/download', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          sceneId: selected.id,
+          shotId: shot.id,
+          query: onlineSearch.query,
+          result,
+        }),
+      });
+      const value = (await response.json()) as {
+        assetPath?: string;
+        shot?: VisualShot;
+        error?: string;
+      };
+      if (!response.ok || !value.assetPath || !value.shot) {
+        throw new Error(value.error ?? '素材下载失败');
+      }
+      updateVisualShot(selected.id, shot.id, value.shot);
+      updateScene(selected.id, {assetPath: value.assetPath, assetType: result.kind});
+      setOnlineSearch({...onlineSearch, downloadingId: undefined});
+    } catch (error) {
+      setOnlineSearch({
+        ...onlineSearch,
+        downloadingId: undefined,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
 
   return (
     <section className="storyboard-studio">
@@ -152,6 +234,85 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   }
                 />
               </label>
+              <div className="online-material-search">
+                <div className="online-material-search-heading">
+                  <div>
+                    <strong>在线搜索素材</strong>
+                    <span>使用上方英文搜索词从 Pixabay 查找图片或视频</span>
+                  </div>
+                  <div>
+                    <button type="button" onClick={() => void searchOnline(shot, 'image')}>
+                      搜索图片
+                    </button>
+                    <button type="button" onClick={() => void searchOnline(shot, 'video')}>
+                      搜索视频
+                    </button>
+                  </div>
+                </div>
+                {onlineSearch?.shotId === shot.id ? (
+                  <div className="online-material-results">
+                    <div className="pixabay-search-row">
+                      <input
+                        aria-label="在线素材搜索词"
+                        value={onlineSearch.query}
+                        onChange={(event) =>
+                          setOnlineSearch({...onlineSearch, query: event.target.value})
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void searchOnline(shot, onlineSearch.kind, onlineSearch.query);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={onlineSearch.loading || !onlineSearch.query.trim()}
+                        onClick={() =>
+                          void searchOnline(shot, onlineSearch.kind, onlineSearch.query)
+                        }
+                      >
+                        {onlineSearch.loading ? '搜索中…' : '重新搜索'}
+                      </button>
+                    </div>
+                    {onlineSearch.error ? (
+                      <p className="candidate-error">{onlineSearch.error}</p>
+                    ) : null}
+                    {!onlineSearch.loading && onlineSearch.results.length ? (
+                      <div className="pixabay-grid">
+                        {onlineSearch.results.map((result) => (
+                          <article className="pixabay-card" key={`${result.kind}-${result.id}`}>
+                            <img src={result.previewUrl} alt={`${result.author} 的素材预览`} />
+                            <div>
+                              <strong>
+                                {result.kind === 'image' ? '图片' : '视频'} · {result.width}×
+                                {result.height}
+                              </strong>
+                              <span>{result.author}</span>
+                            </div>
+                            <div className="pixabay-card-actions">
+                              <a href={result.pageUrl} target="_blank" rel="noreferrer">
+                                查看来源
+                              </a>
+                              <button
+                                type="button"
+                                disabled={Boolean(onlineSearch.downloadingId)}
+                                onClick={() => void downloadOnline(shot, result)}
+                              >
+                                {onlineSearch.downloadingId === result.id
+                                  ? '下载中…'
+                                  : '下载并使用'}
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : !onlineSearch.loading && !onlineSearch.error ? (
+                      <div className="pixabay-empty">没有找到素材，请更换英文搜索词</div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
               <label>
                 <span>图片提示词（中文展示）</span>
                 <textarea
