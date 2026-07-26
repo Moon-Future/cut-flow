@@ -29,6 +29,52 @@ const request = async (url: string, apiKey: string, init: RequestInit): Promise<
   return response;
 };
 
+const scriptFieldLabels: Record<string, string> = {
+  title: '标题',
+  hook: '开场钩子',
+  scenes: '文案段落',
+  segmentType: '段落类型',
+  narration: '旁白文案',
+  caption: '段落标题',
+  visualPrompt: '画面描述',
+  suggestedDuration: '建议时长',
+  visualIntent: '画面意图',
+  shots: '分镜素材',
+  visualPurpose: '画面用途',
+  shotType: '镜头类型',
+  assetStrategy: '素材策略',
+  durationWeight: '时长权重',
+  searchQueries: '素材搜索词',
+  ending: '结尾文案',
+};
+
+const formatScriptValidationError = (
+  issues: Array<{path: PropertyKey[]; code: string}>,
+): string => {
+  const grouped = new Map<string, number[]>();
+  const generalFields = new Set<string>();
+  for (const issue of issues) {
+    const path = issue.path.map(String);
+    const sceneIndex = path[0] === 'scenes' && /^\d+$/.test(path[1] ?? '')
+      ? Number(path[1])
+      : null;
+    const field = path.at(-1) ?? 'scenes';
+    if (sceneIndex === null) {
+      generalFields.add(scriptFieldLabels[field] ?? field);
+      continue;
+    }
+    const key = `${issue.code === 'too_small' ? '缺少' : '格式不正确'}“${scriptFieldLabels[field] ?? field}”`;
+    grouped.set(key, [...(grouped.get(key) ?? []), sceneIndex + 1]);
+  }
+  const details = [
+    ...[...grouped].map(
+      ([problem, indexes]) => `第 ${[...new Set(indexes)].join('、')} 段${problem}`,
+    ),
+    ...[...generalFields].map((field) => `“${field}”缺失或格式不正确`),
+  ];
+  return `AI 返回的文案结构不完整：${details.slice(0, 4).join('；') || '存在缺失字段'}。请重新生成，或调整补充要求后再试。`;
+};
+
 const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknown => {
   const allowDigitalHuman = input.videoType === 'digital-human';
   if (!value || typeof value !== 'object') return value;
@@ -95,6 +141,13 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
       return {
         ...scene,
         segmentType,
+        visualPrompt: String(
+          scene.visualPrompt ??
+            scene.visualIntent ??
+            scene.narration ??
+            scene.caption ??
+            '主题相关画面',
+        ).trim() || '主题相关画面',
         digitalHumanEmotion:
           segmentType === 'digital-human' ? String(scene.digitalHumanEmotion ?? '认真') : '',
         digitalHumanAction:
@@ -420,9 +473,21 @@ JSON 输出格式示例：
       };
       const output = result.output_text ?? result.choices?.[0]?.message?.content;
       if (!output) throw new Error('AI 服务未返回可用的文案内容');
-      return videoScriptSchema.parse(
-        normalizeCompatibleScript(JSON.parse(output) as unknown, input),
+      let rawScript: unknown;
+      try {
+        rawScript = JSON.parse(output) as unknown;
+      } catch (error) {
+        console.error('[AI 文案 JSON 解析失败]', error, output);
+        throw new Error('AI 返回的内容不是有效的文案结构，请重新生成一次。');
+      }
+      const parsedScript = videoScriptSchema.safeParse(
+        normalizeCompatibleScript(rawScript, input),
       );
+      if (!parsedScript.success) {
+        console.error('[AI 文案结构校验失败]', parsedScript.error.issues);
+        throw new Error(formatScriptValidationError(parsedScript.error.issues));
+      }
+      return parsedScript.data;
     },
   },
   tts: {
