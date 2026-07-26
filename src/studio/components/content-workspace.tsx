@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import type {ProjectFile, VideoType} from '../../core/schema';
 import {useStudioStore} from '../store';
 import {GenerationPanel} from './generation-panel';
@@ -18,6 +19,7 @@ const platformLabels: Record<string, string> = {
 };
 
 export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) => {
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const {
     updateContent,
     updateProjectSettings,
@@ -28,6 +30,10 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
     restoreCopyVersion,
   } = useStudioStore();
   const totalChars = project.scenes.reduce((sum, scene) => sum + scene.narration.length, 0);
+  const completeCopy = project.scenes
+    .map((scene) => scene.narration.trim())
+    .filter(Boolean)
+    .join('\n\n');
   const totalDuration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
   const hookScore = Math.min(100, 62 + Math.min(32, (project.content?.hook.length ?? 0) * 1.5));
   const clarityScore = Math.min(100, 72 + Math.min(20, project.scenes.length * 3));
@@ -227,6 +233,33 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
             </select>
           </div>
         ) : null}
+        <section className="complete-copy">
+          <header>
+            <div>
+              <strong>整体完整文案</strong>
+              <small>随当前文案版本和段落编辑实时更新 · {totalChars} 字</small>
+            </div>
+            <button
+              type="button"
+              disabled={!completeCopy}
+              onClick={() => {
+                void navigator.clipboard.writeText(completeCopy).then(() => {
+                  setCopyStatus('copied');
+                  window.setTimeout(() => setCopyStatus('idle'), 1600);
+                });
+              }}
+            >
+              {copyStatus === 'copied' ? '已复制' : '复制全文'}
+            </button>
+          </header>
+          <textarea
+            aria-label="整体完整文案"
+            readOnly
+            rows={12}
+            value={completeCopy}
+            placeholder="生成或编辑分段文案后，完整文案将在这里汇总展示。"
+          />
+        </section>
         <div className="copy-segments">
           {project.scenes.map((scene, index) => (
             <article key={scene.id}>
