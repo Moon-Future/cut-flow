@@ -11,7 +11,6 @@ const navItems: Array<[WorkspaceSection, string, string]> = [
   ['assets', '素材', '□'],
   ['edit', '剪辑', '✂'],
   ['export', '导出', '⇧'],
-  ['settings', '设置', '⚙'],
 ];
 
 type Props = {
@@ -35,7 +34,7 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
     </button>
     <nav>
       {navItems
-        .filter(([value]) => section !== 'overview' || value === 'overview' || value === 'settings')
+        .filter(([value]) => !['overview', 'settings'].includes(section) || value === 'overview')
         .map(([value, label, icon]) => (
         <button
           key={value}
@@ -66,5 +65,12 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
         <span>选择或创建项目后显示</span>
       )}
     </section>
+    <button
+      className={`sidebar-settings ${section === 'settings' ? 'active' : ''}`}
+      onClick={() => onNavigate('settings')}
+    >
+      <i>⚙</i>
+      <span>设置</span>
+    </button>
   </aside>
 );

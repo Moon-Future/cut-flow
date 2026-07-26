@@ -1361,6 +1361,34 @@ select:focus {
   color: #d5dae5;
   margin-bottom: 2px;
 }
+.sidebar-settings {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8d96a8;
+  text-align: left;
+  cursor: pointer;
+}
+.sidebar-settings:hover,
+.sidebar-settings.active {
+  background: #151a26;
+  color: #d7dcea;
+}
+.sidebar-settings.active {
+  background: linear-gradient(90deg, #322553, #211b38);
+  color: #c6adff;
+}
+.sidebar-settings i {
+  font-size: 15px;
+  font-style: normal;
+}
 .edit-main {
   position: relative;
   min-width: 0;
@@ -2467,10 +2495,19 @@ select:focus {
 }
 .provider-switch {
   display: flex;
+  flex: 0 0 auto;
   gap: 7px;
   align-items: center;
   color: #9ca7b8;
   font-size: 10px;
+  white-space: nowrap;
+}
+.provider-switch input {
+  flex: 0 0 auto;
+}
+.provider-switch span {
+  min-width: 3em;
+  white-space: nowrap;
 }
 .provider-form {
   display: grid;
@@ -2497,11 +2534,17 @@ select:focus {
 }
 .default-provider {
   display: inline-flex;
+  width: max-content;
+  max-width: 100%;
   gap: 7px;
   align-items: center;
   margin-top: 12px;
   color: #9c8bc8;
   font-size: 10px;
+  white-space: nowrap;
+}
+.default-provider input {
+  flex: 0 0 auto;
 }
 .settings-message {
   margin: 14px 0 0;
