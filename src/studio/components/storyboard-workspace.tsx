@@ -19,7 +19,8 @@ const contentSearchLinks = (query: string) => {
 };
 
 export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
-  const {selectedSceneId, selectScene, updateScene, updateVisualShot} = useStudioStore();
+  const {selectedSceneId, selectScene, updateScene, updateVisualShot, syncVisualShot} =
+    useStudioStore();
   const [onlineSearch, setOnlineSearch] = useState<{
     shotId: string;
     query: string;
@@ -28,6 +29,11 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     downloadingId?: string;
     results: PixabaySearchResult[];
     error?: string;
+  } | null>(null);
+  const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
+  const [videoGenerationError, setVideoGenerationError] = useState<{
+    shotId: string;
+    message: string;
   } | null>(null);
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
@@ -111,6 +117,74 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
         downloadingId: undefined,
         error: error instanceof Error ? error.message : String(error),
       });
+    }
+  };
+
+  const generateVideo = async (shot: VisualShot) => {
+    setGeneratingVideoShotId(shot.id);
+    setVideoGenerationError(null);
+    try {
+      const response = await fetch('/api/shots/image-to-video', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sceneId: selected.id, shotId: shot.id}),
+      });
+      const value = (await response.json()) as {
+        task?: VisualShot['generationTask'];
+        error?: string;
+      };
+      if (!response.ok || !value.task) {
+        throw new Error(value.error ?? '视频生成任务创建失败');
+      }
+      syncVisualShot(selected.id, shot.id, {...shot, generationTask: value.task});
+      for (let attempt = 0; attempt < 180; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 5_000));
+        const projectResponse = await fetch('/api/project');
+        const latestProject = (await projectResponse.json()) as ProjectFile;
+        const latestShot = latestProject.scenes
+          .find((scene) => scene.id === selected.id)
+          ?.shots?.find((item) => item.id === shot.id);
+        if (!latestShot) continue;
+        syncVisualShot(selected.id, shot.id, latestShot);
+        if (
+          latestShot.generationTask?.status === 'needs-selection' ||
+          latestShot.generationTask?.status === 'failed'
+        ) {
+          if (latestShot.generationTask.status === 'failed') {
+            throw new Error(latestShot.generationTask.error || '视频生成失败');
+          }
+          return;
+        }
+      }
+      throw new Error('视频仍在生成，可稍后返回本页面查看结果');
+    } catch (error) {
+      setVideoGenerationError({
+        shotId: shot.id,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setGeneratingVideoShotId(null);
+    }
+  };
+
+  const selectCandidate = async (shot: VisualShot, candidateId: string) => {
+    const response = await fetch('/api/shots/select', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sceneId: selected.id, shotId: shot.id, candidateId}),
+    });
+    const value = (await response.json()) as {shot?: VisualShot; error?: string};
+    if (!response.ok || !value.shot) {
+      setVideoGenerationError({
+        shotId: shot.id,
+        message: value.error ?? '选择生成视频失败',
+      });
+      return;
+    }
+    syncVisualShot(selected.id, shot.id, value.shot);
+    const candidate = value.shot.candidates.find((item) => item.id === candidateId);
+    if (candidate?.kind === 'video') {
+      updateScene(selected.id, {assetPath: candidate.path, assetType: 'video'});
     }
   };
 
@@ -429,26 +503,45 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 </label>
               </details>
               <div className="shot-assets">
-                {shot.candidates.slice(0, 3).map((candidate) => (
-                  <button
-                    key={candidate.id}
-                    className={candidate.path === shot.selectedAsset ? 'selected' : ''}
-                    onClick={() =>
-                      updateShot(shot, {selectedAsset: candidate.path, status: 'needs-review'})
-                    }
-                  >
-                    {candidate.kind === 'video' ? (
-                      <video src={mediaUrl(projectId, candidate.path)} muted />
-                    ) : (
-                      <img src={mediaUrl(projectId, candidate.path)} alt="" />
-                    )}
-                    <span>{candidate.provider}</span>
-                  </button>
-                ))}
+                {[...shot.candidates]
+                  .reverse()
+                  .slice(0, 3)
+                  .map((candidate) => (
+                    <button
+                      key={candidate.id}
+                      className={candidate.path === shot.selectedAsset ? 'selected' : ''}
+                      onClick={() => void selectCandidate(shot, candidate.id)}
+                    >
+                      {candidate.kind === 'video' ? (
+                        <video src={mediaUrl(projectId, candidate.path)} muted />
+                      ) : (
+                        <img src={mediaUrl(projectId, candidate.path)} alt="" />
+                      )}
+                      <span>{candidate.provider}</span>
+                    </button>
+                  ))}
                 <button className="add-shot-asset" onClick={onAssets}>
                   ＋ 选择素材
                 </button>
+                <button
+                  className="generate-shot-video"
+                  disabled={generatingVideoShotId === shot.id}
+                  onClick={() => void generateVideo(shot)}
+                >
+                  {generatingVideoShotId === shot.id ? '小云雀生成中…' : '小云雀生成视频'}
+                </button>
               </div>
+              {shot.generationTask?.provider === 'volcengine-pippit-video' ? (
+                <p className="video-generation-status">
+                  任务状态：{shot.generationTask.status}
+                  {shot.generationTask.status === 'needs-selection'
+                    ? '，请在上方候选素材中选择生成结果'
+                    : ''}
+                </p>
+              ) : null}
+              {videoGenerationError?.shotId === shot.id ? (
+                <p className="candidate-error">{videoGenerationError.message}</p>
+              ) : null}
             </article>
           ))}
           {!selected.shots?.length ? (

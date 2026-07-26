@@ -27,19 +27,15 @@ import {
   createMockImageProvider,
   createMockVideoProvider,
   createOpenAIImageProvider,
-  createOpenAIVideoProvider,
 } from '../src/ai/media-provider';
+import {createVolcengineVideoProvider} from '../src/ai/volcengine-video-provider';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 import type {
   PixabayMediaKind,
   PixabaySearchResponse,
   PixabaySearchResult,
 } from '../src/media/pixabay';
-import {
-  loadAiSettings,
-  publicAiSettings,
-  saveAiSettings,
-} from '../src/ai/settings';
+import {loadAiSettings, publicAiSettings, saveAiSettings} from '../src/ai/settings';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
   ? path.resolve(process.env.CUT_FLOW_APP_ROOT)
@@ -853,9 +849,7 @@ const localApi = (): Plugin => ({
               .parse(input.videoType);
             const aiSettings = await loadAiSettings();
             const selectedSetting =
-              input.provider === 'mock'
-                ? undefined
-                : aiSettings.providers[input.provider];
+              input.provider === 'mock' ? undefined : aiSettings.providers[input.provider];
             if (
               input.provider !== 'mock' &&
               (!selectedSetting?.enabled ||
@@ -1024,8 +1018,15 @@ const localApi = (): Plugin => ({
               sendJson(response, 400, {error: '缺少场景或镜头标识'});
               return;
             }
-            if (!process.env.OPENAI_API_KEY) {
-              sendJson(response, 400, {error: '使用 Sora 图生视频前请设置 OPENAI_API_KEY'});
+            const aiSettings = await loadAiSettings();
+            if (
+              !aiSettings.volcengineVideo.enabled ||
+              !aiSettings.volcengineVideo.accessKey ||
+              !aiSettings.volcengineVideo.secretKey
+            ) {
+              sendJson(response, 400, {
+                error: '请先在设置中配置并启用“火山引擎 · 小云雀智能生视频”',
+              });
               return;
             }
             const project = projectFileSchema.parse(
@@ -1034,16 +1035,18 @@ const localApi = (): Plugin => ({
             const shot = project.scenes
               .find((scene) => scene.id === input.sceneId)
               ?.shots?.find((item) => item.id === input.shotId);
-            if (!shot?.selectedAsset || !/\.(png|jpe?g|webp)$/i.test(shot.selectedAsset)) {
-              sendJson(response, 400, {error: '请先选中一张 PNG、JPEG 或 WebP 图片候选'});
+            if (!shot) {
+              sendJson(response, 404, {error: '找不到指定的分镜'});
               return;
             }
-            const provider = createOpenAIVideoProvider({
-              apiKey: process.env.OPENAI_API_KEY,
-              projectRoot,
+            const provider = createVolcengineVideoProvider({
+              accessKey: aiSettings.volcengineVideo.accessKey,
+              secretKey: aiSettings.volcengineVideo.secretKey,
               outputDirectory: path.join(assetsRoot, 'generated'),
               projectRelativeDirectory: 'assets/generated',
-              model: process.env.OPENAI_VIDEO_MODEL,
+              ratio: project.project.width < project.project.height ? '9:16' : '16:9',
+              duration: '～15s',
+              enableWatermark: aiSettings.volcengineVideo.enableWatermark,
             });
             const task = {
               id: `task-${randomUUID()}`,
@@ -1062,7 +1065,7 @@ const localApi = (): Plugin => ({
             sendJson(response, 202, {task});
 
             void provider
-              .generate({shot, kind: 'video', count: 1, fallbackPaths: []})
+              .generate(shot)
               .then(async (candidates) => {
                 const latest = projectFileSchema.parse(
                   JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
@@ -1093,7 +1096,7 @@ const localApi = (): Plugin => ({
                     originalUrl: null,
                     createdAt: candidate.createdAt,
                     keywords: latestShot.searchQueries,
-                    duration: 8,
+                    duration: 15,
                   })),
                 );
                 await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');

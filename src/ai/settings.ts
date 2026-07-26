@@ -18,6 +18,12 @@ export type AiSettings = {
   pixabay: {
     apiKey: string;
   };
+  volcengineVideo: {
+    enabled: boolean;
+    accessKey: string;
+    secretKey: string;
+    enableWatermark: boolean;
+  };
 };
 
 const defaults: AiSettings = {
@@ -48,6 +54,12 @@ const defaults: AiSettings = {
   pixabay: {
     apiKey: '',
   },
+  volcengineVideo: {
+    enabled: false,
+    accessKey: '',
+    secretKey: '',
+    enableWatermark: true,
+  },
 };
 
 const settingsRoot = () =>
@@ -66,6 +78,7 @@ const mergeSettings = (saved: Partial<AiSettings>): AiSettings => {
       doubao: {...defaults.providers.doubao, ...saved.providers?.doubao},
     },
     pixabay: {...defaults.pixabay, ...saved.pixabay},
+    volcengineVideo: {...defaults.volcengineVideo, ...saved.volcengineVideo},
   };
   if (settings.providers.deepseek.model === 'deepseek-chat') {
     settings.providers.deepseek.model = 'deepseek-v4-flash';
@@ -106,6 +119,7 @@ export const saveAiSettings = async (
   input: Partial<AiSettings> & {
     providers?: Partial<Record<AiProviderId, Partial<AiProviderSetting>>>;
     pixabay?: Partial<AiSettings['pixabay']>;
+    volcengineVideo?: Partial<AiSettings['volcengineVideo']>;
   },
 ): Promise<AiSettings> => {
   const current = await loadAiSettings();
@@ -114,6 +128,13 @@ export const saveAiSettings = async (
     providers: structuredClone(current.providers),
     pixabay: {
       apiKey: input.pixabay?.apiKey?.trim() || current.pixabay.apiKey,
+    },
+    volcengineVideo: {
+      enabled: input.volcengineVideo?.enabled ?? current.volcengineVideo.enabled,
+      accessKey: input.volcengineVideo?.accessKey?.trim() || current.volcengineVideo.accessKey,
+      secretKey: input.volcengineVideo?.secretKey?.trim() || current.volcengineVideo.secretKey,
+      enableWatermark:
+        input.volcengineVideo?.enableWatermark ?? current.volcengineVideo.enableWatermark,
     },
   };
   for (const id of ['openai', 'deepseek', 'doubao'] as const) {
@@ -142,6 +163,11 @@ export const publicAiSettings = (settings: AiSettings) => ({
   storage: aiSettingsFile(),
   pixabay: {
     configured: Boolean(settings.pixabay.apiKey),
+  },
+  volcengineVideo: {
+    enabled: settings.volcengineVideo.enabled,
+    configured: Boolean(settings.volcengineVideo.accessKey && settings.volcengineVideo.secretKey),
+    enableWatermark: settings.volcengineVideo.enableWatermark,
   },
   providers: Object.fromEntries(
     Object.entries(settings.providers).map(([id, value]) => [

@@ -4758,6 +4758,25 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.shot-assets .add-shot-asset,
+.shot-assets .generate-shot-video {
+  grid-column: span 2;
+  height: 38px;
+}
+.shot-assets .generate-shot-video {
+  border-color: #6b4dc0;
+  background: #2b1e4b;
+  color: #c9b5ff;
+}
+.shot-assets .generate-shot-video:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.video-generation-status {
+  margin: 0;
+  color: #8d7bb8;
+  font-size: 9px;
+}
 .board-preview {
   display: grid;
   align-content: start;

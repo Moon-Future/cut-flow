@@ -9,6 +9,11 @@ type PublicSettings = {
     {enabled: boolean; configured: boolean; baseUrl: string; model: string}
   >;
   pixabay: {configured: boolean};
+  volcengineVideo: {
+    enabled: boolean;
+    configured: boolean;
+    enableWatermark: boolean;
+  };
 };
 type StorageSettings = {
   configRoot: string;
@@ -38,6 +43,10 @@ export const SettingsWorkspace = () => {
     doubao: {apiKey: '', secretKey: ''},
   });
   const [pixabayApiKey, setPixabayApiKey] = useState('');
+  const [volcengineVideoKeys, setVolcengineVideoKeys] = useState({
+    accessKey: '',
+    secretKey: '',
+  });
   const [storage, setStorage] = useState<StorageSettings | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -92,12 +101,17 @@ export const SettingsWorkspace = () => {
             ]),
           ),
           pixabay: {apiKey: pixabayApiKey},
+          volcengineVideo: {
+            ...settings.volcengineVideo,
+            ...volcengineVideoKeys,
+          },
         }),
       });
       const value = (await response.json()) as PublicSettings & {error?: string};
       if (!response.ok) throw new Error(value.error ?? '保存失败');
       setSettings(value);
       setPixabayApiKey('');
+      setVolcengineVideoKeys({accessKey: '', secretKey: ''});
       setDraft({
         openai: {apiKey: '', secretKey: ''},
         deepseek: {apiKey: '', secretKey: ''},
@@ -160,7 +174,11 @@ export const SettingsWorkspace = () => {
           <h1>AI 服务设置</h1>
           <p>密钥只保存在本机，不会写入项目，也不会显示在页面或接口返回中。</p>
         </div>
-        <button className="primary-button" disabled={status === 'saving'} onClick={() => void save()}>
+        <button
+          className="primary-button"
+          disabled={status === 'saving'}
+          onClick={() => void save()}
+        >
           {status === 'saving' ? '正在保存…' : '保存设置'}
         </button>
       </header>
@@ -264,11 +282,100 @@ export const SettingsWorkspace = () => {
                 type="password"
                 autoComplete="new-password"
                 value={pixabayApiKey}
-                placeholder={settings.pixabay.configured ? '已保存，留空则不修改' : '请输入 API Key'}
+                placeholder={
+                  settings.pixabay.configured ? '已保存，留空则不修改' : '请输入 API Key'
+                }
                 onChange={(event) => setPixabayApiKey(event.target.value)}
               />
             </label>
           </div>
+        </article>
+        <article
+          className={
+            settings.volcengineVideo.enabled && settings.volcengineVideo.configured ? 'enabled' : ''
+          }
+        >
+          <header>
+            <div>
+              <strong>火山引擎 · 小云雀智能生视频</strong>
+              <p>根据分镜提示词生成约 15 秒视频，完成后自动下载到当前项目。</p>
+            </div>
+            <span>
+              {settings.volcengineVideo.configured
+                ? settings.volcengineVideo.enabled
+                  ? '已启用'
+                  : '未启用'
+                : '未配置'}
+            </span>
+          </header>
+          <div className="provider-form">
+            <label>
+              <span>Access Key（AK）</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={volcengineVideoKeys.accessKey}
+                placeholder={
+                  settings.volcengineVideo.configured ? '已保存，留空则不修改' : '请输入 AK'
+                }
+                onChange={(event) =>
+                  setVolcengineVideoKeys({
+                    ...volcengineVideoKeys,
+                    accessKey: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <label>
+              <span>Secret Key（SK）</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={volcengineVideoKeys.secretKey}
+                placeholder={
+                  settings.volcengineVideo.configured ? '已保存，留空则不修改' : '请输入 SK'
+                }
+                onChange={(event) =>
+                  setVolcengineVideoKeys({
+                    ...volcengineVideoKeys,
+                    secretKey: event.target.value,
+                  })
+                }
+              />
+            </label>
+          </div>
+          <label className="default-provider">
+            <input
+              type="checkbox"
+              checked={settings.volcengineVideo.enabled}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  volcengineVideo: {
+                    ...settings.volcengineVideo,
+                    enabled: event.target.checked,
+                  },
+                })
+              }
+            />
+            启用小云雀视频生成
+          </label>
+          <label className="default-provider">
+            <input
+              type="checkbox"
+              checked={settings.volcengineVideo.enableWatermark}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  volcengineVideo: {
+                    ...settings.volcengineVideo,
+                    enableWatermark: event.target.checked,
+                  },
+                })
+              }
+            />
+            显示“AI 生成 / 小云雀 AI 生成”明水印
+          </label>
         </article>
       </div>
       {storage ? (

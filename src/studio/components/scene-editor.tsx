@@ -472,13 +472,9 @@ export const SceneEditor = ({projectId}: Props) => {
                     type="button"
                     className="image-to-video-button"
                     onClick={() => void imageToVideo(shot.id)}
-                    disabled={
-                      generatingShotId === shot.id ||
-                      !shot.selectedAsset ||
-                      !/\.(png|jpe?g|webp)$/i.test(shot.selectedAsset)
-                    }
+                    disabled={generatingShotId === shot.id}
                   >
-                    选中图片生成视频
+                    小云雀生成视频
                   </button>
                   {shot.generationTask ? (
                     <span>
