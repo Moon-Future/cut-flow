@@ -1084,6 +1084,9 @@ const localApi = (): Plugin => ({
                 targetDuration,
               ),
             );
+            const startedAt = new Date();
+            const estimatedMinutes =
+              targetDuration === '40～60s' ? 10 : targetDuration === '～30s' ? 7 : 5;
             const task = {
               id: `task-${randomUUID()}`,
               kind: 'image-to-video' as const,
@@ -1092,7 +1095,11 @@ const localApi = (): Plugin => ({
               provider: provider.id,
               model: provider.model,
               error: null,
-              updatedAt: new Date().toISOString(),
+              startedAt: startedAt.toISOString(),
+              estimatedCompletedAt: new Date(
+                startedAt.getTime() + estimatedMinutes * 60_000,
+              ).toISOString(),
+              updatedAt: startedAt.toISOString(),
             };
             shot.generationTask = task;
             const temporary = `${projectFile}.tmp`;
@@ -1121,6 +1128,7 @@ const localApi = (): Plugin => ({
                 latestShot.generationTask = {
                   ...task,
                   status: 'needs-selection',
+                  completedAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                 };
                 latestShot.status = 'needs-review';
@@ -1164,6 +1172,7 @@ const localApi = (): Plugin => ({
                   ...task,
                   status: 'failed',
                   error: error instanceof Error ? error.message : String(error),
+                  completedAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                 };
                 await writeFile(projectFile, `${JSON.stringify(latest, null, 2)}\n`, 'utf8');

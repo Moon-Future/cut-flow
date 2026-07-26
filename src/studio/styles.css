@@ -4917,6 +4917,29 @@ select:focus {
   animation: video-generation-progress 1.4s ease-in-out infinite;
   content: '';
 }
+.video-generation-status dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+  margin: 3px 0 0;
+}
+.video-generation-status dl > div {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+}
+.video-generation-status dt {
+  margin-bottom: 3px;
+  color: var(--text-muted);
+  font-size: 0.88em;
+}
+.video-generation-status dd {
+  margin: 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
 @keyframes video-generation-progress {
   from {
     transform: translateX(-110%);

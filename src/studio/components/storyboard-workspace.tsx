@@ -25,6 +25,30 @@ const generationStatusLabel = (status: GenerationTask['status']) =>
     failed: '生成失败',
     cancelled: '已取消',
   })[status];
+const formatTaskTime = (value?: string) =>
+  value
+    ? new Intl.DateTimeFormat('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).format(new Date(value))
+    : '—';
+const formatTaskDuration = (startedAt?: string, completedAt?: string, now = Date.now()) => {
+  if (!startedAt) return '—';
+  const elapsed = Math.max(
+    0,
+    Math.floor(
+      ((completedAt ? new Date(completedAt).getTime() : now) - new Date(startedAt).getTime()) /
+        1000,
+    ),
+  );
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  return minutes > 0 ? `${minutes} 分 ${seconds} 秒` : `${seconds} 秒`;
+};
 const contentSearchLinks = (query: string) => {
   const encoded = encodeURIComponent(query);
   return [
@@ -47,6 +71,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     error?: string;
   } | null>(null);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const generationRequestLock = useRef(new Set<string>());
   const [videoDefaultDuration, setVideoDefaultDuration] = useState<VideoTargetDuration>('～15s');
   const [videoWatermark, setVideoWatermark] = useState(true);
@@ -110,6 +135,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
         .map((shot) => ({sceneId: scene.id, shotId: shot.id})),
     );
     if (!activeShots.length) return;
+    const clock = window.setInterval(() => setCurrentTime(Date.now()), 1_000);
     const refresh = async () => {
       try {
         const response = await fetch('/api/project');
@@ -126,7 +152,10 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
       }
     };
     const interval = window.setInterval(() => void refresh(), 5_000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      window.clearInterval(clock);
+    };
   }, [project.scenes, syncVisualShot]);
 
   const searchOnline = async (
@@ -776,6 +805,37 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                       <small>生成服务暂不返回精确百分比，页面会每 5 秒自动更新状态。</small>
                     </>
                   ) : null}
+                  <dl>
+                    <div>
+                      <dt>开始时间</dt>
+                      <dd>{formatTaskTime(shot.generationTask.startedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>预计完成</dt>
+                      <dd>
+                        {formatTaskTime(shot.generationTask.estimatedCompletedAt)}
+                        {shot.generationTask.estimatedCompletedAt ? '（估算）' : ''}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>完成时间</dt>
+                      <dd>{formatTaskTime(shot.generationTask.completedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        {activeGenerationStatuses.has(shot.generationTask.status)
+                          ? '已用时间'
+                          : '总用时'}
+                      </dt>
+                      <dd>
+                        {formatTaskDuration(
+                          shot.generationTask.startedAt,
+                          shot.generationTask.completedAt,
+                          currentTime,
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
                 </div>
               ) : null}
               {videoGenerationError?.shotId === shot.id ? (

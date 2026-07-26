@@ -45,6 +45,9 @@ export const generationTaskSchema = z.object({
   provider: z.string().min(1),
   model: z.string().min(1),
   error: z.string().nullable().default(null),
+  startedAt: z.string().min(1).optional(),
+  estimatedCompletedAt: z.string().min(1).optional(),
+  completedAt: z.string().min(1).optional(),
   updatedAt: z.string().min(1),
 });
 
