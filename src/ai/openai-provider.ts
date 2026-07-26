@@ -118,20 +118,28 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
                 .filter(Boolean);
           const rawImagePrompt = String(shot.imagePrompt ?? '').trim();
           const rawVideoPrompt = String(shot.videoPrompt ?? '').trim();
+          const hasTooMuchEnglish = (text: string) =>
+            (text.match(/[A-Za-z]/g)?.length ?? 0) > 12;
+          const toChinesePrompt = (text: string) =>
+            text.replace(/\bLogo\b/gi, '标志').replace(/\bAI\b/gi, '人工智能');
+          const usableImagePrompt = hasTooMuchEnglish(rawImagePrompt) ? '' : rawImagePrompt;
+          const usableVideoPrompt = hasTooMuchEnglish(rawVideoPrompt) ? '' : rawVideoPrompt;
           const sceneDescription = String(
-            scene.visualPrompt ?? scene.visualIntent ?? shot.visualPurpose ?? '',
+            scene.visualIntent ?? shot.visualPurpose ?? scene.narration ?? scene.visualPrompt ?? '',
           );
           const imagePromptBase =
-            rawImagePrompt.length >= 80
-              ? rawImagePrompt
-              : `${input.aspectRatio} 画面，${rawImagePrompt || sceneDescription}。画面主体清晰，位于视觉中心或三分线构图，完整呈现所在环境、关键物体和动作定格状态；使用与主题一致的${input.visualStyle}，光线层次明确，色彩统一，中近景或最适合表达内容的景别，高细节，主体与背景关系清楚，为后续视频运动预留空间。不要文字，不要字幕，不要 Logo，不要水印。`;
-          const imagePrompt = /不要文字|no text/i.test(imagePromptBase)
-            ? imagePromptBase
-            : `${imagePromptBase} 不要文字，不要字幕，不要 Logo，不要水印。`;
+            usableImagePrompt.length >= 80
+              ? usableImagePrompt
+              : `${input.aspectRatio} 画面，${usableImagePrompt || sceneDescription}。画面主体清晰，位于视觉中心或三分线构图，完整呈现所在环境、关键物体和动作定格状态；使用与主题一致的${input.visualStyle}，光线层次明确，色彩统一，中近景或最适合表达内容的景别，高细节，主体与背景关系清楚，为后续视频运动预留空间。不要文字，不要字幕，不要标志，不要水印。`;
+          const imagePrompt = toChinesePrompt(
+            /不要文字|no text/i.test(imagePromptBase)
+              ? imagePromptBase
+              : `${imagePromptBase} 不要文字，不要字幕，不要标志，不要水印。`,
+          );
           const videoPromptCore =
-            rawVideoPrompt.length >= 100
-              ? rawVideoPrompt
-              : `${input.aspectRatio}，约 ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} 秒视频。初始画面为：${sceneDescription}。${rawVideoPrompt || '主体先保持短暂停顿，随后完成与内容对应的自然动作，环境元素产生轻微动态变化'}。镜头先稳定建立场景，再缓慢推近或平滑横移跟随主体，动作按清晰先后顺序发生，节奏自然，避免突然跳切和大幅旋转。使用${input.visualStyle}，保持光线方向、主色调和空间布局稳定。`;
+            usableVideoPrompt.length >= 100
+              ? usableVideoPrompt
+              : `${input.aspectRatio}，约 ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} 秒视频。初始画面为：${sceneDescription}。${usableVideoPrompt || '主体先保持短暂停顿，随后完成与内容对应的自然动作，环境元素产生轻微动态变化'}。镜头先稳定建立场景，再缓慢推近或平滑横移跟随主体，动作按清晰先后顺序发生，节奏自然，避免突然跳切和大幅旋转。使用${input.visualStyle}，保持光线方向、主色调和空间布局稳定。`;
           return {
             ...shot,
             shotType,
@@ -142,7 +150,9 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
                 ? queries.slice(0, 8)
                 : [sceneDescription, `${input.visualStyle} ${String(shot.visualPurpose ?? '')}`],
             imagePrompt,
-            videoPrompt: `${videoPromptCore} 以对应 AI 图片作为首帧，保持主体外貌、服装、场景布局、物体位置和色彩风格一致，只增加自然动作、镜头运动和环境动态，不改变主体结构。避免变脸、异常手指、服装变色、物体消失和违反真实物理的动作。不要文字，不要字幕，不要 Logo，不要水印。`,
+            videoPrompt: toChinesePrompt(
+              `${videoPromptCore} 以对应图片作为首帧，保持主体外貌、服装、场景布局、物体位置和色彩风格一致，只增加自然动作、镜头运动和环境动态，不改变主体结构。避免变脸、异常手指、服装变色、物体消失和违反真实物理的动作。不要文字，不要字幕，不要标志，不要水印。`,
+            ),
           };
         }),
       };
@@ -236,7 +246,7 @@ ${digitalHumanDirection}
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
 assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
 searchQueries 必须是字符串数组，不能是单个字符串。
-每个 shot 都必须提供 2-6 个可检索的中英文 searchQueries，并同时提供完整 imagePrompt 和 videoPrompt。imagePrompt 不能只是几个风格词，必须写清主体、环境、构图位置、外观特征、动作定格、光线、色彩、景别、视觉风格和画面比例。videoPrompt 不能复制 imagePrompt，必须写清初始画面、动作先后顺序、场景变化、镜头运动、节奏、时长、光线、色彩、比例和首帧一致性。
+每个 shot 都必须提供 2-6 个可检索的中英文 searchQueries，并同时提供完整 imagePrompt 和 videoPrompt。imagePrompt 和 videoPrompt 必须使用中文撰写，不得输出英文提示词。imagePrompt 不能只是几个风格词，必须写清主体、环境、构图位置、外观特征、动作定格、光线、色彩、景别、视觉风格和画面比例。videoPrompt 不能复制 imagePrompt，必须写清初始画面、动作先后顺序、场景变化、镜头运动、节奏、时长、光线、色彩、比例和首帧一致性。
 JSON 输出格式示例：
 {
   "title": "示例标题",

@@ -30,8 +30,8 @@ const mockScript = (input: GenerateInput): VideoScript => {
     assetStrategy: 'source-agnostic' as const,
     durationWeight: 1,
     searchQueries,
-    imagePrompt: `竖屏 9:16，${visualPurpose}，主体位于画面视觉中心，环境信息清晰，构图稳定，光线层次明确，色彩统一，中近景，${animation ? '简洁准确的科普动画风格' : '真实电影摄影风格'}，高细节，为后续动态效果预留空间，不要文字，不要字幕，不要 Logo，不要水印。`,
-    videoPrompt: `竖屏 9:16，约 5 秒视频。初始画面展示${visualPurpose}，主体先保持稳定，随后完成自然动作，镜头缓慢推近并轻微横移，环境元素产生细微动态变化，节奏清晰，光线和色彩保持一致。以对应 AI 图片作为首帧，保持主体、场景布局和物体位置一致，不改变主体结构，不要文字、字幕、Logo 和水印。`,
+    imagePrompt: `竖屏 9:16，${visualPurpose}，主体位于画面视觉中心，环境信息清晰，构图稳定，光线层次明确，色彩统一，中近景，${animation ? '简洁准确的科普动画风格' : '真实电影摄影风格'}，高细节，为后续动态效果预留空间，不要文字，不要字幕，不要标志，不要水印。`,
+    videoPrompt: `竖屏 9:16，约 5 秒视频。初始画面展示${visualPurpose}，主体先保持稳定，随后完成自然动作，镜头缓慢推近并轻微横移，环境元素产生细微动态变化，节奏清晰，光线和色彩保持一致。以对应图片作为首帧，保持主体、场景布局和物体位置一致，不改变主体结构，不要文字、字幕、标志和水印。`,
   });
   if (isSky)
     return {

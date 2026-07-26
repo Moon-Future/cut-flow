@@ -112,10 +112,6 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                     <option value="image">图片画面（来源不限）</option>
                     <option value="science-animation">科普动画</option>
                     <option value="digital-human">数字人</option>
-                    <option value="real-footage">实拍（旧项目）</option>
-                    <option value="stock-video">素材视频（旧项目）</option>
-                    <option value="generated-video">AI 视频（旧项目）</option>
-                    <option value="generated-image">AI 图片（旧项目）</option>
                   </select>
                 </label>
                 <label>

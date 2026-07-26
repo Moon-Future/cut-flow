@@ -85,6 +85,14 @@ describe('generation workflow', () => {
         ),
     ).toBe(true);
     expect(
+      first.project.scenes
+        .flatMap((scene) => scene.shots ?? [])
+        .every(
+          (shot) =>
+            !/[A-Za-z]{3,}/.test(`${shot.imagePrompt ?? ''}${shot.videoPrompt ?? ''}`),
+        ),
+    ).toBe(true);
+    expect(
       first.project.scenes.flatMap((scene) => scene.shots ?? [])[0]?.searchQueries.length,
     ).toBeGreaterThan(0);
     expect(first.project.scenes.reduce((sum, scene) => sum + scene.duration, 0)).toBeGreaterThan(0);
