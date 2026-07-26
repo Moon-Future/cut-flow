@@ -58,7 +58,7 @@ export const GenerationPanel = ({
     {id: 'deepseek', name: 'DeepSeek', enabled: false, configured: false},
     {id: 'doubao', name: '豆包', enabled: false, configured: false},
   ]);
-  const [targetWordCount, setTargetWordCount] = useState(500);
+  const [targetWordCount, setTargetWordCount] = useState('500');
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
@@ -96,6 +96,11 @@ export const GenerationPanel = ({
   const generate = async () => {
     const effectiveTopic = generationContext?.topic ?? topic;
     const effectiveVideoType = generationContext?.videoType ?? videoType;
+    const effectiveWordCount = Math.max(
+      100,
+      Math.min(5000, Number(targetWordCount) || 500),
+    );
+    setTargetWordCount(String(effectiveWordCount));
     setStatus('running');
     setMessage('正在生成文案…');
     try {
@@ -106,7 +111,7 @@ export const GenerationPanel = ({
           topic: effectiveTopic,
           customPrompt,
           provider,
-          targetWordCount,
+          targetWordCount: effectiveWordCount,
           videoType: effectiveVideoType,
           audience: generationContext?.audience ?? '短视频平台的普通观众',
           purpose: generationContext?.purpose ?? '科普与引发讨论',
@@ -198,8 +203,11 @@ export const GenerationPanel = ({
               max={5000}
               step={100}
               value={targetWordCount}
-              onChange={(event) =>
-                setTargetWordCount(Math.max(100, Math.min(5000, Number(event.target.value) || 500)))
+              onChange={(event) => setTargetWordCount(event.target.value.replace(/[^\d]/g, ''))}
+              onBlur={() =>
+                setTargetWordCount(
+                  String(Math.max(100, Math.min(5000, Number(targetWordCount) || 500))),
+                )
               }
             />
             <small className="word-count-help">默认约 500 字，AI 可在目标值上下浮动 10%</small>
@@ -247,7 +255,10 @@ export const GenerationPanel = ({
             className="generate-button"
             disabled={
               status === 'running' ||
-              !(generationContext?.topic ?? topic).trim()
+              !(generationContext?.topic ?? topic).trim() ||
+              !targetWordCount ||
+              Number(targetWordCount) < 100 ||
+              Number(targetWordCount) > 5000
             }
             onClick={() => void generate()}
           >
