@@ -15,6 +15,11 @@ const motions: Scene['motion'][] = [
   'slow-zoom-out',
   'pan-left',
   'pan-right',
+  'pan-up',
+  'pan-down',
+  'ken-burns-left',
+  'ken-burns-right',
+  'gentle-float',
 ];
 
 type Props = {projectId: string};

@@ -171,32 +171,34 @@ export const EditingWorkspace = ({
           section === 'overview' ? 'overview-mode' : ''
         }`}
       >
-        {section !== 'overview' ? <header className="edit-header">
-          <div>
-            <button onClick={() => onNavigate('overview')}>我的项目</button>
-            <span>/</span>
-            <strong>{project.project.title}</strong>
-          </div>
-          <span className={`save-state ${saveStatus}`}>
-            {saveStatus === 'saved'
-              ? '● 已自动保存'
-              : saveStatus === 'saving'
-                ? '● 保存中…'
-                : '● 保存异常'}
-          </span>
-          <div>
-            {section === 'edit' ? (
-              <>
-                <button className="header-step" onClick={() => onNavigate('assets')}>
-                  ← 上一步：素材
-                </button>
-                <button className="header-next" onClick={() => onNavigate('export')}>
-                  下一步：导出 →
-                </button>
-              </>
-            ) : null}
-          </div>
-        </header> : null}
+        {section !== 'overview' ? (
+          <header className="edit-header">
+            <div>
+              <button onClick={() => onNavigate('overview')}>我的项目</button>
+              <span>/</span>
+              <strong>{project.project.title}</strong>
+            </div>
+            <span className={`save-state ${saveStatus}`}>
+              {saveStatus === 'saved'
+                ? '● 已自动保存'
+                : saveStatus === 'saving'
+                  ? '● 保存中…'
+                  : '● 保存异常'}
+            </span>
+            <div>
+              {section === 'edit' ? (
+                <>
+                  <button className="header-step" onClick={() => onNavigate('assets')}>
+                    ← 上一步：素材
+                  </button>
+                  <button className="header-next" onClick={() => onNavigate('export')}>
+                    下一步：导出 →
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </header>
+        ) : null}
 
         {section === 'edit' ? (
           <>
@@ -425,6 +427,11 @@ export const EditingWorkspace = ({
                         <option value="slow-zoom-out">缓慢拉远</option>
                         <option value="pan-left">向左平移</option>
                         <option value="pan-right">向右平移</option>
+                        <option value="pan-up">向上平移</option>
+                        <option value="pan-down">向下平移</option>
+                        <option value="ken-burns-left">推近并向左移动</option>
+                        <option value="ken-burns-right">推近并向右移动</option>
+                        <option value="gentle-float">轻微漂浮</option>
                       </select>
                     </label>
                     <h3>项目设置</h3>

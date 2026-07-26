@@ -33,6 +33,18 @@ const motionTransform = (scene: Scene, frame: number, duration: number): string 
       return `scale(1.08) translateX(${-3 * progress}%)`;
     case 'pan-right':
       return `scale(1.08) translateX(${3 * progress - 3}%)`;
+    case 'pan-up':
+      return `scale(1.08) translateY(${-3 * progress}%)`;
+    case 'pan-down':
+      return `scale(1.08) translateY(${3 * progress - 3}%)`;
+    case 'ken-burns-left':
+      return `scale(${1.03 + progress * 0.09}) translate(${2 - progress * 4}%, ${1 - progress * 1.5}%)`;
+    case 'ken-burns-right':
+      return `scale(${1.03 + progress * 0.09}) translate(${progress * 4 - 2}%, ${1 - progress * 1.5}%)`;
+    case 'gentle-float': {
+      const wave = Math.sin(progress * Math.PI * 2);
+      return `scale(1.06) translate(${wave * 0.8}%, ${Math.cos(progress * Math.PI * 2) * 0.6}%)`;
+    }
     case 'none':
       return 'none';
   }

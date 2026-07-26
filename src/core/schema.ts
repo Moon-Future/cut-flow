@@ -7,6 +7,11 @@ export const motionSchema = z.enum([
   'slow-zoom-out',
   'pan-left',
   'pan-right',
+  'pan-up',
+  'pan-down',
+  'ken-burns-left',
+  'ken-burns-right',
+  'gentle-float',
 ]);
 export const videoTypeSchema = z.enum([
   'science-explainer',

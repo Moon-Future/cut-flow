@@ -4554,6 +4554,28 @@ select:focus {
   gap: 9px;
   padding: 10px;
 }
+.board-copy .image-motion-field {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 280px) 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #3d365b;
+  border-radius: 8px;
+  background: #161326;
+}
+.board-copy .image-motion-field > span {
+  color: #d9cff0;
+  font-weight: 600;
+}
+.board-copy .image-motion-field select {
+  width: 100%;
+}
+.board-copy .image-motion-field small {
+  color: #897da5;
+  font-size: 9px;
+}
 .shot-editor-list {
   display: grid;
   gap: 9px;

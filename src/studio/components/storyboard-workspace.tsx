@@ -180,6 +180,31 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
               onChange={(event) => updateScene(selected.id, {visualIntent: event.target.value})}
             />
           </label>
+          {selected.assetType === 'image' ? (
+            <label className="image-motion-field">
+              <span>图片动画效果</span>
+              <select
+                value={selected.motion}
+                onChange={(event) =>
+                  updateScene(selected.id, {
+                    motion: event.target.value as ProjectFile['scenes'][number]['motion'],
+                  })
+                }
+              >
+                <option value="none">保持静态</option>
+                <option value="slow-zoom-in">缓慢推近</option>
+                <option value="slow-zoom-out">缓慢拉远</option>
+                <option value="pan-left">缓慢向左平移</option>
+                <option value="pan-right">缓慢向右平移</option>
+                <option value="pan-up">缓慢向上平移</option>
+                <option value="pan-down">缓慢向下平移</option>
+                <option value="ken-burns-left">电影运镜：推近并左移</option>
+                <option value="ken-burns-right">电影运镜：推近并右移</option>
+                <option value="gentle-float">轻微漂浮</option>
+              </select>
+              <small>仅改变镜头运动，不会重新生成图片或消耗 AI Token</small>
+            </label>
+          ) : null}
         </div>
         <div className="shot-editor-list">
           {(selected.shots ?? []).map((shot, index) => (
