@@ -102,6 +102,14 @@ const createWindow = async () => {
     },
   });
   mainWindow.removeMenu();
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const isDevToolsShortcut =
+      input.key === 'F12' ||
+      (input.control && input.shift && input.key.toLowerCase() === 'i');
+    if (!isDevToolsShortcut) return;
+    event.preventDefault();
+    mainWindow?.webContents.toggleDevTools();
+  });
   mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.webContents.setWindowOpenHandler(({url: target}) => {
     if (target.startsWith('http://127.0.0.1:')) return {action: 'allow'};
