@@ -32,6 +32,7 @@ import {createVolcengineVideoProvider} from '../src/ai/volcengine-video-provider
 import {
   limitVideoPrompt,
   normalizeVideoPromptDuration,
+  removeNarrationFromVideoPrompt,
   type VideoTargetDuration,
   videoTargetMaximumSeconds,
   volcengineApiDuration,
@@ -1078,10 +1079,14 @@ const localApi = (): Plugin => ({
             const targetDuration = input.duration ?? aiSettings.volcengineVideo.defaultDuration;
             const finalPrompt = limitVideoPrompt(
               normalizeVideoPromptDuration(
-                input.prompt?.trim() ||
-                  shot.videoPromptZh ||
-                  shot.videoPrompt ||
+                removeNarrationFromVideoPrompt(
+                  input.prompt?.trim() ||
+                    shot.videoPromptZh ||
+                    shot.videoPrompt ||
+                    shot.visualPurpose,
+                  project.scenes.find((scene) => scene.id === input.sceneId)?.narration ?? '',
                   shot.visualPurpose,
+                ),
                 targetDuration,
               ),
             );

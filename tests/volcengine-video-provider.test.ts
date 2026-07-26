@@ -5,6 +5,7 @@ import {
   countVideoPromptCharacters,
   limitVideoPrompt,
   normalizeVideoPromptDuration,
+  removeNarrationFromVideoPrompt,
   videoTargetMaximumSeconds,
   volcengineApiDuration,
 } from '../src/ai/video-generation-prompt';
@@ -77,5 +78,14 @@ describe('视频生成提示词', () => {
     expect(third).toContain('成片总时长不得超过 15 秒');
     expect(third).not.toContain('成片总时长不得超过 5 秒');
     expect(third).not.toContain('成片总时长不得超过 10 秒');
+  });
+
+  it('发送视频模型前移除完整旁白并保留画面描述', () => {
+    const narration = '有人喜欢香菜，也有人觉得它像肥皂，这可能与基因有关。';
+    const prompt = `餐桌上的人物产生不同反应。本段旁白重点：${narration}`;
+    const result = removeNarrationFromVideoPrompt(prompt, narration, '三个人品尝香菜后的表情对比');
+    expect(result).not.toContain(narration);
+    expect(result).toContain('三个人品尝香菜后的表情对比');
+    expect(result).toContain('画面叙事重点');
   });
 });

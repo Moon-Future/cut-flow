@@ -26,6 +26,19 @@ export const videoTargetMaximumSeconds = (duration: VideoTargetDuration) =>
           ? 30
           : 60;
 
+export const removeNarrationFromVideoPrompt = (
+  prompt: string,
+  narration: string,
+  visualDescription: string,
+) => {
+  const narrationText = narration.trim();
+  if (!narrationText) return prompt;
+  return prompt
+    .split(narrationText)
+    .join(visualDescription.trim() || '当前镜头的具体视觉场景')
+    .replace(/本段旁白(?:内容|重点)?[：:]\s*/gu, '画面叙事重点：');
+};
+
 export const normalizeVideoPromptDuration = (
   prompt: string,
   duration: VideoTargetDuration,

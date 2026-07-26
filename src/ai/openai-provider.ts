@@ -175,8 +175,8 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
           const sceneDescription = [
             shot.visualPurpose,
             scene.visualIntent,
-            scene.narration,
             scene.visualPrompt,
+            scene.caption,
           ]
             .filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
             .join('; ');
@@ -187,7 +187,7 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
           const videoPrompt =
             rawVideoPrompt.length >= 280
               ? rawVideoPrompt
-              : `Vertical ${input.aspectRatio} cinematic video, approximately ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} seconds, telling a concise visual story about "${sceneDescription}" with a clear beginning, change, and result. Use the corresponding image as the first frame and preserve the exact subject identity, facial features, clothing, props, object positions, background layout, lighting direction, and color palette. During the opening second, hold a stable establishing view so the relationship between the subject, people, and environment is readable. In the middle, let the characters perform narration-specific actions in a logical sequence, including natural gaze changes, hand movements, facial reactions, and body posture, while key objects respond according to real-world physics. In the final one to two seconds, settle on the most informative emotional contrast, transformation, or outcome. Begin with a stable camera, then use a restrained slow push-in, subtle lateral track, or gentle subject follow; avoid large rotations and abrupt scene changes. Keep motion continuous, pacing deliberate, environmental movement subtle, and all anatomy, fingers, clothing colors, object structures, and spatial relationships consistent. Do not introduce unrelated people or make objects appear or disappear. ${input.visualStyle}, cinematic lighting, realistic high detail, no abstract effects, illegible interface text, text, subtitles, logos, or watermarks.`;
+              : `Vertical ${input.aspectRatio} cinematic video, approximately ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} seconds, telling a concise visual story about "${sceneDescription}" with a clear beginning, change, and result. Use the corresponding image as the first frame and preserve the exact subject identity, facial features, clothing, props, object positions, background layout, lighting direction, and color palette. During the opening second, hold a stable establishing view so the relationship between the subject, people, and environment is readable. In the middle, let the characters perform scene-specific visible actions in a logical sequence, including natural gaze changes, hand movements, facial reactions, and body posture, while key objects respond according to real-world physics. In the final one to two seconds, settle on the most informative emotional contrast, transformation, or outcome. Begin with a stable camera, then use a restrained slow push-in, subtle lateral track, or gentle subject follow; avoid large rotations and abrupt scene changes. Keep motion continuous, pacing deliberate, environmental movement subtle, and all anatomy, fingers, clothing colors, object structures, and spatial relationships consistent. Do not introduce unrelated people or make objects appear or disappear. ${input.visualStyle}, cinematic lighting, realistic high detail, no abstract effects, illegible interface text, text, subtitles, logos, or watermarks.`;
           const imagePromptZh =
             rawImagePromptZh.length >= 220
               ? rawImagePromptZh
@@ -195,7 +195,7 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
           const videoPromptZh =
             rawVideoPromptZh.length >= 260
               ? rawVideoPromptZh
-              : `${input.aspectRatio} 竖屏电影感视频，约 ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} 秒，围绕“${sceneDescription}”完成一个有起点、变化和结果的微型镜头叙事。以对应图片作为首帧，前景主体、中景人物、背景环境、外貌服装、道具位置、光线和色彩完全一致。开始 0—1 秒稳定建立场景，让观众看清主体关系；中段人物依次完成与旁白直接相关的动作，具体表现视线、手部动作、面部情绪和身体反应，关键物体同步产生符合真实物理的变化；最后 1—2 秒停留在最能说明观点、差异或结果的状态。镜头先稳定，再缓慢推近核心主体或小幅平滑横移，必要时轻微跟随人物，不大幅旋转、不突然切换场景。保持节奏清楚、动作连续、环境动态克制，人物外貌、手指、服装颜色、物体结构和空间布局稳定，不新增无关人物，不让物体凭空出现或消失。使用${input.visualStyle}、电影级光影、真实高细节，不要抽象特效、无法辨认的界面内容、文字、字幕、标志、Logo 和水印。`;
+              : `${input.aspectRatio} 竖屏电影感视频，约 ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} 秒，围绕“${sceneDescription}”完成一个有起点、变化和结果的微型镜头叙事。以对应图片作为首帧，前景主体、中景人物、背景环境、外貌服装、道具位置、光线和色彩完全一致。开始 0—1 秒稳定建立场景，让观众看清主体关系；中段人物依次完成与画面意图直接相关的可见动作，具体表现视线、手部动作、面部情绪和身体反应，关键物体同步产生符合真实物理的变化；最后 1—2 秒停留在最能说明观点、差异或结果的状态。镜头先稳定，再缓慢推近核心主体或小幅平滑横移，必要时轻微跟随人物，不大幅旋转、不突然切换场景。保持节奏清楚、动作连续、环境动态克制，人物外貌、手指、服装颜色、物体结构和空间布局稳定，不新增无关人物，不让物体凭空出现或消失。使用${input.visualStyle}、电影级光影、真实高细节，不要抽象特效、无法辨认的界面内容、文字、字幕、标志、Logo 和水印。`;
           return {
             ...shot,
             shotType,
@@ -334,10 +334,11 @@ searchQueries 必须是字符串数组，不能是单个字符串。
 7. 最后写清禁止项和为图生视频预留的动作空间。
 
 视频提示词必须是图片提示词的动态延续，中文不少于 320 个汉字，不能直接复制图片提示词。必须写清：
+0. 不得复制、引用或概括完整 narration，不要把口播稿写入提示词；只把其中与当前镜头有关的信息转译成可见的场景、主体、动作、变化和结果。
 1. 总时长、画面比例，并按“开始 0—1 秒 / 中段 / 最后 1—2 秒”描述动作先后顺序和最终状态。
 2. 每位人物的视线、表情、手势、身体动作，以及关键物体如何随动作变化；无人物镜头则描述现象或过程的连续变化。
 3. 镜头从何处开始，何时推近、横移、跟随或保持稳定，运镜必须服务叙事且幅度克制。
-4. 节奏、环境动态、光线变化和声音氛围建议。
+4. 节奏、环境动态和光线变化；视频只生成无声画面，不要音乐、配音、旁白、对白或人声。
 5. 明确以对应图片为首帧，保持人物外貌、服装、道具、物体位置、场景布局、光线、色彩和镜头方向一致。
 6. 避免变脸、异常手指、物体消失、无关人物、突然换景、违反物理规律和无法辨认的文字。
 

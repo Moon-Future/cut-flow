@@ -9,6 +9,7 @@ import {
   countVideoPromptCharacters,
   limitVideoPrompt,
   normalizeVideoPromptDuration,
+  removeNarrationFromVideoPrompt,
   type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
 import {useStudioStore} from '../store';
@@ -92,13 +93,13 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     updateVisualShot(selected.id, shot.id, patch);
   const aspectRatio = project.project.width < project.project.height ? '9:16' : '16:9';
   const chineseSceneDescription =
-    selected.visualIntent || selected.caption || selected.narration || '与当前旁白对应的具体画面';
+    selected.visualIntent || selected.caption || '围绕当前主题设计的具体可见场景';
   const fallbackImagePromptZh = (shot: VisualShot) => {
-    const subject = `${shot.visualPurpose || chineseSceneDescription}；本段旁白重点：${selected.narration}`;
+    const subject = shot.visualPurpose || chineseSceneDescription;
     return `${aspectRatio} 竖屏电影感画面，围绕“${subject}”设计一个有明确叙事重点的关键帧，画面必须让观众不看文字也能理解本镜头要表达的关系、变化或冲突。前景安排与主题直接相关的核心主体或关键物体，占据画面下方至中央的主要视觉区域，清楚表现材质、纹理、颜色和状态细节；中景安排承担叙事作用的人物、动作或变化过程，人物数量、身份和位置符合真实场景，面部表情、视线方向、手势和身体姿态共同指向本镜头的核心信息；背景完整交代地点、时间和环境，并加入与主题相关的道具，避免无关装饰。采用前景特写与中近景结合的稳定构图，核心主体位于视觉中心或三分线交点，人物和环境形成清晰的前、中、后景层次。定格在动作、情绪或结果最有信息量的一瞬间，突出鲜明对比和真实情绪，但不要夸张成卡通表演。使用符合场景的电影级布光，主体清晰明亮，人物面部保留自然明暗层次，背景适度虚化；色彩统一、真实、高细节，并为后续动作延展保留空间。不要抽象符号，不要无法辨认的界面文字，不要文字、字幕、标志、Logo 和水印。`;
   };
   const fallbackVideoPromptZh = (shot: VisualShot) => {
-    const subject = `${shot.visualPurpose || chineseSceneDescription}；本段旁白重点：${selected.narration}`;
+    const subject = shot.visualPurpose || chineseSceneDescription;
     const duration = Math.max(3, Math.min(8, shot.duration || 5));
     return `${aspectRatio} 竖屏电影感视频，时长约 ${duration} 秒，围绕“${subject}”完成一个有起点、变化和结果的微型镜头叙事。以对应图片作为首帧：前景核心主体、中景人物、背景环境、服装、道具位置、光线方向和色彩完全保持一致。开始 0—1 秒，镜头稳定建立场景，让观众看清主体与人物关系；1—${Math.max(2, duration - 2)} 秒，人物依次完成与旁白直接相关的自然动作，清楚表现视线、手部动作、面部情绪和身体反应，关键物体同步产生符合真实物理规律的变化；最后 1—2 秒，动作停留在最能说明观点、差异或结果的状态。镜头先保持稳定，再缓慢推近核心主体或进行小幅平滑横移，必要时轻微跟随人物动作，不大幅旋转、不突然切换场景。节奏由观察到变化再到强调结果，环境中只加入轻微且合理的动态。保持人物外貌、手指数量、服装颜色、物体结构和空间布局稳定，动作自然连贯，不新增无关人物，不让物体凭空出现或消失。使用真实电影摄影质感、清晰光影和统一色调，不要抽象特效，不要生成无法辨认的界面内容，不要文字、字幕、标志、Logo 和水印。`;
   };
@@ -247,6 +248,11 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     setGeneratingVideoShotId(shot.id);
     setVideoGenerationError(null);
     try {
+      const visualPrompt = removeNarrationFromVideoPrompt(
+        draft.prompt,
+        selected.narration,
+        shot.visualPurpose || selected.visualIntent || selected.caption,
+      );
       const response = await fetch('/api/shots/image-to-video', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -255,7 +261,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
           shotId: shot.id,
           provider: draft.provider,
           duration: draft.duration,
-          prompt: limitVideoPrompt(normalizeVideoPromptDuration(draft.prompt, draft.duration)),
+          prompt: limitVideoPrompt(normalizeVideoPromptDuration(visualPrompt, draft.duration)),
         }),
       });
       const value = (await response.json()) as {
