@@ -128,18 +128,38 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 </label>
               </div>
               <label>
-                <span>画面生成提示词（按需使用）</span>
+                <span>素材推荐搜索词</span>
                 <textarea
-                  rows={3}
-                  value={shot.videoPrompt ?? shot.imagePrompt ?? ''}
+                  rows={2}
+                  value={shot.searchQueries.join('\n')}
+                  placeholder="每行一个搜索词，建议同时提供中文和英文"
                   onChange={(event) =>
-                    updateShot(
-                      shot,
-                      shot.shotType.includes('video')
-                        ? {videoPrompt: event.target.value}
-                        : {imagePrompt: event.target.value},
-                    )
+                    updateShot(shot, {
+                      searchQueries: event.target.value
+                        .split('\n')
+                        .map((item) => item.trim())
+                        .filter(Boolean)
+                        .slice(0, 8),
+                    })
                   }
+                />
+              </label>
+              <label>
+                <span>AI 图片提示词</span>
+                <textarea
+                  rows={5}
+                  value={shot.imagePrompt ?? ''}
+                  placeholder="描述主体、场景、构图、光线、色彩、景别、风格和画面比例"
+                  onChange={(event) => updateShot(shot, {imagePrompt: event.target.value})}
+                />
+              </label>
+              <label>
+                <span>AI 视频提示词</span>
+                <textarea
+                  rows={7}
+                  value={shot.videoPrompt ?? ''}
+                  placeholder="描述初始画面、动作顺序、场景变化、运镜、节奏、时长及一致性"
+                  onChange={(event) => updateShot(shot, {videoPrompt: event.target.value})}
                 />
               </label>
               <div className="shot-assets">

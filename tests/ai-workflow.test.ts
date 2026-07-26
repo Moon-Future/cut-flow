@@ -77,6 +77,14 @@ describe('generation workflow', () => {
     expect(first.project.scenes.every((scene) => scene.words === undefined)).toBe(true);
     expect(first.project.scenes.every((scene) => (scene.shots?.length ?? 0) > 0)).toBe(true);
     expect(
+      first.project.scenes
+        .flatMap((scene) => scene.shots ?? [])
+        .every(
+          (shot) =>
+            (shot.imagePrompt?.length ?? 0) >= 80 && (shot.videoPrompt?.length ?? 0) >= 100,
+        ),
+    ).toBe(true);
+    expect(
       first.project.scenes.flatMap((scene) => scene.shots ?? [])[0]?.searchQueries.length,
     ).toBeGreaterThan(0);
     expect(first.project.scenes.reduce((sum, scene) => sum + scene.duration, 0)).toBeGreaterThan(0);
