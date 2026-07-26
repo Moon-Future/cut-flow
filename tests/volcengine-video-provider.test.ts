@@ -5,6 +5,7 @@ import {
   countVideoPromptCharacters,
   limitVideoPrompt,
   normalizeVideoPromptDuration,
+  videoTargetMaximumSeconds,
   volcengineApiDuration,
 } from '../src/ai/video-generation-prompt';
 
@@ -52,5 +53,17 @@ describe('视频生成提示词', () => {
     const prompt = normalizeVideoPromptDuration('人物完成动作。', '5s');
     expect(prompt).toContain('【目标输出时长】5 秒');
     expect(prompt).not.toContain('约 15 秒');
+    expect(prompt).toContain('成片总时长不得超过 5 秒');
+    expect(prompt).toContain('禁止背景音乐');
+    expect(prompt).toContain('配音');
+    expect(prompt).toContain('人声');
+  });
+
+  it('为所有时长档位设置项目使用上限', () => {
+    expect(videoTargetMaximumSeconds('5s')).toBe(5);
+    expect(videoTargetMaximumSeconds('10s')).toBe(10);
+    expect(videoTargetMaximumSeconds('～15s')).toBe(15);
+    expect(videoTargetMaximumSeconds('～30s')).toBe(30);
+    expect(videoTargetMaximumSeconds('40～60s')).toBe(60);
   });
 });

@@ -743,7 +743,8 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                     <div className="video-generation-footer">
                       <p>
                         {videoWatermark ? '已开启平台明水印' : '未开启平台明水印'}；目标时长仅供
-                        Agent 匹配，最终时长可能存在偏差。
+                        Agent
+                        匹配；若源视频超长，项目会严格按所选时长截断使用。生成视频不含音乐、配音或人声。
                       </p>
                       <button
                         type="button"

@@ -33,6 +33,7 @@ import {
   limitVideoPrompt,
   normalizeVideoPromptDuration,
   type VideoTargetDuration,
+  videoTargetMaximumSeconds,
   volcengineApiDuration,
 } from '../src/ai/video-generation-prompt';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
@@ -1121,10 +1122,9 @@ const localApi = (): Plugin => ({
                   ?.shots?.find((item) => item.id === input.shotId);
                 if (!latestShot) return;
                 latestShot.candidates = [...latestShot.candidates, ...candidates];
-                if (targetDuration === '5s' || targetDuration === '10s') {
-                  latestShot.sourceStart = 0;
-                  latestShot.sourceEnd = targetDuration === '5s' ? 5 : 10;
-                }
+                const maximumDuration = videoTargetMaximumSeconds(targetDuration);
+                latestShot.sourceStart = 0;
+                latestShot.sourceEnd = maximumDuration;
                 latestShot.generationTask = {
                   ...task,
                   status: 'needs-selection',
@@ -1147,14 +1147,7 @@ const localApi = (): Plugin => ({
                     originalUrl: null,
                     createdAt: candidate.createdAt,
                     keywords: latestShot.searchQueries,
-                    duration:
-                      targetDuration === '5s' || targetDuration === '10s'
-                        ? 15
-                        : targetDuration === '～15s'
-                          ? 15
-                          : targetDuration === '～30s'
-                            ? 30
-                            : 50,
+                    duration: maximumDuration,
                   })),
                 );
                 await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
