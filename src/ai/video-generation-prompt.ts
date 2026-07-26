@@ -30,7 +30,7 @@ export const normalizeVideoPromptDuration = (
     .trim();
   const instruction =
     duration === '5s' || duration === '10s'
-      ? `【成片使用时长】${videoDurationLabel(duration)}。平台将按约 15 秒生成，请在前 ${videoDurationLabel(duration)}内完成核心动作和完整叙事，之后只保留可安全裁剪的自然延展。`
+      ? `【目标输出时长】${videoDurationLabel(duration)}。请在所选时长内完成核心动作和完整叙事，结尾自然收束。`
       : `【目标输出时长】${videoDurationLabel(duration)}。以接口 duration 参数为准，不要采用正文中的其他总时长描述。`;
   return `${instruction}\n${cleaned}`;
 };

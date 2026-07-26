@@ -321,7 +321,7 @@ export const SettingsWorkspace = () => {
           <header>
             <div>
               <strong>火山引擎 · 小云雀智能生视频</strong>
-              <p>根据分镜提示词生成约 15 秒视频，完成后自动下载到当前项目。</p>
+              <p>根据分镜提示词生成视频，完成后自动下载到当前项目。</p>
             </div>
             <span>
               {settings.volcengineVideo.configured
@@ -351,8 +351,8 @@ export const SettingsWorkspace = () => {
                   })
                 }
               >
-                <option value="5s">5 秒（生成约 15 秒后自动截取）</option>
-                <option value="10s">10 秒（生成约 15 秒后自动截取）</option>
+                <option value="5s">5 秒</option>
+                <option value="10s">10 秒</option>
                 <option value="～15s">约 15 秒</option>
                 <option value="～30s">约 30 秒</option>
                 <option value="40～60s">40～60 秒</option>
