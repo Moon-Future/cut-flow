@@ -1427,6 +1427,9 @@ select:focus {
 .edit-main.stage-mode {
   grid-template-rows: 60px minmax(0, 1fr);
 }
+.edit-main.stage-mode.overview-mode {
+  grid-template-rows: minmax(0, 1fr);
+}
 .edit-header {
   position: sticky;
   top: 0;

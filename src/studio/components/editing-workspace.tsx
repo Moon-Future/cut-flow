@@ -166,7 +166,11 @@ export const EditingWorkspace = ({
         onNewProject={onNewProject}
       />
 
-      <main className={`edit-main ${section === 'edit' ? '' : 'stage-mode'}`}>
+      <main
+        className={`edit-main ${section === 'edit' ? '' : 'stage-mode'} ${
+          section === 'overview' ? 'overview-mode' : ''
+        }`}
+      >
         {section !== 'overview' ? <header className="edit-header">
           <div>
             <button onClick={onNewProject}>我的项目</button>
