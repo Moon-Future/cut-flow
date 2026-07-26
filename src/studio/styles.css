@@ -4576,6 +4576,48 @@ select:focus {
   border-radius: 9px;
   background: linear-gradient(145deg, #10221e, #0c1818);
 }
+.content-platform-search {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px;
+  border: 1px solid #3d365b;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #1b1730, #11131e);
+}
+.content-platform-search strong,
+.content-platform-search span {
+  display: block;
+}
+.content-platform-search strong {
+  color: #e1d9f7;
+  font-size: 11px;
+}
+.content-platform-search span {
+  margin-top: 4px;
+  color: #8f83ad;
+  font-size: 9px;
+}
+.content-platform-search > div:last-child {
+  display: flex;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+.content-platform-search a {
+  padding: 7px 10px;
+  border: 1px solid #675395;
+  border-radius: 7px;
+  background: #2b2145;
+  color: #c8b7ef;
+  font-size: 9px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.content-platform-search a:hover {
+  border-color: #9475d6;
+  color: #fff;
+}
 .online-material-search-heading {
   display: flex;
   align-items: center;

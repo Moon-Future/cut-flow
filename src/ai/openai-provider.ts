@@ -55,9 +55,7 @@ const formatScriptValidationError = (
   const generalFields = new Set<string>();
   for (const issue of issues) {
     const path = issue.path.map(String);
-    const sceneIndex = path[0] === 'scenes' && /^\d+$/.test(path[1] ?? '')
-      ? Number(path[1])
-      : null;
+    const sceneIndex = path[0] === 'scenes' && /^\d+$/.test(path[1] ?? '') ? Number(path[1]) : null;
     const field = path.at(-1) ?? 'scenes';
     if (sceneIndex === null) {
       generalFields.add(scriptFieldLabels[field] ?? field);
@@ -103,8 +101,7 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
     if (['stock-video', 'generated-video', 'real-footage'].includes(text)) return 'video';
     if (text === 'generated-image') return 'image';
     if (shotTypes.has(text)) return text;
-    if (/数字人|digital.?human/.test(text))
-      return allowDigitalHuman ? 'digital-human' : 'video';
+    if (/数字人|digital.?human/.test(text)) return allowDigitalHuman ? 'digital-human' : 'video';
     if (/科学|动画|animation/.test(text)) return 'science-animation';
     if (/视频|实拍|真实|footage|video/.test(text)) return 'video';
     if (/图片|图像|image/.test(text)) return 'image';
@@ -113,9 +110,8 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
   const normalizeStrategy = (input: unknown, shotType: string) => {
     const text = String(input ?? '').toLowerCase();
     if (text === 'digital-human' && allowDigitalHuman) return text;
-    if (strategies.has(text)) return text === 'digital-human' && allowDigitalHuman
-      ? 'digital-human'
-      : 'source-agnostic';
+    if (strategies.has(text))
+      return text === 'digital-human' && allowDigitalHuman ? 'digital-human' : 'source-agnostic';
     if (/数字人|digital/.test(text)) return allowDigitalHuman ? 'digital-human' : 'stock-search';
     return 'source-agnostic';
   };
@@ -123,31 +119,31 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
     ...script,
     scenes: scenes.map((sceneValue) => {
       const scene =
-        sceneValue && typeof sceneValue === 'object'
-          ? (sceneValue as Record<string, unknown>)
-          : {};
+        sceneValue && typeof sceneValue === 'object' ? (sceneValue as Record<string, unknown>) : {};
       const shots = Array.isArray(scene.shots) ? scene.shots : [];
       const requestedSegmentType = String(scene.segmentType ?? '');
-      const segmentType =
-        ['digital-human', 'voiceover', 'visual-explanation'].includes(requestedSegmentType)
-          ? requestedSegmentType === 'digital-human' && !allowDigitalHuman
-            ? 'voiceover'
-            : requestedSegmentType
-          : /画面|案例|步骤|数据|操作|界面/.test(String(scene.visualIntent ?? ''))
-            ? 'visual-explanation'
-            : allowDigitalHuman
-              ? 'digital-human'
-              : 'voiceover';
+      const segmentType = ['digital-human', 'voiceover', 'visual-explanation'].includes(
+        requestedSegmentType,
+      )
+        ? requestedSegmentType === 'digital-human' && !allowDigitalHuman
+          ? 'voiceover'
+          : requestedSegmentType
+        : /画面|案例|步骤|数据|操作|界面/.test(String(scene.visualIntent ?? ''))
+          ? 'visual-explanation'
+          : allowDigitalHuman
+            ? 'digital-human'
+            : 'voiceover';
       return {
         ...scene,
         segmentType,
-        visualPrompt: String(
-          scene.visualPrompt ??
-            scene.visualIntent ??
-            scene.narration ??
-            scene.caption ??
-            '主题相关画面',
-        ).trim() || '主题相关画面',
+        visualPrompt:
+          String(
+            scene.visualPrompt ??
+              scene.visualIntent ??
+              scene.narration ??
+              scene.caption ??
+              '主题相关画面',
+          ).trim() || '主题相关画面',
         digitalHumanEmotion:
           segmentType === 'digital-human' ? String(scene.digitalHumanEmotion ?? '认真') : '',
         digitalHumanAction:
@@ -274,9 +270,8 @@ ${input.customPrompt?.trim() || '无'}
 必须严格遵守系统提示词中的文案质量、段落交替和 JSON 输出要求。`;
       const useChatCompletions = config.apiMode === 'chat-completions';
       const isDigitalHuman = input.videoType === 'digital-human';
-      const digitalHumanDirection =
-        isDigitalHuman
-          ? `
+      const digitalHumanDirection = isDigitalHuman
+        ? `
 数字人口播专项要求：
 1. 视频形式是“数字人口播 + 画面讲解”交替切换；画面素材可混用真实素材、AI 图片和 AI 视频。
 2. digital-human 段必须填写 digitalHumanEmotion、digitalHumanAction、digitalHumanBackground；动作简单自然，不频繁挥手。
@@ -288,7 +283,7 @@ ${input.customPrompt?.trim() || '无'}
 8. 所有图片与视频提示词重复使用一致的主角特征、服装、主场景、核心物体、主色调、光线、视觉风格和镜头语言。
 9. 避免变脸、异常手指、服装变色、场景突变、物体消失、大幅旋转、违反物理的动作、无关人物和无法辨认的界面文字。
 10. visual-explanation 段填写具体 soundEffect，没有则写“无”。`
-          : `
+        : `
 非数字人专项要求：
 1. 本视频禁止出现数字人、虚拟主播、digital-human 类型镜头或 digital-human 素材策略。
 2. 使用 voiceover 普通旁白与 visual-explanation 画面讲解组织内容；旁白不要求人物正面出镜。
@@ -318,7 +313,11 @@ ${digitalHumanDirection}
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
 assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
 searchQueries 必须是字符串数组，不能是单个字符串。
-每个 shot 都必须提供 2-6 个英文 searchQueries 和一一对应的中文 searchQueriesZh，并同时提供 imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。imagePrompt 和 videoPrompt 使用专业英文撰写，供图片和视频模型直接调用；imagePromptZh 和 videoPromptZh 是准确完整的中文翻译，供页面展示。英文提示词不能只是几个风格词：图片提示词必须写清主体、环境、构图位置、外观特征、动作定格、光线、色彩、景别、视觉风格和画面比例；视频提示词必须写清初始画面、动作先后顺序、场景变化、镜头运动、节奏、时长、光线、色彩、比例和首帧一致性。
+每个 shot 都必须提供 2-6 个英文 searchQueries 和一一对应的中文 searchQueriesZh。两组搜索词用途不同：
+- searchQueries 用于 Pixabay 等素材库，必须描述可拍摄的完整场景，至少包含“核心主体 + 人或物的行为 + 环境/用途”，优先采用 3-8 个常用英文单词。不得只写孤立物体名或“close-up”，例如不要只写“cilantro leaves close-up”，应写“people eating cilantro different facial reactions”或“chef adding fresh cilantro to food”。
+- searchQueriesZh 用于 YouTube、B站、抖音等内容平台，必须保留视频主题和问题语义，写成用户真正会搜索的中文短语，例如“为什么有人觉得香菜像肥皂”“不爱吃香菜和基因有关吗”。不要把英文素材词逐字翻译成中文。
+同一镜头的多个搜索词要覆盖“主题解释、人物行为、具体场景或过程”，不能只是同义词替换。
+每个 shot 同时提供 imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。imagePrompt 和 videoPrompt 使用专业英文撰写，供图片和视频模型直接调用；imagePromptZh 和 videoPromptZh 是准确完整的中文翻译，供页面展示。英文提示词不能只是几个风格词：图片提示词必须写清主体、环境、构图位置、外观特征、动作定格、光线、色彩、景别、视觉风格和画面比例；视频提示词必须写清初始画面、动作先后顺序、场景变化、镜头运动、节奏、时长、光线、色彩、比例和首帧一致性。
 不要参考任何短占位文案或示例长度。先完成达到目标字数的 narration，再补充其他 JSON 字段。`;
       config.onPrompt?.({
         system: useChatCompletions
@@ -326,124 +325,134 @@ searchQueries 必须是字符串数组，不能是单个字符串。
           : '使用 Responses API 的 video_script 严格 JSON Schema 生成视频文案。',
         user: prompt,
       });
-      const response = await request(`${config.baseUrl ?? 'https://api.openai.com/v1'}/${useChatCompletions ? 'chat/completions' : 'responses'}`, config.apiKey, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(useChatCompletions ? {
-          model: config.textModel,
-          messages: [
-            {
-              role: 'system',
-              content: jsonSystemPrompt,
-            },
-            {role: 'user', content: prompt},
-          ],
-          response_format: {type: 'json_object'},
-          max_tokens: 16000,
-          stream: false,
-          ...(config.disableThinking ? {thinking: {type: 'disabled'}} : {}),
-        } : {
-          model: config.textModel ?? 'gpt-5.6-luna',
-          input: prompt,
-          text: {
-            format: {
-              type: 'json_schema',
-              name: 'video_script',
-              strict: true,
-              schema: {
-                type: 'object',
-                additionalProperties: false,
-                required: ['title', 'hook', 'scenes', 'ending'],
-                properties: {
-                  title: {type: 'string'},
-                  hook: {type: 'string'},
-                  ending: {type: 'string'},
-                  scenes: {
-                    type: 'array',
-                    minItems: requiredSceneCount,
-                    maxItems: requiredSceneCount,
-                    items: {
-                      type: 'object',
-                      additionalProperties: false,
-                      required: [
-                        'segmentType',
-                        'narration',
-                        'caption',
-                        'visualPrompt',
-                        'suggestedDuration',
-                        'visualIntent',
-                        'digitalHumanEmotion',
-                        'digitalHumanAction',
-                        'digitalHumanBackground',
-                        'soundEffect',
-                        'shots',
-                      ],
-                      properties: {
-                        segmentType: {
-                          type: 'string',
-                          enum: ['digital-human', 'voiceover', 'visual-explanation'],
-                        },
-                        narration: {type: 'string'},
-                        caption: {type: 'string'},
-                        visualPrompt: {type: 'string'},
-                        suggestedDuration: {type: 'number'},
-                        visualIntent: {type: 'string'},
-                        digitalHumanEmotion: {type: 'string'},
-                        digitalHumanAction: {type: 'string'},
-                        digitalHumanBackground: {type: 'string'},
-                        soundEffect: {type: 'string'},
-                        shots: {
-                          type: 'array',
-                          minItems: 1,
-                          maxItems: 8,
-                          items: {
-                            type: 'object',
-                            additionalProperties: false,
-                            required: [
-                              'visualPurpose',
-                              'shotType',
-                              'assetStrategy',
-                              'durationWeight',
-                              'searchQueries',
-                              'searchQueriesZh',
-                              'imagePrompt',
-                              'videoPrompt',
-                              'imagePromptZh',
-                              'videoPromptZh',
-                            ],
-                            properties: {
-                              visualPurpose: {type: 'string'},
-                              shotType: {
-                                type: 'string',
-                                enum: [
-                                  'image',
-                                  'video',
-                                  'real-footage',
-                                  'stock-video',
-                                  'generated-video',
-                                  'generated-image',
-                                  'science-animation',
-                                  'digital-human',
-                                ],
+      const response = await request(
+        `${config.baseUrl ?? 'https://api.openai.com/v1'}/${useChatCompletions ? 'chat/completions' : 'responses'}`,
+        config.apiKey,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(
+            useChatCompletions
+              ? {
+                  model: config.textModel,
+                  messages: [
+                    {
+                      role: 'system',
+                      content: jsonSystemPrompt,
+                    },
+                    {role: 'user', content: prompt},
+                  ],
+                  response_format: {type: 'json_object'},
+                  max_tokens: 16000,
+                  stream: false,
+                  ...(config.disableThinking ? {thinking: {type: 'disabled'}} : {}),
+                }
+              : {
+                  model: config.textModel ?? 'gpt-5.6-luna',
+                  input: prompt,
+                  text: {
+                    format: {
+                      type: 'json_schema',
+                      name: 'video_script',
+                      strict: true,
+                      schema: {
+                        type: 'object',
+                        additionalProperties: false,
+                        required: ['title', 'hook', 'scenes', 'ending'],
+                        properties: {
+                          title: {type: 'string'},
+                          hook: {type: 'string'},
+                          ending: {type: 'string'},
+                          scenes: {
+                            type: 'array',
+                            minItems: requiredSceneCount,
+                            maxItems: requiredSceneCount,
+                            items: {
+                              type: 'object',
+                              additionalProperties: false,
+                              required: [
+                                'segmentType',
+                                'narration',
+                                'caption',
+                                'visualPrompt',
+                                'suggestedDuration',
+                                'visualIntent',
+                                'digitalHumanEmotion',
+                                'digitalHumanAction',
+                                'digitalHumanBackground',
+                                'soundEffect',
+                                'shots',
+                              ],
+                              properties: {
+                                segmentType: {
+                                  type: 'string',
+                                  enum: ['digital-human', 'voiceover', 'visual-explanation'],
+                                },
+                                narration: {type: 'string'},
+                                caption: {type: 'string'},
+                                visualPrompt: {type: 'string'},
+                                suggestedDuration: {type: 'number'},
+                                visualIntent: {type: 'string'},
+                                digitalHumanEmotion: {type: 'string'},
+                                digitalHumanAction: {type: 'string'},
+                                digitalHumanBackground: {type: 'string'},
+                                soundEffect: {type: 'string'},
+                                shots: {
+                                  type: 'array',
+                                  minItems: 1,
+                                  maxItems: 8,
+                                  items: {
+                                    type: 'object',
+                                    additionalProperties: false,
+                                    required: [
+                                      'visualPurpose',
+                                      'shotType',
+                                      'assetStrategy',
+                                      'durationWeight',
+                                      'searchQueries',
+                                      'searchQueriesZh',
+                                      'imagePrompt',
+                                      'videoPrompt',
+                                      'imagePromptZh',
+                                      'videoPromptZh',
+                                    ],
+                                    properties: {
+                                      visualPurpose: {type: 'string'},
+                                      shotType: {
+                                        type: 'string',
+                                        enum: [
+                                          'image',
+                                          'video',
+                                          'real-footage',
+                                          'stock-video',
+                                          'generated-video',
+                                          'generated-image',
+                                          'science-animation',
+                                          'digital-human',
+                                        ],
+                                      },
+                                      assetStrategy: {
+                                        type: 'string',
+                                        enum: [
+                                          'source-agnostic',
+                                          'local-first',
+                                          'stock-search',
+                                          'ai-generate',
+                                          'programmatic',
+                                          'digital-human',
+                                        ],
+                                      },
+                                      durationWeight: {type: 'number'},
+                                      searchQueries: {type: 'array', items: {type: 'string'}},
+                                      searchQueriesZh: {type: 'array', items: {type: 'string'}},
+                                      imagePrompt: {type: 'string'},
+                                      videoPrompt: {type: 'string'},
+                                      imagePromptZh: {type: 'string'},
+                                      videoPromptZh: {type: 'string'},
+                                    },
+                                  },
+                                },
                               },
-                              assetStrategy: {
-                                type: 'string',
-                                enum: [
-                                  'source-agnostic',
-                                  'local-first',
-                                  'stock-search',
-                                  'ai-generate',
-                                  'programmatic',
-                                  'digital-human',
-                                ],
-                              },
-                              durationWeight: {type: 'number'},
-                              searchQueries: {type: 'array', items: {type: 'string'}},
-                              searchQueriesZh: {type: 'array', items: {type: 'string'}},
-                              imagePrompt: {type: 'string'},
-                              videoPrompt: {type: 'string'},
-                              imagePromptZh: {type: 'string'},
-                              videoPromptZh: {type: 'string'},
                             },
                           },
                         },
@@ -451,11 +460,9 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                     },
                   },
                 },
-              },
-            },
-          },
-        }),
-      });
+          ),
+        },
+      );
       const result = (await response.json()) as {
         output_text?: string;
         choices?: Array<{message?: {content?: string}}>;
@@ -469,9 +476,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
         console.error('[AI 文案 JSON 解析失败]', error, output);
         throw new Error('AI 返回的内容不是有效的文案结构，请重新生成一次。');
       }
-      const parsedScript = videoScriptSchema.safeParse(
-        normalizeCompatibleScript(rawScript, input),
-      );
+      const parsedScript = videoScriptSchema.safeParse(normalizeCompatibleScript(rawScript, input));
       if (!parsedScript.success) {
         console.error('[AI 文案结构校验失败]', parsedScript.error.issues);
         throw new Error(formatScriptValidationError(parsedScript.error.issues));
@@ -481,16 +486,20 @@ searchQueries 必须是字符串数组，不能是单个字符串。
   },
   tts: {
     synthesize: async (text) => {
-      const response = await request(`${config.baseUrl ?? 'https://api.openai.com/v1'}/audio/speech`, config.apiKey, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          model: config.ttsModel ?? 'tts-1',
-          voice: 'alloy',
-          input: text,
-          response_format: 'wav',
-        }),
-      });
+      const response = await request(
+        `${config.baseUrl ?? 'https://api.openai.com/v1'}/audio/speech`,
+        config.apiKey,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            model: config.ttsModel ?? 'tts-1',
+            voice: 'alloy',
+            input: text,
+            response_format: 'wav',
+          }),
+        },
+      );
       return {audio: Buffer.from(await response.arrayBuffer()), format: 'wav'};
     },
   },

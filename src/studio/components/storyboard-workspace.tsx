@@ -9,6 +9,14 @@ import {useStudioStore} from '../store';
 
 type Props = {project: ProjectFile; projectId: string; onAssets: () => void};
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
+const contentSearchLinks = (query: string) => {
+  const encoded = encodeURIComponent(query);
+  return [
+    ['YouTube', `https://www.youtube.com/results?search_query=${encoded}`],
+    ['B站', `https://search.bilibili.com/all?keyword=${encoded}`],
+    ['抖音', `https://www.douyin.com/search/${encoded}`],
+  ] as const;
+};
 
 export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
   const {selectedSceneId, selectScene, updateScene, updateVisualShot} = useStudioStore();
@@ -213,7 +221,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 </label>
               </div>
               <label>
-                <span>素材推荐搜索词</span>
+                <span>中文主题搜索词（用于内容平台）</span>
                 <textarea
                   rows={2}
                   value={
@@ -222,7 +230,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                       '\n',
                     )
                   }
-                  placeholder="每行一个搜索词，建议同时提供中文和英文"
+                  placeholder="每行一个中文主题，例如：为什么有人觉得香菜像肥皂"
                   onChange={(event) =>
                     updateShot(shot, {
                       searchQueriesZh: event.target.value
@@ -234,11 +242,27 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   }
                 />
               </label>
+              <div className="content-platform-search">
+                <div>
+                  <strong>搜索相关视频内容</strong>
+                  <span>使用上面第一条中文主题词打开平台搜索结果，仅作选题和画面参考</span>
+                </div>
+                <div>
+                  {contentSearchLinks(
+                    shot.searchQueriesZh?.[0] ||
+                      `${project.content?.topic || project.project.title} ${shot.visualPurpose}`,
+                  ).map(([name, href]) => (
+                    <a key={name} href={href} target="_blank" rel="noreferrer">
+                      搜索{name}
+                    </a>
+                  ))}
+                </div>
+              </div>
               <div className="online-material-search">
                 <div className="online-material-search-heading">
                   <div>
-                    <strong>在线搜索素材</strong>
-                    <span>使用上方英文搜索词从 Pixabay 查找图片或视频</span>
+                    <strong>搜索可下载素材</strong>
+                    <span>Pixabay 使用英文场景词，适合寻找可用素材，不用于搜索完整主题</span>
                   </div>
                   <div>
                     <button type="button" onClick={() => void searchOnline(shot, 'image')}>
