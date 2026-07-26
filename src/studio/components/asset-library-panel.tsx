@@ -4,6 +4,12 @@ import {useStudioStore} from '../store';
 
 type Props = {open: boolean; projectId: string; onClose: () => void};
 
+const sourceLabels: Record<AssetMetadata['source'], string> = {
+  local: '本地素材',
+  generated: 'AI 生成',
+  online: '外部素材',
+};
+
 export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
   const {selectedSceneId, replaceSceneAsset} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
@@ -130,6 +136,7 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
                 <strong>{asset.name}</strong>
                 <p>{asset.keywords.slice(0, 3).join(' · ') || '暂无关键词'}</p>
                 <div>
+                  <span className={`asset-source ${asset.source}`}>{sourceLabels[asset.source]}</span>
                   <span className={asset.commercialUse ? 'license-ok' : 'license-warn'}>
                     {asset.commercialUse ? '可商用' : '不可商用'}
                   </span>

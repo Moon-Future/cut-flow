@@ -34,6 +34,8 @@ const normalizeCompatibleScript = (value: unknown, allowDigitalHuman: boolean): 
   const script = value as Record<string, unknown>;
   const scenes = Array.isArray(script.scenes) ? script.scenes : [];
   const shotTypes = new Set([
+    'image',
+    'video',
     'real-footage',
     'stock-video',
     'generated-video',
@@ -42,6 +44,7 @@ const normalizeCompatibleScript = (value: unknown, allowDigitalHuman: boolean): 
     'digital-human',
   ]);
   const strategies = new Set([
+    'source-agnostic',
     'local-first',
     'stock-search',
     'ai-generate',
@@ -50,24 +53,24 @@ const normalizeCompatibleScript = (value: unknown, allowDigitalHuman: boolean): 
   ]);
   const normalizeShotType = (input: unknown) => {
     const text = String(input ?? '').toLowerCase();
+    if (['stock-video', 'generated-video', 'real-footage'].includes(text)) return 'video';
+    if (text === 'generated-image') return 'image';
     if (shotTypes.has(text)) return text;
-    if (/数字人|digital/.test(text)) return allowDigitalHuman ? 'digital-human' : 'real-footage';
+    if (/数字人|digital.?human/.test(text))
+      return allowDigitalHuman ? 'digital-human' : 'video';
     if (/科学|动画|animation/.test(text)) return 'science-animation';
-    if (/生成.*视频|generated.*video/.test(text)) return 'generated-video';
-    if (/图片|图像|image/.test(text)) return 'generated-image';
-    if (/实拍|真实|footage/.test(text)) return 'real-footage';
-    return 'stock-video';
+    if (/视频|实拍|真实|footage|video/.test(text)) return 'video';
+    if (/图片|图像|image/.test(text)) return 'image';
+    return 'video';
   };
   const normalizeStrategy = (input: unknown, shotType: string) => {
     const text = String(input ?? '').toLowerCase();
-    if (strategies.has(text)) return text;
+    if (text === 'digital-human' && allowDigitalHuman) return text;
+    if (strategies.has(text)) return text === 'digital-human' && allowDigitalHuman
+      ? 'digital-human'
+      : 'source-agnostic';
     if (/数字人|digital/.test(text)) return allowDigitalHuman ? 'digital-human' : 'stock-search';
-    if (/程序|program|动画/.test(text)) return 'programmatic';
-    if (/生成|generate/.test(text)) return 'ai-generate';
-    if (/本地|local/.test(text)) return 'local-first';
-    return shotType === 'real-footage' || shotType === 'stock-video'
-      ? 'stock-search'
-      : 'ai-generate';
+    return 'source-agnostic';
   };
   return {
     ...script,
@@ -183,10 +186,10 @@ ${input.customPrompt?.trim() || '无'}
         isDigitalHuman
           ? `
 数字人口播专项要求：
-1. 视频形式是“数字人口播 + AI 生成画面讲解”交替切换。
+1. 视频形式是“数字人口播 + 画面讲解”交替切换；画面素材可混用真实素材、AI 图片和 AI 视频。
 2. digital-human 段必须填写 digitalHumanEmotion、digitalHumanAction、digitalHumanBackground；动作简单自然，不频繁挥手。
 3. visual-explanation 段的旁白必须与具体画面同步，画面描述要写清主体、环境、构图位置、动作、变化和观众应理解的信息。
-4. 每个 visual-explanation 段必须同时提供完整 imagePrompt 和 videoPrompt，不能留空。
+4. 每个 visual-explanation 段必须同时提供完整 imagePrompt 和 videoPrompt，不能留空；后续可按需要选择真实素材或 AI 生成素材。
 5. imagePrompt 必须包含主体、环境、构图、人物或物体特征、动作定格、光线、色彩、景别、视觉风格、${input.aspectRatio}，并明确不要文字、字幕、Logo、水印。
 6. videoPrompt 不能复制 imagePrompt；必须描述初始画面、动作顺序、场景变化、镜头运动、节奏、建议时长、光线、色彩、风格和 ${input.aspectRatio}。
 7. videoPrompt 结尾必须追加：以对应 AI 图片作为首帧，保持主体外貌、服装、场景布局、物体位置和色彩风格一致，只增加自然动作、镜头运动和环境动态，不改变主体结构。
@@ -198,13 +201,13 @@ ${input.customPrompt?.trim() || '无'}
 1. 本视频禁止出现数字人、虚拟主播、digital-human 类型镜头或 digital-human 素材策略。
 2. 使用 voiceover 普通旁白与 visual-explanation 画面讲解组织内容；旁白不要求人物正面出镜。
 3. voiceover 负责钩子、串联、观点和结论；visual-explanation 负责场景、案例、证据、步骤和变化。
-4. 优先使用真实素材、库存视频、产品录屏、科学动画、AI 图片或 AI 视频。
+4. 每个画面都允许从真实素材、AI 图片、AI 视频中选择或混用，文案阶段不预设素材来源。
 5. visual-explanation 段必须给出具体画面内容、imagePrompt、videoPrompt 和 soundEffect。
 6. imagePrompt 和 videoPrompt 遵循 ${input.aspectRatio}、${input.visualStyle}，不要文字、字幕、Logo 和水印。`;
       const speakerType = isDigitalHuman ? 'digital-human' : 'voiceover';
       const speakerVisual = isDigitalHuman ? '数字人正面出镜' : '主题相关真实画面';
-      const speakerShotType = isDigitalHuman ? 'digital-human' : 'real-footage';
-      const speakerStrategy = isDigitalHuman ? 'digital-human' : 'stock-search';
+      const speakerShotType = isDigitalHuman ? 'digital-human' : 'video';
+      const speakerStrategy = isDigitalHuman ? 'digital-human' : 'source-agnostic';
       const speakerQuery = isDigitalHuman ? 'digital human presenter' : 'topic related footage';
       const jsonSystemPrompt = `你是一名专业的抖音短视频文案策划、视觉导演和 AI 视频提示词设计师，擅长创作“${isDigitalHuman ? '数字人口播' : '普通旁白'} + 画面讲解”交替呈现的短视频内容。
 
@@ -222,8 +225,8 @@ ${input.customPrompt?.trim() || '无'}
 ${digitalHumanDirection}
 
 只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
-shotType 只能使用英文枚举：real-footage、stock-video、generated-video、generated-image、science-animation、digital-human。
-assetStrategy 只能使用英文枚举：local-first、stock-search、ai-generate、programmatic、digital-human。
+shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
+assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
 searchQueries 必须是字符串数组，不能是单个字符串。
 JSON 输出格式示例：
 {
@@ -231,11 +234,11 @@ JSON 输出格式示例：
   "hook": "示例开头",
   "scenes": [
     {"segmentType":"${speakerType}","narration":"第一段旁白","caption":"开场钩子","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"提出冲突","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"说出钩子","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
-    {"segmentType":"visual-explanation","narration":"第二段旁白","caption":"问题展示","visualPrompt":"具体问题场景","suggestedDuration":8,"visualIntent":"用场景展示问题","shots":[{"visualPurpose":"展示具体问题","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["problem scenario"],"imagePrompt":"","videoPrompt":"真实场景"}]},
+    {"segmentType":"visual-explanation","narration":"第二段旁白","caption":"问题展示","visualPrompt":"具体问题场景","suggestedDuration":8,"visualIntent":"用场景展示问题","shots":[{"visualPurpose":"展示具体问题","shotType":"video","assetStrategy":"source-agnostic","durationWeight":1,"searchQueries":["problem scenario"],"imagePrompt":"关键帧提示词","videoPrompt":"动态视频提示词"}]},
     {"segmentType":"${speakerType}","narration":"第三段旁白","caption":"核心判断","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"说出核心判断","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"强调观点","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
-    {"segmentType":"visual-explanation","narration":"第四段旁白","caption":"原因拆解","visualPrompt":"原因拆解过程","suggestedDuration":8,"visualIntent":"解释原因","shots":[{"visualPurpose":"可视化解释原因","shotType":"science-animation","assetStrategy":"programmatic","durationWeight":1,"searchQueries":["concept animation"],"imagePrompt":"解释动画","videoPrompt":""}]},
+    {"segmentType":"visual-explanation","narration":"第四段旁白","caption":"原因拆解","visualPrompt":"原因拆解过程","suggestedDuration":8,"visualIntent":"解释原因","shots":[{"visualPurpose":"可视化解释原因","shotType":"science-animation","assetStrategy":"source-agnostic","durationWeight":1,"searchQueries":["concept animation"],"imagePrompt":"解释动画关键帧","videoPrompt":"解释动画的动态过程"}]},
     {"segmentType":"${speakerType}","narration":"第五段旁白","caption":"关键观点","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"强化记忆点","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"强调关键结论","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
-    {"segmentType":"visual-explanation","narration":"第六段旁白","caption":"解决方法","visualPrompt":"具体操作步骤","suggestedDuration":8,"visualIntent":"给出可执行方法","shots":[{"visualPurpose":"展示操作步骤","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["step by step solution"],"imagePrompt":"","videoPrompt":"步骤演示"}]},
+    {"segmentType":"visual-explanation","narration":"第六段旁白","caption":"解决方法","visualPrompt":"具体操作步骤","suggestedDuration":8,"visualIntent":"给出可执行方法","shots":[{"visualPurpose":"展示操作步骤","shotType":"video","assetStrategy":"source-agnostic","durationWeight":1,"searchQueries":["step by step solution"],"imagePrompt":"步骤关键帧","videoPrompt":"步骤动态演示"}]},
     {"segmentType":"${speakerType}","narration":"第七段旁白","caption":"结尾收束","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"总结并互动引导","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"完成总结","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]}
   ],
   "ending": "示例结尾"
@@ -333,6 +336,8 @@ JSON 输出格式示例：
                               shotType: {
                                 type: 'string',
                                 enum: [
+                                  'image',
+                                  'video',
                                   'real-footage',
                                   'stock-video',
                                   'generated-video',
@@ -344,6 +349,7 @@ JSON 输出格式示例：
                               assetStrategy: {
                                 type: 'string',
                                 enum: [
+                                  'source-agnostic',
                                   'local-first',
                                   'stock-search',
                                   'ai-generate',

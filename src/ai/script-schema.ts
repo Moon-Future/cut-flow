@@ -21,6 +21,8 @@ export const videoScriptSchema = z.object({
             z.object({
               visualPurpose: z.string().min(1),
               shotType: z.enum([
+                'image',
+                'video',
                 'real-footage',
                 'stock-video',
                 'generated-video',
@@ -29,6 +31,7 @@ export const videoScriptSchema = z.object({
                 'digital-human',
               ]),
               assetStrategy: z.enum([
+                'source-agnostic',
                 'local-first',
                 'stock-search',
                 'ai-generate',

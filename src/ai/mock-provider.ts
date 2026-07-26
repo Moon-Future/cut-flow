@@ -26,8 +26,8 @@ const mockScript = (input: GenerateInput): VideoScript => {
   const speakerType = input.videoType === 'digital-human' ? 'digital-human' : 'voiceover';
   const shot = (visualPurpose: string, searchQueries: string[], animation = false) => ({
     visualPurpose,
-    shotType: animation ? ('science-animation' as const) : ('stock-video' as const),
-    assetStrategy: animation ? ('programmatic' as const) : ('stock-search' as const),
+    shotType: animation ? ('science-animation' as const) : ('video' as const),
+    assetStrategy: 'source-agnostic' as const,
     durationWeight: 1,
     searchQueries,
     ...(animation

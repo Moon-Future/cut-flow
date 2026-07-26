@@ -28,6 +28,8 @@ export type GeneratedScene = {
   shots: Array<{
     visualPurpose: string;
     shotType:
+      | 'image'
+      | 'video'
       | 'real-footage'
       | 'stock-video'
       | 'generated-video'
@@ -35,7 +37,12 @@ export type GeneratedScene = {
       | 'science-animation'
       | 'digital-human';
     assetStrategy:
-      'local-first' | 'stock-search' | 'ai-generate' | 'programmatic' | 'digital-human';
+      | 'source-agnostic'
+      | 'local-first'
+      | 'stock-search'
+      | 'ai-generate'
+      | 'programmatic'
+      | 'digital-human';
     durationWeight: number;
     searchQueries: string[];
     imagePrompt?: string;

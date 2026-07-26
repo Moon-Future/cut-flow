@@ -1252,6 +1252,14 @@ select:focus {
   color: #ff9a79;
   background: #3a241f;
 }
+.asset-info .asset-source.generated {
+  color: #b69af0;
+  background: #30234b;
+}
+.asset-info .asset-source.local {
+  color: #8eb8ed;
+  background: #1b2d45;
+}
 .asset-info button {
   width: 100%;
   margin-top: 12px;

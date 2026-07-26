@@ -47,6 +47,8 @@ export const visualShotSchema = z.object({
   id: z.string().min(1),
   visualPurpose: z.string().min(1),
   shotType: z.enum([
+    'image',
+    'video',
     'real-footage',
     'stock-video',
     'generated-video',
@@ -55,6 +57,7 @@ export const visualShotSchema = z.object({
     'digital-human',
   ]),
   assetStrategy: z.enum([
+    'source-agnostic',
     'local-first',
     'stock-search',
     'ai-generate',
