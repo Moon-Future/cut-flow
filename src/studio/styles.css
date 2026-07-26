@@ -2453,13 +2453,15 @@ select:focus {
   color: #778195;
   font-size: 11px;
 }
-.dashboard-heading > button {
+.dashboard-heading-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+.dashboard-heading-actions > button {
   padding: 11px 18px;
-  border: 0;
   border-radius: 8px;
-  background: linear-gradient(135deg, #8b5cf6, #7046db);
-  box-shadow: 0 8px 24px #754ddb3d;
-  color: #fff;
   cursor: pointer;
 }
 .dashboard-stats {

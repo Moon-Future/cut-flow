@@ -165,10 +165,14 @@ export const ProjectDashboard = ({
           <h1>{greeting}，继续创作吧 👋</h1>
           <p>所有项目与素材都保存在你的本地工作区。</p>
         </div>
-        <button onClick={onNewProject}>＋ 新建项目</button>
-        <button className="secondary-button" onClick={onAssets}>
-          打开素材库
-        </button>
+        <div className="dashboard-heading-actions">
+          <button className="secondary-button" onClick={onAssets}>
+            打开素材库
+          </button>
+          <button className="primary-button" onClick={onNewProject}>
+            ＋ 新建项目
+          </button>
+        </div>
       </header>
 
       <div className="dashboard-stats">
