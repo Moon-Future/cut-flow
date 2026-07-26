@@ -4577,3 +4577,19 @@ select:focus {
     grid-template-columns: 1fr;
   }
 }
+
+.edit-app .topic-recommendation-list > button span > strong {
+  font-size: clamp(15px, calc(12px + 0.3vw), 18px);
+  line-height: 1.45;
+}
+.edit-app .topic-recommendation-list > button > i {
+  padding: 5px 8px;
+  font-size: clamp(12px, calc(10px + 0.18vw), 14px) !important;
+}
+.edit-app .topic-recommendation-list > button > mark {
+  font-size: clamp(12px, calc(10px + 0.18vw), 14px);
+}
+.edit-app .topic-recommendation-list > button > mark b {
+  margin-left: 3px;
+  font-size: clamp(15px, calc(12px + 0.3vw), 18px);
+}
