@@ -1,5 +1,7 @@
 import {useEffect, useMemo, useState} from 'react';
 import type {ProjectFile} from '../../core/schema';
+import type {TopicRecommendation} from '../../ai/topic-recommendations';
+import {useStudioStore} from '../store';
 import type {ProjectSummary} from './project-hub';
 import type {WorkspaceSection} from './workspace-sidebar';
 
@@ -27,6 +29,10 @@ export const ProjectDashboard = ({
 }: Props) => {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState(currentProjectId);
+  const [recommendedTopics, setRecommendedTopics] = useState<TopicRecommendation[]>([]);
+  const [topicStatus, setTopicStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [topicMessage, setTopicMessage] = useState('');
+  const {updateContent} = useStudioStore();
 
   useEffect(() => {
     fetch('/api/projects')
@@ -34,6 +40,15 @@ export const ProjectDashboard = ({
       .then((value: {projects: ProjectSummary[]}) => setProjects(value.projects))
       .catch(() => setProjects([]));
   }, [project]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`cut-flow:topic-recommendations:${currentProjectId}`);
+      setRecommendedTopics(saved ? (JSON.parse(saved) as TopicRecommendation[]) : []);
+    } catch {
+      setRecommendedTopics([]);
+    }
+  }, [currentProjectId]);
 
   const stats = useMemo(
     () => ({
@@ -48,6 +63,32 @@ export const ProjectDashboard = ({
   const greeting = hour < 6 ? '夜深了' : hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好';
   const enterProject = async (projectId: string) => {
     await onOpenProject(projectId);
+    onNavigate('content');
+  };
+  const refreshTopics = async () => {
+    setTopicStatus('loading');
+    setTopicMessage('正在分析选题热度…');
+    try {
+      const response = await fetch('/api/topic-recommendations', {method: 'POST'});
+      const value = (await response.json()) as {
+        topics?: TopicRecommendation[];
+        error?: string;
+      };
+      if (!response.ok || !value.topics) throw new Error(value.error ?? '选题推荐失败');
+      setRecommendedTopics(value.topics);
+      localStorage.setItem(
+        `cut-flow:topic-recommendations:${currentProjectId}`,
+        JSON.stringify(value.topics),
+      );
+      setTopicStatus('idle');
+      setTopicMessage('已根据当前项目重新生成 10 条推荐');
+    } catch (error) {
+      setTopicStatus('error');
+      setTopicMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+  const useRecommendedTopic = (item: TopicRecommendation) => {
+    updateContent({topic: item.title, description: item.angle});
     onNavigate('content');
   };
 
@@ -127,6 +168,51 @@ export const ProjectDashboard = ({
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="topic-recommendations">
+        <header>
+          <div>
+            <strong>推荐视频主题</strong>
+            <span>AI 热度判断 · 点击主题即可带入文案配置</span>
+          </div>
+          <button disabled={topicStatus === 'loading'} onClick={() => void refreshTopics()}>
+            {topicStatus === 'loading'
+              ? '正在分析…'
+              : recommendedTopics.length
+                ? '↻ 刷新推荐'
+                : '生成 10 条推荐'}
+          </button>
+        </header>
+        {recommendedTopics.length ? (
+          <div className="topic-recommendation-list">
+            {recommendedTopics.map((item, index) => (
+              <button key={`${item.title}-${index}`} onClick={() => useRecommendedTopic(item)}>
+                <b>{String(index + 1).padStart(2, '0')}</b>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>{item.angle}</small>
+                  <em>{item.reason}</em>
+                </span>
+                <i>{item.category}</i>
+                <mark>
+                  热度 <b>{Math.round(item.heatScore)}</b>
+                </mark>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="topic-recommendation-empty">
+            <b>还没有推荐主题</b>
+            <span>点击“生成 10 条推荐”才会调用默认 AI 服务，不会在进入页面时自动消耗 Token。</span>
+          </div>
+        )}
+        {topicMessage ? (
+          <p className={topicStatus === 'error' ? 'error' : ''}>{topicMessage}</p>
+        ) : null}
+        <footer>
+          热度分数为 AI 根据当前日期与内容传播潜力作出的估算，不代表抖音等平台的实时官方榜单。
+        </footer>
       </section>
 
       <div className="dashboard-lower">

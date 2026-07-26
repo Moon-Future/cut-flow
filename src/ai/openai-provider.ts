@@ -247,6 +247,10 @@ ${input.coreViewpoint}
 【补充资料】
 ${input.sourceMaterial || '无'}
 
+【参考原文】
+${input.referenceText?.trim() || '无'}
+${input.referenceText?.trim() ? '请以参考原文为主要内容基础，在不改变事实、数据和核心观点的前提下优化结构、钩子、节奏与口语表达；不要照抄，也不要编造原文没有的信息。' : ''}
+
 【表达语气】
 ${input.tone}
 

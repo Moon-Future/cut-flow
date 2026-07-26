@@ -60,6 +60,7 @@ export const GenerationPanel = ({
   ]);
   const [targetWordCount, setTargetWordCount] = useState('500');
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
+  const [referenceText, setReferenceText] = useState('');
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -109,6 +110,7 @@ export const GenerationPanel = ({
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           topic: effectiveTopic,
+          referenceText,
           customPrompt,
           provider,
           targetWordCount: effectiveWordCount,
@@ -185,6 +187,17 @@ export const GenerationPanel = ({
               <textarea rows={3} value={topic} onChange={(event) => setTopic(event.target.value)} />
             </label>
           )}
+          <label>
+            <span>参考原文（可选）</span>
+            <textarea
+              className="prompt-input"
+              rows={8}
+              value={referenceText}
+              onChange={(event) => setReferenceText(event.target.value)}
+              placeholder="粘贴已有文案、文章或口播稿。填写后，AI 会保留原文事实与核心观点，重点优化钩子、结构、节奏和口语表达。"
+            />
+            <small className="word-count-help">留空则从主题开始创作；有内容时按原文优化改写。</small>
+          </label>
           <label>
             <span>补充创作要求（可选）</span>
             <textarea

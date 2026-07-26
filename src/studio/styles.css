@@ -2319,6 +2319,7 @@ select:focus {
   color: #5aa5ff;
 }
 .recent-projects,
+.topic-recommendations,
 .current-project-card,
 .quick-start {
   border: 1px solid #222a39;
@@ -2430,6 +2431,134 @@ select:focus {
   font-size: 8px;
   opacity: 0;
   transition: opacity 160ms ease;
+}
+.topic-recommendations {
+  margin-top: 14px;
+  padding: 15px;
+}
+.topic-recommendations > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 13px;
+}
+.topic-recommendations > header strong,
+.topic-recommendations > header span {
+  display: block;
+}
+.topic-recommendations > header span {
+  margin-top: 4px;
+  color: #667186;
+  font-size: 9px;
+}
+.topic-recommendations > header button {
+  padding: 8px 12px;
+  border: 1px solid #4b3a72;
+  border-radius: 7px;
+  background: #211a32;
+  color: #bca7ef;
+  font-size: 9px;
+  cursor: pointer;
+}
+.topic-recommendations > header button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.topic-recommendation-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.topic-recommendation-list > button {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #252e3e;
+  border-radius: 8px;
+  background: #111720;
+  color: #dce2eb;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.topic-recommendation-list > button:hover {
+  border-color: #654c9b;
+  background: #151b27;
+}
+.topic-recommendation-list > button > b {
+  color: #7658bd;
+  font-size: 11px;
+}
+.topic-recommendation-list > button > span {
+  min-width: 0;
+}
+.topic-recommendation-list strong,
+.topic-recommendation-list small,
+.topic-recommendation-list em {
+  display: block;
+}
+.topic-recommendation-list strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topic-recommendation-list small,
+.topic-recommendation-list em {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #748095;
+  font-size: 8px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topic-recommendation-list i {
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #17283a;
+  color: #72a9df;
+  font-size: 8px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.topic-recommendation-list mark {
+  background: transparent;
+  color: #778399;
+  font-size: 8px;
+  white-space: nowrap;
+}
+.topic-recommendation-list mark b {
+  color: #f1b45c;
+  font-size: 11px;
+}
+.topic-recommendation-empty {
+  display: grid;
+  gap: 5px;
+  place-items: center;
+  padding: 28px;
+  border: 1px dashed #2e384b;
+  border-radius: 8px;
+  color: #7d899c;
+  font-size: 9px;
+  text-align: center;
+}
+.topic-recommendations > p {
+  margin: 10px 0 0;
+  color: #66d5b4;
+  font-size: 9px;
+}
+.topic-recommendations > p.error {
+  color: #ff8190;
+}
+.topic-recommendations > footer {
+  margin-top: 10px;
+  color: #59667a;
+  font-size: 8px;
 }
 .recent-projects > div > button:hover .enter-project-tip,
 .recent-projects > div > button.current .enter-project-tip {

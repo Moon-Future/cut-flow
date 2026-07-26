@@ -8,6 +8,7 @@ import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
 import {projectFileSchema, videoTypeSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
+import {generateTopicRecommendations} from '../src/ai/topic-recommendations';
 import {
   createMockImageProvider,
   createMockVideoProvider,
@@ -91,6 +92,37 @@ const localApi = (): Plugin => ({
             >[0];
             const saved = await saveAiSettings(input);
             sendJson(response, 200, publicAiSettings(saved));
+            return;
+          }
+          if (url === '/api/topic-recommendations' && request.method === 'POST') {
+            const {projectFile} = activeProjectPaths();
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const settings = await loadAiSettings();
+            const provider = settings.activeProvider;
+            const providerSetting = settings.providers[provider];
+            if (
+              !providerSetting.enabled ||
+              !(providerSetting.apiKey || providerSetting.secretKey) ||
+              !providerSetting.model
+            ) {
+              sendJson(response, 400, {
+                error: '默认 AI 服务尚未配置或启用，请先到设置页面完成配置',
+              });
+              return;
+            }
+            const topics = await generateTopicRecommendations(
+              provider,
+              providerSetting,
+              project,
+            );
+            sendJson(response, 200, {
+              topics,
+              provider,
+              generatedAt: new Date().toISOString(),
+              heatBasis: 'ai-estimate',
+            });
             return;
           }
           if (url === '/api/projects' && request.method === 'GET') {
