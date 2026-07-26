@@ -40,6 +40,7 @@ export const videoScriptSchema = z.object({
               ]),
               durationWeight: z.number().positive(),
               searchQueries: z.array(z.string().min(1)).max(8),
+              searchQueriesZh: z.array(z.string().min(1)).max(8).optional(),
               imagePrompt: z.string().optional(),
               videoPrompt: z.string().optional(),
               imagePromptZh: z.string().optional(),

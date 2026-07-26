@@ -11,6 +11,13 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
   const selectedIndex = project.scenes.findIndex((scene) => scene.id === selected.id);
   const updateShot = (shot: VisualShot, patch: Partial<VisualShot>) =>
     updateVisualShot(selected.id, shot.id, patch);
+  const aspectRatio = project.project.width < project.project.height ? '9:16' : '16:9';
+  const chineseSceneDescription =
+    selected.visualIntent || selected.caption || selected.narration || '与当前旁白对应的具体画面';
+  const fallbackImagePromptZh = (shot: VisualShot) =>
+    `${aspectRatio} 画面，${shot.visualPurpose || chineseSceneDescription}。主体位置清晰，完整呈现场景环境、关键物体和动作定格；使用稳定构图、层次明确的光线和统一色彩，采用适合内容表达的景别，高细节，为后续动态效果留出空间，不要文字、字幕、标志和水印。`;
+  const fallbackVideoPromptZh = (shot: VisualShot) =>
+    `${aspectRatio} 画面，约 ${Math.max(3, Math.min(8, shot.duration || 5))} 秒。初始画面展示${shot.visualPurpose || chineseSceneDescription}，主体短暂停顿后完成与旁白对应的自然动作，环境产生轻微动态；镜头先稳定建立场景，再缓慢推近或平滑横移。保持主体、物体、光线、色彩和空间布局一致，不要文字、字幕、标志和水印。`;
 
   return (
     <section className="storyboard-studio">
@@ -127,11 +134,16 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 <span>素材推荐搜索词</span>
                 <textarea
                   rows={2}
-                  value={shot.searchQueries.join('\n')}
+                  value={
+                    shot.searchQueriesZh?.join('\n') ||
+                    [shot.visualPurpose || chineseSceneDescription, chineseSceneDescription].join(
+                      '\n',
+                    )
+                  }
                   placeholder="每行一个搜索词，建议同时提供中文和英文"
                   onChange={(event) =>
                     updateShot(shot, {
-                      searchQueries: event.target.value
+                      searchQueriesZh: event.target.value
                         .split('\n')
                         .map((item) => item.trim())
                         .filter(Boolean)
@@ -144,7 +156,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 <span>图片提示词（中文展示）</span>
                 <textarea
                   rows={5}
-                  value={shot.imagePromptZh ?? shot.imagePrompt ?? ''}
+                  value={shot.imagePromptZh?.trim() || fallbackImagePromptZh(shot)}
                   placeholder="描述主体、场景、构图、光线、色彩、景别、风格和画面比例"
                   onChange={(event) => updateShot(shot, {imagePromptZh: event.target.value})}
                 />
@@ -153,13 +165,29 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 <span>视频提示词（中文展示）</span>
                 <textarea
                   rows={7}
-                  value={shot.videoPromptZh ?? shot.videoPrompt ?? ''}
+                  value={shot.videoPromptZh?.trim() || fallbackVideoPromptZh(shot)}
                   placeholder="描述初始画面、动作顺序、场景变化、运镜、节奏、时长及一致性"
                   onChange={(event) => updateShot(shot, {videoPromptZh: event.target.value})}
                 />
               </label>
               <details className="original-prompts">
                 <summary>查看英文原始提示词（实际生成使用）</summary>
+                <label>
+                  <span>英文素材搜索词</span>
+                  <textarea
+                    rows={2}
+                    value={shot.searchQueries.join('\n')}
+                    onChange={(event) =>
+                      updateShot(shot, {
+                        searchQueries: event.target.value
+                          .split('\n')
+                          .map((item) => item.trim())
+                          .filter(Boolean)
+                          .slice(0, 8),
+                      })
+                    }
+                  />
+                </label>
                 <label>
                   <span>英文图片提示词</span>
                   <textarea

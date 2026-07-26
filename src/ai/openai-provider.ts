@@ -116,6 +116,9 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
                 .split(/[,，;；\n]/)
                 .map((item) => item.trim())
                 .filter(Boolean);
+          const queriesZh = Array.isArray(shot.searchQueriesZh)
+            ? shot.searchQueriesZh.map((item) => String(item).trim()).filter(Boolean)
+            : [];
           const rawImagePrompt = String(shot.imagePrompt ?? '').trim();
           const rawVideoPrompt = String(shot.videoPrompt ?? '').trim();
           const rawImagePromptZh = String(shot.imagePromptZh ?? '').trim();
@@ -148,6 +151,13 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
               queries.length > 0
                 ? queries.slice(0, 8)
                 : [sceneDescription, `${input.visualStyle} ${String(shot.visualPurpose ?? '')}`],
+            searchQueriesZh:
+              queriesZh.length > 0
+                ? queriesZh.slice(0, 8)
+                : [
+                    String(shot.visualPurpose ?? scene.visualIntent ?? scene.caption ?? '主题画面'),
+                    `${input.visualStyle} ${String(scene.visualPrompt ?? '相关场景')}`,
+                  ],
             imagePrompt,
             videoPrompt,
             imagePromptZh,
@@ -241,11 +251,11 @@ ${input.customPrompt?.trim() || '无'}
 10. ${isDigitalHuman ? '数字人口播' : '普通旁白'}负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
 ${digitalHumanDirection}
 
-只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
 assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
 searchQueries 必须是字符串数组，不能是单个字符串。
-每个 shot 都必须提供 2-6 个可检索的中英文 searchQueries，并同时提供 imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。imagePrompt 和 videoPrompt 使用专业英文撰写，供图片和视频模型直接调用；imagePromptZh 和 videoPromptZh 是准确完整的中文翻译，供页面展示。英文提示词不能只是几个风格词：图片提示词必须写清主体、环境、构图位置、外观特征、动作定格、光线、色彩、景别、视觉风格和画面比例；视频提示词必须写清初始画面、动作先后顺序、场景变化、镜头运动、节奏、时长、光线、色彩、比例和首帧一致性。
+每个 shot 都必须提供 2-6 个英文 searchQueries 和一一对应的中文 searchQueriesZh，并同时提供 imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。imagePrompt 和 videoPrompt 使用专业英文撰写，供图片和视频模型直接调用；imagePromptZh 和 videoPromptZh 是准确完整的中文翻译，供页面展示。英文提示词不能只是几个风格词：图片提示词必须写清主体、环境、构图位置、外观特征、动作定格、光线、色彩、景别、视觉风格和画面比例；视频提示词必须写清初始画面、动作先后顺序、场景变化、镜头运动、节奏、时长、光线、色彩、比例和首帧一致性。
 JSON 输出格式示例：
 {
   "title": "示例标题",
@@ -346,6 +356,7 @@ JSON 输出格式示例：
                               'assetStrategy',
                               'durationWeight',
                               'searchQueries',
+                              'searchQueriesZh',
                               'imagePrompt',
                               'videoPrompt',
                               'imagePromptZh',
@@ -379,6 +390,7 @@ JSON 输出格式示例：
                               },
                               durationWeight: {type: 'number'},
                               searchQueries: {type: 'array', items: {type: 'string'}},
+                              searchQueriesZh: {type: 'array', items: {type: 'string'}},
                               imagePrompt: {type: 'string'},
                               videoPrompt: {type: 'string'},
                               imagePromptZh: {type: 'string'},

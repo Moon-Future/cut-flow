@@ -45,6 +45,7 @@ export type GeneratedScene = {
       | 'digital-human';
     durationWeight: number;
     searchQueries: string[];
+    searchQueriesZh?: string[];
     imagePrompt?: string;
     videoPrompt?: string;
     imagePromptZh?: string;

@@ -66,6 +66,7 @@ export const visualShotSchema = z.object({
   ]),
   duration: z.number().positive().max(30),
   searchQueries: z.array(z.string().min(1)).max(8).default([]),
+  searchQueriesZh: z.array(z.string().min(1)).max(8).optional(),
   imagePrompt: z.string().optional(),
   videoPrompt: z.string().optional(),
   imagePromptZh: z.string().optional(),

@@ -30,6 +30,10 @@ const mockScript = (input: GenerateInput): VideoScript => {
     assetStrategy: 'source-agnostic' as const,
     durationWeight: 1,
     searchQueries,
+    searchQueriesZh: [
+      visualPurpose,
+      `${animation ? '科普动画' : '真实场景'} ${visualPurpose}`,
+    ],
     imagePrompt: `Vertical 9:16 composition, ${visualPurpose}, clear main subject centered in frame, complete environmental context, stable composition, layered lighting, coherent color palette, medium close-up, ${animation ? 'precise educational animation style' : 'cinematic realistic photography'}, high detail, clean motion-ready space, no text, subtitles, logo or watermark.`,
     videoPrompt: `Vertical 9:16, approximately five seconds. Start from the matching keyframe showing ${visualPurpose}. The subject pauses briefly and then performs a natural action while the camera slowly pushes in with subtle lateral movement. Add restrained environmental motion, keep the pacing clear, and preserve subject identity, scene layout, lighting and color palette. No text, subtitles, logo or watermark.`,
     imagePromptZh: `竖屏 9:16，${visualPurpose}，主体位于画面视觉中心，环境信息清晰，构图稳定，光线层次明确，色彩统一，中近景，${animation ? '简洁准确的科普动画风格' : '真实电影摄影风格'}，高细节，为后续动态效果预留空间，不要文字、字幕、标志和水印。`,
