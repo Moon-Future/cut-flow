@@ -3,7 +3,7 @@ import type {InputHTMLAttributes} from 'react';
 import type {AssetLibrary, AssetMetadata} from '../../media/asset-library';
 import {useStudioStore} from '../store';
 
-type Props = {open: boolean; projectId: string; onClose: () => void};
+type Props = {open: boolean; projectId: string; canApply: boolean; onClose: () => void};
 
 const sourceLabels: Record<AssetMetadata['source'], string> = {
   local: '本地素材',
@@ -11,7 +11,7 @@ const sourceLabels: Record<AssetMetadata['source'], string> = {
   online: '外部素材',
 };
 
-export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
+export const AssetLibraryPanel = ({open, projectId, canApply, onClose}: Props) => {
   const {selectedSceneId, replaceSceneAsset} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [query, setQuery] = useState('');
@@ -50,7 +50,7 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
   );
 
   const apply = async (asset: AssetMetadata) => {
-    if (!selectedSceneId || asset.type === 'audio') return;
+    if (!canApply || !selectedSceneId || asset.type === 'audio') return;
     let selectedAsset = asset;
     if (asset.projectId && asset.projectId !== projectId) {
       const response = await fetch('/api/assets/import-from-project', {
@@ -211,9 +211,22 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
           <button className="primary-button" onClick={() => inputRef.current?.click()}>
             {uploading ? '导入中…' : '导入素材'}
           </button>
-          <button onClick={() => folderInputRef.current?.click()}>导入文件夹</button>
-          <button onClick={() => void scan()}>扫描素材目录</button>
+          <button
+            className="asset-tool-button folder"
+            disabled={uploading}
+            onClick={() => folderInputRef.current?.click()}
+          >
+            <span>▣</span> 导入文件夹
+          </button>
+          <button className="asset-tool-button scan" onClick={() => void scan()}>
+            <span>↻</span> 扫描目录
+          </button>
         </div>
+        {!canApply ? (
+          <p className="asset-library-mode-tip">
+            当前为素材管理模式；请进入脚本与分镜或素材页面后，再将素材应用到具体镜头。
+          </p>
+        ) : null}
         {message ? <p className="asset-management-message">{message}</p> : null}
         <div className="asset-grid">
           {visible.map((asset) => (
@@ -247,8 +260,12 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
                   </span>
                   <span>{asset.license}</span>
                 </div>
-                <button disabled={!asset.commercialUse} onClick={() => void apply(asset)}>
-                  应用到当前镜头
+                <button
+                  disabled={!asset.commercialUse || !canApply || !selectedSceneId}
+                  title={!canApply ? '首页素材库仅用于浏览和管理' : undefined}
+                  onClick={() => void apply(asset)}
+                >
+                  {canApply ? '应用到当前镜头' : '请先进入具体镜头'}
                 </button>
                 <div className="asset-management-actions">
                   <button onClick={() => void openLocation(asset)}>打开目录</button>

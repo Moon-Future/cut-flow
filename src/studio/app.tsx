@@ -184,6 +184,7 @@ export const App = () => {
       <AssetLibraryPanel
         open={assetLibraryOpen}
         projectId={projectId}
+        canApply={section !== 'overview'}
         onClose={() => setAssetLibraryOpen(false)}
       />
     </>

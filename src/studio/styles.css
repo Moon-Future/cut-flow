@@ -1220,11 +1220,13 @@ select:focus {
   backdrop-filter: blur(12px);
   display: grid;
   place-items: center;
-  padding: 34px;
+  padding: clamp(8px, 2.2vw, 34px);
 }
 .asset-library-panel {
-  width: min(1120px, 94vw);
-  height: min(780px, 90vh);
+  width: min(1280px, calc(100vw - clamp(16px, 4.4vw, 68px)));
+  height: min(900px, calc(100dvh - clamp(16px, 4.4vw, 68px)));
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: #0c1019;
@@ -1261,6 +1263,9 @@ select:focus {
   align-items: center;
   padding: 15px 24px;
   border-bottom: 1px solid #20283a;
+}
+.asset-toolbar > button {
+  min-height: 38px;
 }
 .asset-toolbar > input {
   flex: 1 1 220px;
@@ -1300,11 +1305,54 @@ select:focus {
   min-height: 0;
   padding: 20px 24px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(190px, 20vw, 280px), 1fr));
   gap: 15px;
   align-content: start;
   grid-auto-rows: max-content;
   overflow: auto;
+}
+.asset-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid #354257;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #1b2431, #141b25);
+  box-shadow: inset 0 1px #ffffff0a;
+  color: #b7c2d1;
+  font-size: 11px;
+  cursor: pointer;
+}
+.asset-tool-button span {
+  color: #8f72dd;
+  font-size: 14px;
+  line-height: 1;
+}
+.asset-tool-button.scan {
+  border-color: #315148;
+  background: linear-gradient(180deg, #172822, #121e1b);
+  color: #8fd5c0;
+}
+.asset-tool-button.scan span {
+  color: #65d6b4;
+}
+.asset-tool-button:hover:not(:disabled) {
+  border-color: #6f5aa8;
+  transform: translateY(-1px);
+}
+.asset-tool-button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+.asset-library-mode-tip {
+  margin: 0;
+  padding: 8px 24px;
+  border-bottom: 1px solid #20283a;
+  background: #181526;
+  color: #b7a8dc;
+  font-size: 11px;
 }
 .asset-card {
   display: flex;
@@ -1418,6 +1466,26 @@ select:focus {
   border-bottom: 1px solid #20283a;
   color: #8fcdbb;
   font-size: 11px;
+}
+@media (max-width: 760px) {
+  .asset-library-panel > header {
+    padding: 14px 16px;
+  }
+  .asset-toolbar {
+    padding: 12px 14px;
+  }
+  .asset-toolbar > input,
+  .asset-toolbar > select,
+  .asset-toolbar > button,
+  .asset-toolbar .asset-target-directory {
+    flex: 1 1 calc(50% - 8px);
+    max-width: none;
+    min-width: 0;
+  }
+  .asset-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    padding: 12px 14px;
+  }
 }
 
 /* Integrated editing workspace */
