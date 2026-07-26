@@ -2,7 +2,7 @@ import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {createReadStream} from 'node:fs';
-import {appendFile, mkdir, readFile, readdir, rename, stat, writeFile} from 'node:fs/promises';
+import {appendFile, cp, mkdir, readFile, readdir, rename, rm, stat, writeFile} from 'node:fs/promises';
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
@@ -41,7 +41,23 @@ const requireFromApp = createRequire(
 );
 const react = (requireFromApp('@vitejs/plugin-react') as {default: () => Plugin}).default;
 const projectsRoot = path.join(workspaceRoot, 'projects');
+const hiddenProjectsFile = path.join(workspaceRoot, '.cut-flow', 'hidden-projects.json');
 let activeProjectId = 'demo-project';
+const loadHiddenProjects = async (): Promise<string[]> =>
+  readFile(hiddenProjectsFile, 'utf8')
+    .then((value) => {
+      const parsed = JSON.parse(value) as {ids?: unknown};
+      return Array.isArray(parsed.ids) ? parsed.ids.map(String) : [];
+    })
+    .catch(() => []);
+const saveHiddenProjects = async (ids: string[]) => {
+  await mkdir(path.dirname(hiddenProjectsFile), {recursive: true});
+  await writeFile(
+    hiddenProjectsFile,
+    `${JSON.stringify({ids: [...new Set(ids)]}, null, 2)}\n`,
+    'utf8',
+  );
+};
 const activeProjectPaths = () => {
   const projectRoot = path.join(projectsRoot, activeProjectId);
   return {
@@ -138,11 +154,12 @@ const localApi = (): Plugin => ({
             return;
           }
           if (url === '/api/projects' && request.method === 'GET') {
+            const hiddenProjects = new Set(await loadHiddenProjects());
             const directories = await readdir(projectsRoot, {withFileTypes: true});
             const projects = (
               await Promise.all(
                 directories
-                  .filter((entry) => entry.isDirectory())
+                  .filter((entry) => entry.isDirectory() && !hiddenProjects.has(entry.name))
                   .map(async (entry) => {
                     try {
                       const file = path.join(projectsRoot, entry.name, 'project.json');
@@ -177,6 +194,63 @@ const localApi = (): Plugin => ({
               .filter((project) => project !== null)
               .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
             sendJson(response, 200, {activeProjectId, projects});
+            return;
+          }
+          if (url === '/api/projects/import' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sourcePath?: string;
+            };
+            const sourcePath = input.sourcePath ? path.resolve(input.sourcePath) : '';
+            if (!sourcePath) {
+              sendJson(response, 400, {error: '请选择要导入的项目文件夹'});
+              return;
+            }
+            const sourceProject = projectFileSchema.parse(
+              JSON.parse(await readFile(path.join(sourcePath, 'project.json'), 'utf8')) as unknown,
+            );
+            const safeName =
+              path.basename(sourcePath).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 40) || 'imported';
+            const id = `${safeName}-${Date.now()}-${randomUUID().slice(0, 6)}`;
+            const destination = path.resolve(projectsRoot, id);
+            if (!destination.startsWith(`${path.resolve(projectsRoot)}${path.sep}`)) {
+              sendJson(response, 400, {error: '导入目标路径无效'});
+              return;
+            }
+            await mkdir(projectsRoot, {recursive: true});
+            await cp(sourcePath, destination, {recursive: true, errorOnExist: true});
+            await writeFile(
+              path.join(destination, 'project.json'),
+              `${JSON.stringify(sourceProject, null, 2)}\n`,
+              'utf8',
+            );
+            sendJson(response, 200, {id, title: sourceProject.project.title});
+            return;
+          }
+          const deleteProjectMatch = url?.match(/^\/api\/projects\/([a-zA-Z0-9_-]+)$/);
+          if (deleteProjectMatch && request.method === 'DELETE') {
+            const id = deleteProjectMatch[1];
+            if (!id) {
+              sendJson(response, 400, {error: '项目标识无效'});
+              return;
+            }
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              mode?: 'hide' | 'delete';
+            };
+            if (input.mode === 'hide') {
+              await saveHiddenProjects([...(await loadHiddenProjects()), id]);
+            } else if (input.mode === 'delete') {
+              const target = path.resolve(projectsRoot, id);
+              if (!target.startsWith(`${path.resolve(projectsRoot)}${path.sep}`)) {
+                sendJson(response, 400, {error: '项目路径无效'});
+                return;
+              }
+              await stat(path.join(target, 'project.json'));
+              await rm(target, {recursive: true, force: false});
+            } else {
+              sendJson(response, 400, {error: '请选择删除方式'});
+              return;
+            }
+            sendJson(response, 200, {id, mode: input.mode});
             return;
           }
           if (url === '/api/projects/select' && request.method === 'POST') {

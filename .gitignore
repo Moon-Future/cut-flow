@@ -1,13 +1,11 @@
 node_modules/
 dist/
 out/
+.cut-flow/
+projects/
 .env
 .env.*
 !.env.example
 coverage/
 /release*/
 *.log
-projects/*/cache/
-projects/*/audio/*.wav
-projects/*/exports/*
-!projects/*/exports/.gitkeep

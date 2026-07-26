@@ -1,4 +1,5 @@
 import {chmod, mkdir, readFile, writeFile} from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import type {ProjectFile} from '../core/schema';
 import {aiSettingsFile, type AiProviderId, type AiProviderSetting} from './settings';
@@ -29,7 +30,19 @@ export const loadTopicRecommendations = async (): Promise<SavedTopicRecommendati
       ? {...value, topics: value.topics.slice(0, 10)}
       : null;
   } catch {
-    return null;
+    try {
+      const legacyFile = path.join(os.homedir(), '.cut-flow', 'topic-recommendations.json');
+      if (path.resolve(legacyFile) === path.resolve(topicRecommendationsFile())) return null;
+      const value = JSON.parse(
+        await readFile(legacyFile, 'utf8'),
+      ) as SavedTopicRecommendations;
+      if (!Array.isArray(value.topics) || !value.topics.length) return null;
+      const migrated = {...value, topics: value.topics.slice(0, 10)};
+      await saveTopicRecommendations(migrated);
+      return migrated;
+    } catch {
+      return null;
+    }
   }
 };
 
