@@ -23,6 +23,7 @@ const createSilentWav = (durationSeconds: number, sampleRate = 24000): Buffer =>
 const mockScript = (input: GenerateInput): VideoScript => {
   const duration = Math.min(30, Math.max(3, input.targetWordCount / 12));
   const isSky = input.topic.includes('天空') && input.topic.includes('蓝');
+  const speakerType = input.videoType === 'digital-human' ? 'digital-human' : 'voiceover';
   const shot = (visualPurpose: string, searchQueries: string[], animation = false) => ({
     visualPurpose,
     shotType: animation ? ('science-animation' as const) : ('stock-video' as const),
@@ -39,7 +40,7 @@ const mockScript = (input: GenerateInput): VideoScript => {
       hook: '天空并不是因为倒映海洋才变蓝，真正的原因藏在阳光和空气分子里。',
       scenes: [
         {
-          segmentType: 'digital-human',
+          segmentType: speakerType,
           narration: '天空并不是因为倒映海洋才变蓝，真正的原因藏在阳光和空气分子里。',
           caption: '天空为什么是蓝色？',
           visualPrompt: '蓝天白云延时摄影',
@@ -72,7 +73,7 @@ const mockScript = (input: GenerateInput): VideoScript => {
           ],
         },
         {
-          segmentType: 'digital-human',
+          segmentType: speakerType,
           narration:
             '波长较短的蓝光比红光更容易被向四面八方散射，所以无论看向天空哪个方向，我们都会接收到更多蓝光。',
           caption: '蓝光更容易被散射',
@@ -101,7 +102,7 @@ const mockScript = (input: GenerateInput): VideoScript => {
     hook: `你可能没有意识到，${input.topic}真正困难的地方并不是技术。`,
     scenes: [
       {
-        segmentType: 'digital-human',
+        segmentType: speakerType,
         narration: `你可能没有意识到，${input.topic}真正困难的地方并不是技术。`,
         caption: `${input.topic}，难点不只是技术`,
         visualPrompt: '开发者面对复杂项目界面，深色科技感',
@@ -127,7 +128,7 @@ const mockScript = (input: GenerateInput): VideoScript => {
         shots: [shot('复杂流程图逐渐简化', ['complex workflow simplification'], true)],
       },
       {
-        segmentType: 'digital-human',
+        segmentType: speakerType,
         narration: '先做出最小闭环，用真实结果决定下一步，项目才会持续向前。',
         caption: '先完成闭环，再持续迭代',
         visualPrompt: '进度条完成，产品成功发布',

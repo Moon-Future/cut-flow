@@ -29,7 +29,7 @@ const request = async (url: string, apiKey: string, init: RequestInit): Promise<
   return response;
 };
 
-const normalizeCompatibleScript = (value: unknown): unknown => {
+const normalizeCompatibleScript = (value: unknown, allowDigitalHuman: boolean): unknown => {
   if (!value || typeof value !== 'object') return value;
   const script = value as Record<string, unknown>;
   const scenes = Array.isArray(script.scenes) ? script.scenes : [];
@@ -51,7 +51,7 @@ const normalizeCompatibleScript = (value: unknown): unknown => {
   const normalizeShotType = (input: unknown) => {
     const text = String(input ?? '').toLowerCase();
     if (shotTypes.has(text)) return text;
-    if (/数字人|digital/.test(text)) return 'digital-human';
+    if (/数字人|digital/.test(text)) return allowDigitalHuman ? 'digital-human' : 'real-footage';
     if (/科学|动画|animation/.test(text)) return 'science-animation';
     if (/生成.*视频|generated.*video/.test(text)) return 'generated-video';
     if (/图片|图像|image/.test(text)) return 'generated-image';
@@ -61,7 +61,7 @@ const normalizeCompatibleScript = (value: unknown): unknown => {
   const normalizeStrategy = (input: unknown, shotType: string) => {
     const text = String(input ?? '').toLowerCase();
     if (strategies.has(text)) return text;
-    if (/数字人|digital/.test(text)) return 'digital-human';
+    if (/数字人|digital/.test(text)) return allowDigitalHuman ? 'digital-human' : 'stock-search';
     if (/程序|program|动画/.test(text)) return 'programmatic';
     if (/生成|generate/.test(text)) return 'ai-generate';
     if (/本地|local/.test(text)) return 'local-first';
@@ -77,12 +77,17 @@ const normalizeCompatibleScript = (value: unknown): unknown => {
           ? (sceneValue as Record<string, unknown>)
           : {};
       const shots = Array.isArray(scene.shots) ? scene.shots : [];
+      const requestedSegmentType = String(scene.segmentType ?? '');
       const segmentType =
-        scene.segmentType === 'digital-human' || scene.segmentType === 'visual-explanation'
-          ? scene.segmentType
+        ['digital-human', 'voiceover', 'visual-explanation'].includes(requestedSegmentType)
+          ? requestedSegmentType === 'digital-human' && !allowDigitalHuman
+            ? 'voiceover'
+            : requestedSegmentType
           : /画面|案例|步骤|数据|操作|界面/.test(String(scene.visualIntent ?? ''))
             ? 'visual-explanation'
-            : 'digital-human';
+            : allowDigitalHuman
+              ? 'digital-human'
+              : 'voiceover';
       return {
         ...scene,
         segmentType,
@@ -173,8 +178,9 @@ ${input.customPrompt?.trim() || '无'}
 
 必须严格遵守系统提示词中的文案质量、段落交替和 JSON 输出要求。`;
       const useChatCompletions = config.apiMode === 'chat-completions';
+      const isDigitalHuman = input.videoType === 'digital-human';
       const digitalHumanDirection =
-        input.videoType === 'digital-human'
+        isDigitalHuman
           ? `
 数字人口播专项要求：
 1. 视频形式是“数字人口播 + AI 生成画面讲解”交替切换。
@@ -187,8 +193,20 @@ ${input.customPrompt?.trim() || '无'}
 8. 所有图片与视频提示词重复使用一致的主角特征、服装、主场景、核心物体、主色调、光线、视觉风格和镜头语言。
 9. 避免变脸、异常手指、服装变色、场景突变、物体消失、大幅旋转、违反物理的动作、无关人物和无法辨认的界面文字。
 10. visual-explanation 段填写具体 soundEffect，没有则写“无”。`
-          : '';
-      const jsonSystemPrompt = `你是一名专业的抖音短视频文案策划，擅长创作“数字人口播 + 画面讲解”交替呈现的短视频文案。
+          : `
+非数字人专项要求：
+1. 本视频禁止出现数字人、虚拟主播、digital-human 类型镜头或 digital-human 素材策略。
+2. 使用 voiceover 普通旁白与 visual-explanation 画面讲解组织内容；旁白不要求人物正面出镜。
+3. voiceover 负责钩子、串联、观点和结论；visual-explanation 负责场景、案例、证据、步骤和变化。
+4. 优先使用真实素材、库存视频、产品录屏、科学动画、AI 图片或 AI 视频。
+5. visual-explanation 段必须给出具体画面内容、imagePrompt、videoPrompt 和 soundEffect。
+6. imagePrompt 和 videoPrompt 遵循 ${input.aspectRatio}、${input.visualStyle}，不要文字、字幕、Logo 和水印。`;
+      const speakerType = isDigitalHuman ? 'digital-human' : 'voiceover';
+      const speakerVisual = isDigitalHuman ? '数字人正面出镜' : '主题相关真实画面';
+      const speakerShotType = isDigitalHuman ? 'digital-human' : 'real-footage';
+      const speakerStrategy = isDigitalHuman ? 'digital-human' : 'stock-search';
+      const speakerQuery = isDigitalHuman ? 'digital human presenter' : 'topic related footage';
+      const jsonSystemPrompt = `你是一名专业的抖音短视频文案策划、视觉导演和 AI 视频提示词设计师，擅长创作“${isDigitalHuman ? '数字人口播' : '普通旁白'} + 画面讲解”交替呈现的短视频内容。
 
 文案质量要求：
 1. 前 3 秒对应的第一段必须使用冲突、痛点、结果或反常识形成强钩子。
@@ -197,13 +215,13 @@ ${input.customPrompt?.trim() || '无'}
 4. 不堆砌形容词，不写没有信息量的正确废话。
 5. 不编造补充资料中没有的数据、案例、经历或用户反馈。
 6. 结尾给出明确结论，并自然引导评论、收藏或关注。
-7. 全文安排 6-9 个段落，digital-human 与 visual-explanation 交替出现，不得连续出现超过两个 digital-human。
-8. digital-human 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 1-3 句话。
+7. 全文安排 6-9 个段落，${speakerType} 与 visual-explanation 交替出现。
+8. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 1-3 句话。
 9. visual-explanation 负责原因、案例、步骤、对比、产品功能、数据和过程，语言必须具体到后期人员能判断该配什么画面。
-10. 数字人口播负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
+10. ${isDigitalHuman ? '数字人口播' : '普通旁白'}负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
 ${digitalHumanDirection}
 
-只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 digital-human 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
 shotType 只能使用英文枚举：real-footage、stock-video、generated-video、generated-image、science-animation、digital-human。
 assetStrategy 只能使用英文枚举：local-first、stock-search、ai-generate、programmatic、digital-human。
 searchQueries 必须是字符串数组，不能是单个字符串。
@@ -212,13 +230,13 @@ JSON 输出格式示例：
   "title": "示例标题",
   "hook": "示例开头",
   "scenes": [
-    {"segmentType":"digital-human","narration":"第一段旁白","caption":"开场钩子","visualPrompt":"数字人正面出镜","suggestedDuration":6,"visualIntent":"提出冲突","shots":[{"visualPurpose":"数字人说出钩子","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human presenter"],"imagePrompt":"","videoPrompt":"数字人口播"}]},
+    {"segmentType":"${speakerType}","narration":"第一段旁白","caption":"开场钩子","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"提出冲突","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"说出钩子","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
     {"segmentType":"visual-explanation","narration":"第二段旁白","caption":"问题展示","visualPrompt":"具体问题场景","suggestedDuration":8,"visualIntent":"用场景展示问题","shots":[{"visualPurpose":"展示具体问题","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["problem scenario"],"imagePrompt":"","videoPrompt":"真实场景"}]},
-    {"segmentType":"digital-human","narration":"第三段旁白","caption":"核心判断","visualPrompt":"数字人强调观点","suggestedDuration":6,"visualIntent":"说出核心判断","shots":[{"visualPurpose":"数字人强调观点","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human presenter"],"imagePrompt":"","videoPrompt":"数字人口播"}]},
+    {"segmentType":"${speakerType}","narration":"第三段旁白","caption":"核心判断","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"说出核心判断","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"强调观点","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
     {"segmentType":"visual-explanation","narration":"第四段旁白","caption":"原因拆解","visualPrompt":"原因拆解过程","suggestedDuration":8,"visualIntent":"解释原因","shots":[{"visualPurpose":"可视化解释原因","shotType":"science-animation","assetStrategy":"programmatic","durationWeight":1,"searchQueries":["concept animation"],"imagePrompt":"解释动画","videoPrompt":""}]},
-    {"segmentType":"digital-human","narration":"第五段旁白","caption":"关键观点","visualPrompt":"数字人强调结论","suggestedDuration":6,"visualIntent":"强化记忆点","shots":[{"visualPurpose":"数字人强调关键结论","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human presenter"],"imagePrompt":"","videoPrompt":"数字人口播"}]},
+    {"segmentType":"${speakerType}","narration":"第五段旁白","caption":"关键观点","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"强化记忆点","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"强调关键结论","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
     {"segmentType":"visual-explanation","narration":"第六段旁白","caption":"解决方法","visualPrompt":"具体操作步骤","suggestedDuration":8,"visualIntent":"给出可执行方法","shots":[{"visualPurpose":"展示操作步骤","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["step by step solution"],"imagePrompt":"","videoPrompt":"步骤演示"}]},
-    {"segmentType":"digital-human","narration":"第七段旁白","caption":"结尾收束","visualPrompt":"数字人结尾出镜","suggestedDuration":6,"visualIntent":"总结并互动引导","shots":[{"visualPurpose":"数字人总结","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human closing"],"imagePrompt":"","videoPrompt":"数字人结尾"}]}
+    {"segmentType":"${speakerType}","narration":"第七段旁白","caption":"结尾收束","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"总结并互动引导","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"完成总结","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]}
   ],
   "ending": "示例结尾"
 }`;
@@ -283,7 +301,7 @@ JSON 输出格式示例：
                       properties: {
                         segmentType: {
                           type: 'string',
-                          enum: ['digital-human', 'visual-explanation'],
+                          enum: ['digital-human', 'voiceover', 'visual-explanation'],
                         },
                         narration: {type: 'string'},
                         caption: {type: 'string'},
@@ -355,7 +373,12 @@ JSON 输出格式示例：
       };
       const output = result.output_text ?? result.choices?.[0]?.message?.content;
       if (!output) throw new Error('AI 服务未返回可用的文案内容');
-      return videoScriptSchema.parse(normalizeCompatibleScript(JSON.parse(output) as unknown));
+      return videoScriptSchema.parse(
+        normalizeCompatibleScript(
+          JSON.parse(output) as unknown,
+          input.videoType === 'digital-human',
+        ),
+      );
     },
   },
   tts: {

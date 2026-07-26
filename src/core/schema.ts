@@ -75,7 +75,7 @@ export const visualShotSchema = z.object({
 
 export const sceneSchema = z.object({
   id: z.string().min(1),
-  copyRole: z.enum(['digital-human', 'visual-explanation']).optional(),
+  copyRole: z.enum(['digital-human', 'voiceover', 'visual-explanation']).optional(),
   narration: z.string(),
   caption: z.string().min(1),
   assetType: z.enum(['image', 'video']),

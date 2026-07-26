@@ -234,6 +234,8 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
                 <b>
                   {scene.copyRole === 'digital-human'
                     ? `数字人口播 ${index + 1}`
+                    : scene.copyRole === 'voiceover'
+                      ? `普通旁白 ${index + 1}`
                     : scene.copyRole === 'visual-explanation'
                       ? `画面讲解 ${index + 1}`
                       : index === 0

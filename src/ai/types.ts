@@ -15,7 +15,7 @@ export type GenerateInput = {
 };
 
 export type GeneratedScene = {
-  segmentType: 'digital-human' | 'visual-explanation';
+  segmentType: 'digital-human' | 'voiceover' | 'visual-explanation';
   narration: string;
   caption: string;
   visualPrompt: string;

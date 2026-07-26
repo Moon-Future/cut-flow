@@ -6,7 +6,7 @@ export const videoScriptSchema = z.object({
   scenes: z
     .array(
       z.object({
-        segmentType: z.enum(['digital-human', 'visual-explanation']),
+        segmentType: z.enum(['digital-human', 'voiceover', 'visual-explanation']),
         narration: z.string().min(1),
         caption: z.string().min(1),
         visualPrompt: z.string().min(1),
