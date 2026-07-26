@@ -1285,6 +1285,11 @@ select:focus {
   background: #111722;
   color: #c9d1dc;
 }
+.asset-toolbar > select {
+  width: clamp(150px, 16vw, 220px);
+  max-width: 220px;
+  flex: 0 1 220px;
+}
 .asset-filters {
   display: flex;
   background: #111722;
