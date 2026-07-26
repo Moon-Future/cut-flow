@@ -25,7 +25,7 @@ export type AiSettings = {
     accessKey: string;
     secretKey: string;
     enableWatermark: boolean;
-    defaultDuration: '～15s' | '～30s' | '40～60s';
+    defaultDuration: '5s' | '10s' | '～15s' | '～30s' | '40～60s';
   };
 };
 

@@ -14,7 +14,7 @@ type PublicSettings = {
     enabled: boolean;
     configured: boolean;
     enableWatermark: boolean;
-    defaultDuration: '～15s' | '～30s' | '40～60s';
+    defaultDuration: '5s' | '10s' | '～15s' | '～30s' | '40～60s';
     provider: 'volcengine-pippit';
     model: string;
   };
@@ -345,11 +345,14 @@ export const SettingsWorkspace = () => {
                     ...settings,
                     volcengineVideo: {
                       ...settings.volcengineVideo,
-                      defaultDuration: event.target.value as '～15s' | '～30s' | '40～60s',
+                      defaultDuration: event.target.value as
+                        '5s' | '10s' | '～15s' | '～30s' | '40～60s',
                     },
                   })
                 }
               >
+                <option value="5s">5 秒（生成约 15 秒后自动截取）</option>
+                <option value="10s">10 秒（生成约 15 秒后自动截取）</option>
                 <option value="～15s">约 15 秒</option>
                 <option value="～30s">约 30 秒</option>
                 <option value="40～60s">40～60 秒</option>

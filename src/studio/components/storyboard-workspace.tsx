@@ -9,6 +9,7 @@ import {
   countVideoPromptCharacters,
   limitVideoPrompt,
   normalizeVideoPromptDuration,
+  type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
 import {useStudioStore} from '../store';
 
@@ -36,14 +37,12 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     error?: string;
   } | null>(null);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
-  const [videoDefaultDuration, setVideoDefaultDuration] = useState<'～15s' | '～30s' | '40～60s'>(
-    '～15s',
-  );
+  const [videoDefaultDuration, setVideoDefaultDuration] = useState<VideoTargetDuration>('～15s');
   const [videoWatermark, setVideoWatermark] = useState(true);
   const [videoDraft, setVideoDraft] = useState<{
     shotId: string;
     provider: 'volcengine-pippit';
-    duration: '～15s' | '～30s' | '40～60s';
+    duration: VideoTargetDuration;
     prompt: string;
   } | null>(null);
   const [videoGenerationError, setVideoGenerationError] = useState<{
@@ -609,14 +608,16 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                           onChange={(event) =>
                             setVideoDraft({
                               ...videoDraft,
-                              duration: event.target.value as '～15s' | '～30s' | '40～60s',
+                              duration: event.target.value as VideoTargetDuration,
                               prompt: normalizeVideoPromptDuration(
                                 videoDraft.prompt,
-                                event.target.value as '～15s' | '～30s' | '40～60s',
+                                event.target.value as VideoTargetDuration,
                               ),
                             })
                           }
                         >
+                          <option value="5s">5 秒（生成约 15 秒后自动截取）</option>
+                          <option value="10s">10 秒（生成约 15 秒后自动截取）</option>
                           <option value="～15s">约 15 秒</option>
                           <option value="～30s">约 30 秒</option>
                           <option value="40～60s">40～60 秒</option>
@@ -659,6 +660,9 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                       <p>
                         {videoWatermark ? '已开启平台明水印' : '未开启平台明水印'}；目标时长仅供
                         Agent 匹配，最终时长可能存在偏差。
+                        {videoDraft.duration === '5s' || videoDraft.duration === '10s'
+                          ? ' 平台会生成约 15 秒视频，下载后自动截取所选时长。'
+                          : ''}
                       </p>
                       <button
                         type="button"

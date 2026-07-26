@@ -5,6 +5,7 @@ import {
   countVideoPromptCharacters,
   limitVideoPrompt,
   normalizeVideoPromptDuration,
+  volcengineApiDuration,
 } from '../src/ai/video-generation-prompt';
 
 describe('火山引擎视频接口签名', () => {
@@ -43,5 +44,11 @@ describe('视频生成提示词', () => {
   it('按用户可见字符限制为 2000 字', () => {
     const result = limitVideoPrompt('香'.repeat(2001));
     expect(countVideoPromptCharacters(result)).toBe(2000);
+  });
+
+  it('5 秒和 10 秒使用平台支持的约 15 秒参数并标明自动裁剪', () => {
+    expect(volcengineApiDuration('5s')).toBe('～15s');
+    expect(volcengineApiDuration('10s')).toBe('～15s');
+    expect(normalizeVideoPromptDuration('人物完成动作。', '5s')).toContain('前 5 秒内完成核心动作');
   });
 });

@@ -29,7 +29,12 @@ import {
   createOpenAIImageProvider,
 } from '../src/ai/media-provider';
 import {createVolcengineVideoProvider} from '../src/ai/volcengine-video-provider';
-import {limitVideoPrompt, normalizeVideoPromptDuration} from '../src/ai/video-generation-prompt';
+import {
+  limitVideoPrompt,
+  normalizeVideoPromptDuration,
+  type VideoTargetDuration,
+  volcengineApiDuration,
+} from '../src/ai/video-generation-prompt';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
 import type {
   PixabayMediaKind,
@@ -1015,7 +1020,7 @@ const localApi = (): Plugin => ({
               sceneId?: string;
               shotId?: string;
               provider?: 'volcengine-pippit';
-              duration?: '～15s' | '～30s' | '40～60s';
+              duration?: VideoTargetDuration;
               prompt?: string;
             };
             if (!input.sceneId || !input.shotId) {
@@ -1054,7 +1059,9 @@ const localApi = (): Plugin => ({
               outputDirectory: path.join(assetsRoot, 'generated'),
               projectRelativeDirectory: 'assets/generated',
               ratio: project.project.width < project.project.height ? '9:16' : '16:9',
-              duration: input.duration ?? aiSettings.volcengineVideo.defaultDuration,
+              duration: volcengineApiDuration(
+                input.duration ?? aiSettings.volcengineVideo.defaultDuration,
+              ),
               enableWatermark: aiSettings.volcengineVideo.enableWatermark,
             });
             const targetDuration = input.duration ?? aiSettings.volcengineVideo.defaultDuration;
@@ -1097,6 +1104,10 @@ const localApi = (): Plugin => ({
                   ?.shots?.find((item) => item.id === input.shotId);
                 if (!latestShot) return;
                 latestShot.candidates = [...latestShot.candidates, ...candidates];
+                if (targetDuration === '5s' || targetDuration === '10s') {
+                  latestShot.sourceStart = 0;
+                  latestShot.sourceEnd = targetDuration === '5s' ? 5 : 10;
+                }
                 latestShot.generationTask = {
                   ...task,
                   status: 'needs-selection',
@@ -1119,7 +1130,13 @@ const localApi = (): Plugin => ({
                     createdAt: candidate.createdAt,
                     keywords: latestShot.searchQueries,
                     duration:
-                      targetDuration === '～15s' ? 15 : targetDuration === '～30s' ? 30 : 50,
+                      targetDuration === '5s' || targetDuration === '10s'
+                        ? 15
+                        : targetDuration === '～15s'
+                          ? 15
+                          : targetDuration === '～30s'
+                            ? 30
+                            : 50,
                   })),
                 );
                 await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
