@@ -11,7 +11,7 @@
 }
 body {
   margin: 0;
-  min-width: 1180px;
+  min-width: 320px;
   min-height: 100vh;
   background: radial-gradient(circle at 48% -20%, #192548 0, transparent 38%), #070910;
 }
@@ -1279,10 +1279,10 @@ select:focus {
 
 /* Integrated editing workspace */
 .edit-app {
-  min-width: 1280px;
+  min-width: 0;
   height: 100vh;
   display: grid;
-  grid-template-columns: 196px minmax(1080px, 1fr);
+  grid-template-columns: 196px minmax(0, 1fr);
   overflow: hidden;
   background: #080b12;
   color: #eef1f8;
@@ -3506,6 +3506,147 @@ select:focus {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* Responsive typography and workspace layout */
+.edit-app :is(button, input, textarea, select, label, p, span) {
+  font-size: clamp(12px, calc(9px + 0.22vw), 15px) !important;
+}
+.edit-app :is(small, em, footer) {
+  font-size: clamp(11px, calc(8.5px + 0.2vw), 13px) !important;
+}
+.edit-app :is(h1, h2, h3, strong, b) {
+  text-wrap: pretty;
+}
+
+@media (max-width: 1180px) {
+  .edit-app {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+  .edit-sidebar {
+    padding-inline: 9px;
+  }
+  .edit-logo {
+    justify-content: center;
+  }
+  .edit-logo > span,
+  .edit-sidebar nav button > span,
+  .edit-sidebar nav button > em,
+  .project-specs,
+  .sidebar-settings > span,
+  .nav-entry-hint {
+    display: none;
+  }
+  .new-project-nav {
+    max-height: 42px;
+    overflow: hidden;
+    color: transparent;
+    font-size: 0 !important;
+  }
+  .new-project-nav::before {
+    content: '＋';
+    color: #d8c9ff;
+    font-size: 22px;
+  }
+  .edit-sidebar nav button,
+  .sidebar-settings {
+    justify-content: center;
+    grid-template-columns: 1fr;
+    padding-inline: 0;
+  }
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .recent-projects > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .topic-recommendation-list {
+    grid-template-columns: 1fr;
+  }
+  .project-stage {
+    padding-inline: clamp(16px, 3vw, 32px);
+  }
+}
+
+@media (max-width: 900px) {
+  .content-studio,
+  .storyboard-studio,
+  .voice-studio,
+  .assets-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .copy-analysis,
+  .board-preview,
+  .voice-preview,
+  .asset-detail {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+  }
+  .create-layout {
+    grid-template-columns: 1fr;
+  }
+  .create-steps,
+  .create-summary {
+    position: static;
+    grid-column: auto;
+  }
+  .create-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .create-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .new-project-card {
+    grid-template-columns: 1fr;
+  }
+  .hub-error {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .edit-app {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .edit-main {
+    padding-inline: 6px;
+  }
+  .project-stage {
+    padding: 18px 10px 36px;
+  }
+  .dashboard-heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .dashboard-heading h1 {
+    font-size: clamp(20px, 6vw, 26px);
+  }
+  .dashboard-stats,
+  .recent-projects > div,
+  .create-summary,
+  .provider-form {
+    grid-template-columns: 1fr;
+  }
+  .topic-recommendation-list > button {
+    grid-template-columns: 26px minmax(0, 1fr);
+  }
+  .topic-recommendation-list > button > i,
+  .topic-recommendation-list > button > mark {
+    grid-column: 2;
+  }
+  .create-steps {
+    display: flex;
+    overflow-x: auto;
+  }
+  .create-steps button {
+    min-width: 150px;
+  }
+  .stage-heading,
+  .complete-copy > header,
+  .copy-version-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 @media (max-width: 1180px) {
   .create-layout {
     grid-template-columns: 170px minmax(560px, 1fr);
@@ -4400,5 +4541,39 @@ select:focus {
   .asset-detail {
     grid-column: 1 / -1;
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Keep narrow-screen rules last so desktop workspace fallbacks cannot override them. */
+@media (max-width: 900px) {
+  .content-studio,
+  .storyboard-studio,
+  .voice-studio,
+  .assets-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .copy-analysis,
+  .board-preview,
+  .voice-preview,
+  .asset-detail {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+  }
+  .create-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .create-steps,
+  .create-summary {
+    position: static;
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .dashboard-stats,
+  .recent-projects > div,
+  .create-summary,
+  .provider-form {
+    grid-template-columns: 1fr;
   }
 }
