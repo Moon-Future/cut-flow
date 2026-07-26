@@ -22,7 +22,7 @@ export type WorkflowResult = {
 
 const cacheKey = (input: WorkflowInput): string =>
   createHash('sha256')
-    .update(JSON.stringify({version: 2, input}))
+    .update(JSON.stringify({version: 3, input}))
     .digest('hex')
     .slice(0, 20);
 

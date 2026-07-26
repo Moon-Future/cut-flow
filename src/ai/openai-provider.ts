@@ -227,7 +227,9 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
     generateScript: async (input: GenerateInput) => {
       const minimumNarrationChars = Math.floor(input.targetWordCount * 0.9);
       const maximumNarrationChars = Math.ceil(input.targetWordCount * 1.1);
-      const suggestedCharsPerScene = Math.round(input.targetWordCount / 8);
+      const requiredSceneCount = input.targetWordCount > 500 ? 9 : 7;
+      const minimumCharsPerScene = Math.floor(minimumNarrationChars / requiredSceneCount);
+      const maximumCharsPerScene = Math.ceil(maximumNarrationChars / requiredSceneCount);
       const prompt = `请根据以下信息创作一篇专业的短视频文案。
 
 【视频主题】
@@ -262,7 +264,8 @@ ${input.aspectRatio}
 
 【目标字数】
 所有 scenes[].narration 拼接后的文案总字数约 ${input.targetWordCount} 个汉字。
-合格范围：${minimumNarrationChars}-${maximumNarrationChars} 个汉字；建议按 8 段规划，每段约 ${suggestedCharsPerScene} 个汉字。
+合格范围：${minimumNarrationChars}-${maximumNarrationChars} 个汉字。
+必须生成 ${requiredSceneCount} 段，每段 narration 控制在 ${minimumCharsPerScene}-${maximumCharsPerScene} 个汉字；不得用一句短句代替完整段落。
 只统计 narration 中的汉字；title、hook、ending、caption、画面描述、搜索词以及图片/视频提示词均不计入目标字数。
 
 【额外创作要求】
@@ -294,10 +297,6 @@ ${input.customPrompt?.trim() || '无'}
 5. visual-explanation 段必须给出具体画面内容、imagePrompt、videoPrompt 和 soundEffect。
 6. imagePrompt 和 videoPrompt 遵循 ${input.aspectRatio}、${input.visualStyle}，不要文字、字幕、Logo 和水印。`;
       const speakerType = isDigitalHuman ? 'digital-human' : 'voiceover';
-      const speakerVisual = isDigitalHuman ? '数字人正面出镜' : '主题相关真实画面';
-      const speakerShotType = isDigitalHuman ? 'digital-human' : 'video';
-      const speakerStrategy = isDigitalHuman ? 'digital-human' : 'source-agnostic';
-      const speakerQuery = isDigitalHuman ? 'digital human presenter' : 'topic related footage';
       const jsonSystemPrompt = `你是一名专业的抖音短视频文案策划、视觉导演和 AI 视频提示词设计师，擅长创作“${isDigitalHuman ? '数字人口播' : '普通旁白'} + 画面讲解”交替呈现的短视频内容。
 
 文案质量要求：
@@ -307,34 +306,20 @@ ${input.customPrompt?.trim() || '无'}
 4. 不堆砌形容词，不写没有信息量的正确废话。
 5. 不编造补充资料中没有的数据、案例、经历或用户反馈。
 6. 结尾给出明确结论，并自然引导评论、收藏或关注。
-7. 全文安排 6-9 个段落，${speakerType} 与 visual-explanation 交替出现。
-8. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 1-3 句话。
+7. 全文必须恰好安排 ${requiredSceneCount} 个段落，${speakerType} 与 visual-explanation 交替出现。
+8. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 narration 必须写成 ${minimumCharsPerScene}-${maximumCharsPerScene} 个汉字的完整内容。
 9. visual-explanation 负责原因、案例、步骤、对比、产品功能、数据和过程，语言必须具体到后期人员能判断该配什么画面。
 10. ${isDigitalHuman ? '数字人口播' : '普通旁白'}负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
 11. 字数目标只针对所有 scenes[].narration 的汉字合计。生成后必须在内部逐段统计并补充或精简 narration，使总数达到 ${minimumNarrationChars}-${maximumNarrationChars} 个汉字；不要把其他 JSON 字段计入文案字数。
 ${digitalHumanDirection}
 
-只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须恰好有 ${requiredSceneCount} 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。
 输出 JSON 前再次检查：仅将 scenes 中每个 narration 的汉字数量相加，结果必须在 ${minimumNarrationChars}-${maximumNarrationChars} 之间。
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
 assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
 searchQueries 必须是字符串数组，不能是单个字符串。
 每个 shot 都必须提供 2-6 个英文 searchQueries 和一一对应的中文 searchQueriesZh，并同时提供 imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。imagePrompt 和 videoPrompt 使用专业英文撰写，供图片和视频模型直接调用；imagePromptZh 和 videoPromptZh 是准确完整的中文翻译，供页面展示。英文提示词不能只是几个风格词：图片提示词必须写清主体、环境、构图位置、外观特征、动作定格、光线、色彩、景别、视觉风格和画面比例；视频提示词必须写清初始画面、动作先后顺序、场景变化、镜头运动、节奏、时长、光线、色彩、比例和首帧一致性。
-JSON 输出格式示例：
-{
-  "title": "示例标题",
-  "hook": "示例开头",
-  "scenes": [
-    {"segmentType":"${speakerType}","narration":"第一段旁白","caption":"开场钩子","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"提出冲突","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"说出钩子","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
-    {"segmentType":"visual-explanation","narration":"第二段旁白","caption":"问题展示","visualPrompt":"具体问题场景","suggestedDuration":8,"visualIntent":"用场景展示问题","shots":[{"visualPurpose":"展示具体问题","shotType":"video","assetStrategy":"source-agnostic","durationWeight":1,"searchQueries":["problem scenario"],"imagePrompt":"关键帧提示词","videoPrompt":"动态视频提示词"}]},
-    {"segmentType":"${speakerType}","narration":"第三段旁白","caption":"核心判断","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"说出核心判断","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"强调观点","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
-    {"segmentType":"visual-explanation","narration":"第四段旁白","caption":"原因拆解","visualPrompt":"原因拆解过程","suggestedDuration":8,"visualIntent":"解释原因","shots":[{"visualPurpose":"可视化解释原因","shotType":"science-animation","assetStrategy":"source-agnostic","durationWeight":1,"searchQueries":["concept animation"],"imagePrompt":"解释动画关键帧","videoPrompt":"解释动画的动态过程"}]},
-    {"segmentType":"${speakerType}","narration":"第五段旁白","caption":"关键观点","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"强化记忆点","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"强调关键结论","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]},
-    {"segmentType":"visual-explanation","narration":"第六段旁白","caption":"解决方法","visualPrompt":"具体操作步骤","suggestedDuration":8,"visualIntent":"给出可执行方法","shots":[{"visualPurpose":"展示操作步骤","shotType":"video","assetStrategy":"source-agnostic","durationWeight":1,"searchQueries":["step by step solution"],"imagePrompt":"步骤关键帧","videoPrompt":"步骤动态演示"}]},
-    {"segmentType":"${speakerType}","narration":"第七段旁白","caption":"结尾收束","visualPrompt":"${speakerVisual}","suggestedDuration":6,"visualIntent":"总结并互动引导","digitalHumanEmotion":"","digitalHumanAction":"","digitalHumanBackground":"","soundEffect":"无","shots":[{"visualPurpose":"完成总结","shotType":"${speakerShotType}","assetStrategy":"${speakerStrategy}","durationWeight":1,"searchQueries":["${speakerQuery}"],"imagePrompt":"","videoPrompt":""}]}
-  ],
-  "ending": "示例结尾"
-}`;
+不要参考任何短占位文案或示例长度。先完成达到目标字数的 narration，再补充其他 JSON 字段。`;
       config.onPrompt?.({
         system: useChatCompletions
           ? jsonSystemPrompt
@@ -375,8 +360,8 @@ JSON 输出格式示例：
                   ending: {type: 'string'},
                   scenes: {
                     type: 'array',
-                    minItems: 6,
-                    maxItems: 9,
+                    minItems: requiredSceneCount,
+                    maxItems: requiredSceneCount,
                     items: {
                       type: 'object',
                       additionalProperties: false,

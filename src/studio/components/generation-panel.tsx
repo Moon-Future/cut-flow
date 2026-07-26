@@ -148,8 +148,14 @@ export const GenerationPanel = ({
             : provider === 'deepseek'
               ? 'DeepSeek'
               : '豆包';
+      const actualWordCount = value.project.scenes.reduce(
+        (sum, scene) => sum + scene.narration.length,
+        0,
+      );
       setMessage(
-        `${providerName} 文案生成完成，可继续编辑或再次生成。字幕和音频将在后续步骤单独生成`,
+        `${providerName} 文案生成完成：目标 ${effectiveWordCount} 字，实际 ${actualWordCount} 字${
+          value.cacheHit ? '（使用本地缓存）' : ''
+        }。可继续编辑或再次生成；字幕和音频将在后续步骤单独生成`,
       );
     } catch (error) {
       setStatus('error');

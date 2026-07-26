@@ -713,6 +713,7 @@ select {
   color: #526078;
   font-size: 8px;
   line-height: 1.5;
+  margin-top: 4px;
 }
 .scene-card {
   position: relative;
@@ -4739,4 +4740,33 @@ select:focus {
 .edit-app .topic-recommendation-list > button > mark b {
   margin-left: 3px;
   font-size: clamp(15px, calc(12px + 0.3vw), 18px);
+}
+
+/* Themed scrollbars for the web and desktop workspace. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #59447f #0a0e16;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  border-radius: 10px;
+  background: #0a0e16;
+}
+*::-webkit-scrollbar-thumb {
+  min-height: 42px;
+  border: 2px solid #0a0e16;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #564172, #3d3155);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7658a0, #584174);
+}
+*::-webkit-scrollbar-thumb:active {
+  background: #8967b5;
+}
+*::-webkit-scrollbar-corner {
+  background: #0a0e16;
 }
