@@ -1,5 +1,7 @@
+import {chmod, mkdir, readFile, writeFile} from 'node:fs/promises';
+import path from 'node:path';
 import type {ProjectFile} from '../core/schema';
-import type {AiProviderId, AiProviderSetting} from './settings';
+import {aiSettingsFile, type AiProviderId, type AiProviderSetting} from './settings';
 
 export type TopicRecommendation = {
   title: string;
@@ -7,6 +9,37 @@ export type TopicRecommendation = {
   heatScore: number;
   reason: string;
   angle: string;
+};
+
+export type SavedTopicRecommendations = {
+  topics: TopicRecommendation[];
+  provider: AiProviderId;
+  generatedAt: string;
+};
+
+const topicRecommendationsFile = () =>
+  path.join(path.dirname(aiSettingsFile()), 'topic-recommendations.json');
+
+export const loadTopicRecommendations = async (): Promise<SavedTopicRecommendations | null> => {
+  try {
+    const value = JSON.parse(
+      await readFile(topicRecommendationsFile(), 'utf8'),
+    ) as SavedTopicRecommendations;
+    return Array.isArray(value.topics) && value.topics.length
+      ? {...value, topics: value.topics.slice(0, 10)}
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+export const saveTopicRecommendations = async (
+  value: SavedTopicRecommendations,
+): Promise<void> => {
+  const file = topicRecommendationsFile();
+  await mkdir(path.dirname(file), {recursive: true});
+  await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, {encoding: 'utf8', mode: 0o600});
+  await chmod(file, 0o600).catch(() => undefined);
 };
 
 const topicSchema = {

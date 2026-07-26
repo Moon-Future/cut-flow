@@ -1,7 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import type {ProjectFile} from '../../core/schema';
 import type {TopicRecommendation} from '../../ai/topic-recommendations';
-import {useStudioStore} from '../store';
 import type {ProjectSummary} from './project-hub';
 import type {WorkspaceSection} from './workspace-sidebar';
 
@@ -30,9 +29,9 @@ export const ProjectDashboard = ({
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState(currentProjectId);
   const [recommendedTopics, setRecommendedTopics] = useState<TopicRecommendation[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState('');
   const [topicStatus, setTopicStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [topicMessage, setTopicMessage] = useState('');
-  const {updateContent} = useStudioStore();
 
   useEffect(() => {
     fetch('/api/projects')
@@ -42,13 +41,13 @@ export const ProjectDashboard = ({
   }, [project]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(`cut-flow:topic-recommendations:${currentProjectId}`);
-      setRecommendedTopics(saved ? (JSON.parse(saved) as TopicRecommendation[]) : []);
-    } catch {
-      setRecommendedTopics([]);
-    }
-  }, [currentProjectId]);
+    fetch('/api/topic-recommendations')
+      .then((response) => response.json())
+      .then((value: {topics?: TopicRecommendation[]}) =>
+        setRecommendedTopics(value.topics ?? []),
+      )
+      .catch(() => setRecommendedTopics([]));
+  }, []);
 
   const stats = useMemo(
     () => ({
@@ -76,19 +75,34 @@ export const ProjectDashboard = ({
       };
       if (!response.ok || !value.topics) throw new Error(value.error ?? '选题推荐失败');
       setRecommendedTopics(value.topics);
-      localStorage.setItem(
-        `cut-flow:topic-recommendations:${currentProjectId}`,
-        JSON.stringify(value.topics),
-      );
       setTopicStatus('idle');
-      setTopicMessage('已根据当前项目重新生成 10 条推荐');
+      setTopicMessage('已生成并保存最新的 10 条本地推荐');
     } catch (error) {
       setTopicStatus('error');
       setTopicMessage(error instanceof Error ? error.message : String(error));
     }
   };
-  const useRecommendedTopic = (item: TopicRecommendation) => {
-    updateContent({topic: item.title, description: item.angle});
+  const createFromRecommendedTopic = async (item: TopicRecommendation) => {
+    setTopicStatus('loading');
+    setTopicMessage('正在创建新项目…');
+    const response = await fetch('/api/projects', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title: item.title,
+        topic: item.title,
+        description: item.angle,
+        creationMode: 'ai-generate',
+        videoType: 'science-explainer',
+      }),
+    });
+    const value = (await response.json()) as {id?: string; error?: string};
+    if (!response.ok || !value.id) {
+      setTopicStatus('error');
+      setTopicMessage(value.error ?? '创建项目失败');
+      return;
+    }
+    await onOpenProject(value.id);
     onNavigate('content');
   };
 
@@ -174,7 +188,7 @@ export const ProjectDashboard = ({
         <header>
           <div>
             <strong>推荐视频主题</strong>
-            <span>AI 热度判断 · 点击主题即可带入文案配置</span>
+            <span>AI 热度判断 · 单击选择，双击创建项目并进入</span>
           </div>
           <button disabled={topicStatus === 'loading'} onClick={() => void refreshTopics()}>
             {topicStatus === 'loading'
@@ -187,7 +201,16 @@ export const ProjectDashboard = ({
         {recommendedTopics.length ? (
           <div className="topic-recommendation-list">
             {recommendedTopics.map((item, index) => (
-              <button key={`${item.title}-${index}`} onClick={() => useRecommendedTopic(item)}>
+              <button
+                key={`${item.title}-${index}`}
+                className={selectedTopic === item.title ? 'selected' : ''}
+                onClick={() => setSelectedTopic(item.title)}
+                onDoubleClick={() => void createFromRecommendedTopic(item)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void createFromRecommendedTopic(item);
+                }}
+                title="单击选择，双击创建新项目"
+              >
                 <b>{String(index + 1).padStart(2, '0')}</b>
                 <span>
                   <strong>{item.title}</strong>

@@ -2492,6 +2492,11 @@ select:focus {
   border-color: #654c9b;
   background: #151b27;
 }
+.topic-recommendation-list > button.selected {
+  border-color: #8a62e8;
+  background: #19142a;
+  box-shadow: inset 3px 0 #8a62e8;
+}
 .topic-recommendation-list > button > b {
   color: #7658bd;
   font-size: 11px;

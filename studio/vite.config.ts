@@ -8,7 +8,11 @@ import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
 import {projectFileSchema, videoTypeSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
-import {generateTopicRecommendations} from '../src/ai/topic-recommendations';
+import {
+  generateTopicRecommendations,
+  loadTopicRecommendations,
+  saveTopicRecommendations,
+} from '../src/ai/topic-recommendations';
 import {
   createMockImageProvider,
   createMockVideoProvider,
@@ -117,10 +121,18 @@ const localApi = (): Plugin => ({
               providerSetting,
               project,
             );
-            sendJson(response, 200, {
+            const result = {
               topics,
               provider,
               generatedAt: new Date().toISOString(),
+            };
+            await saveTopicRecommendations(result);
+            sendJson(response, 200, {...result, heatBasis: 'ai-estimate'});
+            return;
+          }
+          if (url === '/api/topic-recommendations' && request.method === 'GET') {
+            sendJson(response, 200, {
+              ...(await loadTopicRecommendations()),
               heatBasis: 'ai-estimate',
             });
             return;
