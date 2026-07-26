@@ -131,6 +131,16 @@ ipcMain.handle('cut-flow:select-project-folder', async () => {
     : await dialog.showOpenDialog(options);
   return result.canceled ? null : (result.filePaths[0] ?? null);
 });
+ipcMain.handle('cut-flow:select-directory', async (_event, title?: string) => {
+  const options: OpenDialogOptions = {
+    title: title || '选择目录',
+    properties: ['openDirectory', 'createDirectory'],
+  };
+  const result = mainWindow
+    ? await dialog.showOpenDialog(mainWindow, options)
+    : await dialog.showOpenDialog(options);
+  return result.canceled ? null : (result.filePaths[0] ?? null);
+});
 
 const hasLock = app.requestSingleInstanceLock();
 if (!hasLock) app.quit();

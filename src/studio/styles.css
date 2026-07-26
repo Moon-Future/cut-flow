@@ -2868,6 +2868,88 @@ select:focus {
 .settings-message.error {
   color: #ff8190;
 }
+.storage-settings-card {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #344158;
+  border-radius: 11px;
+  background: #0d121a;
+}
+.storage-settings-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+.storage-settings-card > header strong,
+.storage-settings-card > header p {
+  display: block;
+}
+.storage-settings-card > header p {
+  margin: 5px 0 0;
+  color: #7d899d;
+}
+.storage-settings-card > header button {
+  flex: 0 0 auto;
+  padding: 9px 13px;
+  border: 1px solid #5f4a8e;
+  border-radius: 8px;
+  background: #251c39;
+  color: #c4afea;
+  cursor: pointer;
+}
+.storage-settings-card > label {
+  display: block;
+  margin-top: 11px;
+}
+.storage-settings-card > label span,
+.storage-settings-card > label small {
+  display: block;
+}
+.storage-settings-card > label span {
+  margin-bottom: 6px;
+  color: #aeb7c5;
+}
+.storage-settings-card > label input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #303a4d;
+  border-radius: 8px;
+  background: #090d14;
+  color: #dfe4ec;
+}
+.storage-path-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.storage-path-input button {
+  padding: 0 13px;
+  border: 1px solid #39465b;
+  border-radius: 8px;
+  background: #171e2a;
+  color: #adb7c6;
+  cursor: pointer;
+}
+.storage-path-input button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.storage-settings-card > label small {
+  margin-top: 5px;
+  color: #647187;
+  overflow-wrap: anywhere;
+}
+.storage-settings-card > aside {
+  margin-top: 14px;
+  padding: 11px;
+  border: 1px solid #5a482a;
+  border-radius: 8px;
+  background: #211a10;
+  color: #c7a86d;
+  line-height: 1.6;
+}
 @media (max-width: 900px) {
   .provider-form {
     grid-template-columns: 1fr;

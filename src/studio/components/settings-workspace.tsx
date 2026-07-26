@@ -8,6 +8,13 @@ type PublicSettings = {
     ProviderId,
     {enabled: boolean; configured: boolean; baseUrl: string; model: string}
   >;
+  pixabay: {configured: boolean};
+};
+type StorageSettings = {
+  configRoot: string;
+  projectsRoot: string;
+  defaults: {configRoot: string; projectsRoot: string};
+  restartRecommended?: boolean;
 };
 
 const providerMeta: Record<ProviderId, {name: string; description: string}> = {
@@ -17,12 +24,21 @@ const providerMeta: Record<ProviderId, {name: string; description: string}> = {
 };
 
 export const SettingsWorkspace = () => {
+  const hasDesktopDirectoryPicker = Boolean(
+    (
+      window as typeof window & {
+        cutFlowDesktop?: {selectDirectory?: (dialogTitle?: string) => Promise<string | null>};
+      }
+    ).cutFlowDesktop?.selectDirectory,
+  );
   const [settings, setSettings] = useState<PublicSettings | null>(null);
   const [draft, setDraft] = useState<Record<ProviderId, {apiKey: string; secretKey: string}>>({
     openai: {apiKey: '', secretKey: ''},
     deepseek: {apiKey: '', secretKey: ''},
     doubao: {apiKey: '', secretKey: ''},
   });
+  const [pixabayApiKey, setPixabayApiKey] = useState('');
+  const [storage, setStorage] = useState<StorageSettings | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
@@ -34,6 +50,12 @@ export const SettingsWorkspace = () => {
         setStatus('error');
         setMessage('无法读取本地 AI 配置');
       });
+  }, []);
+  useEffect(() => {
+    fetch('/api/settings/storage')
+      .then((response) => response.json())
+      .then((value: StorageSettings) => setStorage(value))
+      .catch(() => undefined);
   }, []);
 
   const updateProvider = (
@@ -69,11 +91,13 @@ export const SettingsWorkspace = () => {
               },
             ]),
           ),
+          pixabay: {apiKey: pixabayApiKey},
         }),
       });
       const value = (await response.json()) as PublicSettings & {error?: string};
       if (!response.ok) throw new Error(value.error ?? '保存失败');
       setSettings(value);
+      setPixabayApiKey('');
       setDraft({
         openai: {apiKey: '', secretKey: ''},
         deepseek: {apiKey: '', secretKey: ''},
@@ -85,6 +109,45 @@ export const SettingsWorkspace = () => {
       setStatus('error');
       setMessage(error instanceof Error ? error.message : String(error));
     }
+  };
+  const saveStorage = async () => {
+    if (!storage) return;
+    const confirmed = window.confirm(
+      `确认迁移本地数据？\n\n配置目录：\n${storage.configRoot}\n\n项目目录：\n${storage.projectsRoot}\n\n系统会复制并校验数据，原目录会保留作为备份。`,
+    );
+    if (!confirmed) return;
+    setStatus('saving');
+    setMessage('正在迁移本地数据，请勿关闭应用…');
+    try {
+      const response = await fetch('/api/settings/storage', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({...storage, confirmMigration: true}),
+      });
+      const value = (await response.json()) as StorageSettings & {error?: string};
+      if (!response.ok) throw new Error(value.error ?? '目录迁移失败');
+      setStorage(value);
+      setStatus('success');
+      setMessage(
+        value.restartRecommended
+          ? '数据迁移完成，原目录已保留。建议重启应用后继续使用'
+          : '数据目录未发生变化',
+      );
+    } catch (error) {
+      setStatus('error');
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+  const chooseDirectory = async (field: 'configRoot' | 'projectsRoot', title: string) => {
+    if (!storage) return;
+    const desktop = (
+      window as typeof window & {
+        cutFlowDesktop?: {selectDirectory?: (dialogTitle?: string) => Promise<string | null>};
+      }
+    ).cutFlowDesktop;
+    if (!desktop?.selectDirectory) return;
+    const selected = await desktop.selectDirectory(title);
+    if (selected) setStorage({...storage, [field]: selected});
   };
 
   if (!settings) return <div className="settings-loading">正在读取本地配置…</div>;
@@ -186,7 +249,78 @@ export const SettingsWorkspace = () => {
             </article>
           );
         })}
+        <article className={settings.pixabay.configured ? 'enabled' : ''}>
+          <header>
+            <div>
+              <strong>Pixabay 素材搜索</strong>
+              <p>用于按分镜搜索词查找可预览、可下载的图片和视频素材。</p>
+            </div>
+            <span>{settings.pixabay.configured ? '已配置' : '未配置'}</span>
+          </header>
+          <div className="provider-form">
+            <label>
+              <span>Pixabay API Key</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={pixabayApiKey}
+                placeholder={settings.pixabay.configured ? '已保存，留空则不修改' : '请输入 API Key'}
+                onChange={(event) => setPixabayApiKey(event.target.value)}
+              />
+            </label>
+          </div>
+        </article>
       </div>
+      {storage ? (
+        <section className="storage-settings-card">
+          <header>
+            <div>
+              <strong>本地目录设置</strong>
+              <p>更改目录会复制全部数据，校验成功后切换；原目录不会自动删除。</p>
+            </div>
+            <button disabled={status === 'saving'} onClick={() => void saveStorage()}>
+              迁移并应用
+            </button>
+          </header>
+          <label>
+            <span>配置目录</span>
+            <div className="storage-path-input">
+              <input
+                value={storage.configRoot}
+                onChange={(event) => setStorage({...storage, configRoot: event.target.value})}
+              />
+              <button
+                disabled={!hasDesktopDirectoryPicker}
+                title={hasDesktopDirectoryPicker ? '打开文件夹选择器' : 'Web 版请直接输入绝对路径'}
+                onClick={() => void chooseDirectory('configRoot', '选择配置目录')}
+              >
+                选择
+              </button>
+            </div>
+            <small>默认：{storage.defaults.configRoot}</small>
+          </label>
+          <label>
+            <span>项目数据目录（projects）</span>
+            <div className="storage-path-input">
+              <input
+                value={storage.projectsRoot}
+                onChange={(event) => setStorage({...storage, projectsRoot: event.target.value})}
+              />
+              <button
+                disabled={!hasDesktopDirectoryPicker}
+                title={hasDesktopDirectoryPicker ? '打开文件夹选择器' : 'Web 版请直接输入绝对路径'}
+                onClick={() => void chooseDirectory('projectsRoot', '选择项目数据目录')}
+              >
+                选择
+              </button>
+            </div>
+            <small>默认：{storage.defaults.projectsRoot}</small>
+          </label>
+          <aside>
+            更改前请确保目标目录为空并有足够磁盘空间。迁移完成后建议重启应用；确认新目录数据无误后，再手动处理原目录备份。
+          </aside>
+        </section>
+      ) : null}
       {message ? <p className={`settings-message ${status}`}>{message}</p> : null}
     </section>
   );

@@ -1,7 +1,7 @@
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
-import {createReadStream} from 'node:fs';
+import {createReadStream, readFileSync} from 'node:fs';
 import {appendFile, cp, mkdir, readFile, readdir, rename, rm, stat, writeFile} from 'node:fs/promises';
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import path from 'node:path';
@@ -40,23 +40,66 @@ const requireFromApp = createRequire(
   path.join(process.env.CUT_FLOW_APP_ROOT ?? repositoryRoot, 'package.json'),
 );
 const react = (requireFromApp('@vitejs/plugin-react') as {default: () => Plugin}).default;
-const projectsRoot = path.join(workspaceRoot, 'projects');
-const hiddenProjectsFile = path.join(workspaceRoot, 'cut-flow-data', 'hidden-projects.json');
+const defaultConfigRoot = path.join(workspaceRoot, 'cut-flow-data');
+const defaultProjectsRoot = path.join(workspaceRoot, 'projects');
+const storageSettingsFile = path.join(defaultConfigRoot, 'storage-settings.json');
+type StorageSettings = {
+  configRoot: string;
+  projectsRoot: string;
+};
+const savedStorageSettings = (() => {
+  try {
+    return JSON.parse(readFileSync(storageSettingsFile, 'utf8')) as Partial<StorageSettings>;
+  } catch {
+    return {};
+  }
+})();
+let storageSettings: StorageSettings = {
+  configRoot: path.resolve(savedStorageSettings.configRoot || defaultConfigRoot),
+  projectsRoot: path.resolve(savedStorageSettings.projectsRoot || defaultProjectsRoot),
+};
+let projectsRoot = storageSettings.projectsRoot;
+process.env.CUT_FLOW_USER_DATA_ROOT = storageSettings.configRoot;
+const storageReady = mkdir(projectsRoot, {recursive: true}).then(() => storageSettings);
+const hiddenProjectsFile = () => path.join(storageSettings.configRoot, 'hidden-projects.json');
 let activeProjectId = 'demo-project';
 const loadHiddenProjects = async (): Promise<string[]> =>
-  readFile(hiddenProjectsFile, 'utf8')
+  readFile(hiddenProjectsFile(), 'utf8')
     .then((value) => {
       const parsed = JSON.parse(value) as {ids?: unknown};
       return Array.isArray(parsed.ids) ? parsed.ids.map(String) : [];
     })
     .catch(() => []);
 const saveHiddenProjects = async (ids: string[]) => {
-  await mkdir(path.dirname(hiddenProjectsFile), {recursive: true});
+  await mkdir(path.dirname(hiddenProjectsFile()), {recursive: true});
   await writeFile(
-    hiddenProjectsFile,
+    hiddenProjectsFile(),
     `${JSON.stringify({ids: [...new Set(ids)]}, null, 2)}\n`,
     'utf8',
   );
+};
+const directoryIsEmpty = async (directory: string): Promise<boolean> =>
+  readdir(directory).then((entries) => entries.length === 0).catch(() => true);
+const migrateDirectory = async (source: string, destination: string): Promise<void> => {
+  const from = path.resolve(source);
+  const to = path.resolve(destination);
+  if (from === to) return;
+  if (to.startsWith(`${from}${path.sep}`) || from.startsWith(`${to}${path.sep}`)) {
+    throw new Error('新旧目录不能互相包含，请选择独立目录');
+  }
+  if (!(await directoryIsEmpty(to))) {
+    throw new Error(`目标目录不是空目录：${to}`);
+  }
+  await mkdir(from, {recursive: true});
+  await mkdir(path.dirname(to), {recursive: true});
+  await cp(from, to, {recursive: true, errorOnExist: false, force: false});
+};
+const saveStorageSettings = async (next: StorageSettings): Promise<void> => {
+  await mkdir(defaultConfigRoot, {recursive: true});
+  await writeFile(storageSettingsFile, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+  storageSettings = next;
+  projectsRoot = next.projectsRoot;
+  process.env.CUT_FLOW_USER_DATA_ROOT = next.configRoot;
 };
 const syncProjectTitleMarker = async (
   projectRoot: string,
@@ -132,6 +175,58 @@ const localApi = (): Plugin => ({
       void (async () => {
         const url = request.url?.split('?')[0];
         try {
+          await storageReady;
+          if (url === '/api/settings/storage' && request.method === 'GET') {
+            sendJson(response, 200, {
+              ...storageSettings,
+              defaults: {
+                configRoot: defaultConfigRoot,
+                projectsRoot: defaultProjectsRoot,
+              },
+            });
+            return;
+          }
+          if (url === '/api/settings/storage' && request.method === 'PUT') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              configRoot?: string;
+              projectsRoot?: string;
+              confirmMigration?: boolean;
+            };
+            const next = {
+              configRoot: path.resolve(input.configRoot || storageSettings.configRoot),
+              projectsRoot: path.resolve(input.projectsRoot || storageSettings.projectsRoot),
+            };
+            const changes = {
+              configRoot: next.configRoot !== storageSettings.configRoot,
+              projectsRoot: next.projectsRoot !== storageSettings.projectsRoot,
+            };
+            if ((changes.configRoot || changes.projectsRoot) && !input.confirmMigration) {
+              sendJson(response, 409, {
+                error: '更改目录需要确认迁移',
+                migrationRequired: true,
+                from: storageSettings,
+                to: next,
+              });
+              return;
+            }
+            if (changes.configRoot) {
+              await migrateDirectory(storageSettings.configRoot, next.configRoot);
+            }
+            if (changes.projectsRoot) {
+              await migrateDirectory(storageSettings.projectsRoot, next.projectsRoot);
+            }
+            await saveStorageSettings(next);
+            sendJson(response, 200, {
+              ...next,
+              defaults: {
+                configRoot: defaultConfigRoot,
+                projectsRoot: defaultProjectsRoot,
+              },
+              migrated: changes,
+              restartRecommended: changes.configRoot || changes.projectsRoot,
+            });
+            return;
+          }
           if (url === '/api/settings/ai' && request.method === 'GET') {
             sendJson(response, 200, publicAiSettings(await loadAiSettings()));
             return;
@@ -836,7 +931,7 @@ const localApi = (): Plugin => ({
                 '--project',
                 projectFile,
                 '--public-dir',
-                path.join(workspaceRoot, 'projects'),
+                projectsRoot,
                 '--runtime-root',
                 runtimeRoot,
                 ...(process.env.CUT_FLOW_REMOTION_BINARIES
@@ -910,7 +1005,7 @@ const localApi = (): Plugin => ({
 
 export default {
   root: repositoryRoot,
-  publicDir: path.resolve(workspaceRoot, 'projects'),
+  publicDir: projectsRoot,
   plugins: [react(), localApi()],
   build: {outDir: path.resolve(repositoryRoot, 'dist/studio'), emptyOutDir: true},
   server: {host: '127.0.0.1', port: 4173},

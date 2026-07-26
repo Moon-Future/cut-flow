@@ -15,6 +15,9 @@ export type AiProviderSetting = {
 export type AiSettings = {
   activeProvider: AiProviderId;
   providers: Record<AiProviderId, AiProviderSetting>;
+  pixabay: {
+    apiKey: string;
+  };
 };
 
 const defaults: AiSettings = {
@@ -42,6 +45,9 @@ const defaults: AiSettings = {
       model: '',
     },
   },
+  pixabay: {
+    apiKey: '',
+  },
 };
 
 const settingsRoot = () =>
@@ -59,6 +65,7 @@ const mergeSettings = (saved: Partial<AiSettings>): AiSettings => {
       deepseek: {...defaults.providers.deepseek, ...saved.providers?.deepseek},
       doubao: {...defaults.providers.doubao, ...saved.providers?.doubao},
     },
+    pixabay: {...defaults.pixabay, ...saved.pixabay},
   };
   if (settings.providers.deepseek.model === 'deepseek-chat') {
     settings.providers.deepseek.model = 'deepseek-v4-flash';
@@ -96,12 +103,18 @@ export const loadAiSettings = async (): Promise<AiSettings> => {
 };
 
 export const saveAiSettings = async (
-  input: Partial<AiSettings> & {providers?: Partial<Record<AiProviderId, Partial<AiProviderSetting>>>},
+  input: Partial<AiSettings> & {
+    providers?: Partial<Record<AiProviderId, Partial<AiProviderSetting>>>;
+    pixabay?: Partial<AiSettings['pixabay']>;
+  },
 ): Promise<AiSettings> => {
   const current = await loadAiSettings();
   const next: AiSettings = {
     activeProvider: input.activeProvider ?? current.activeProvider,
     providers: structuredClone(current.providers),
+    pixabay: {
+      apiKey: input.pixabay?.apiKey?.trim() || current.pixabay.apiKey,
+    },
   };
   for (const id of ['openai', 'deepseek', 'doubao'] as const) {
     const update = input.providers?.[id];
@@ -127,6 +140,9 @@ export const saveAiSettings = async (
 export const publicAiSettings = (settings: AiSettings) => ({
   activeProvider: settings.activeProvider,
   storage: aiSettingsFile(),
+  pixabay: {
+    configured: Boolean(settings.pixabay.apiKey),
+  },
   providers: Object.fromEntries(
     Object.entries(settings.providers).map(([id, value]) => [
       id,
