@@ -66,4 +66,16 @@ describe('视频生成提示词', () => {
     expect(videoTargetMaximumSeconds('～30s')).toBe(30);
     expect(videoTargetMaximumSeconds('40～60s')).toBe(60);
   });
+
+  it('重复切换时长时只保留一份硬性要求', () => {
+    const first = normalizeVideoPromptDuration('人物完成动作。', '5s');
+    const second = normalizeVideoPromptDuration(first, '10s');
+    const third = normalizeVideoPromptDuration(second, '～15s');
+    expect(third.match(/【最高优先级硬性要求】/gu)).toHaveLength(1);
+    expect(third.match(/【音频要求】/gu)).toHaveLength(1);
+    expect(third.match(/【目标输出时长】/gu)).toHaveLength(1);
+    expect(third).toContain('成片总时长不得超过 15 秒');
+    expect(third).not.toContain('成片总时长不得超过 5 秒');
+    expect(third).not.toContain('成片总时长不得超过 10 秒');
+  });
 });

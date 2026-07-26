@@ -31,7 +31,12 @@ export const normalizeVideoPromptDuration = (
   duration: VideoTargetDuration,
 ): string => {
   const cleaned = prompt
-    .replace(/^【(?:目标输出时长|成片使用时长)】[^\n]*\n?/u, '')
+    .replace(/【最高优先级硬性要求】.*?不要追加片尾、空镜、黑场或延长画面。\s*/gu, '')
+    .replace(
+      /【音频要求】只生成无声视频画面，禁止背景音乐、配乐、歌曲、配音、旁白、对白、人声和任何声音。\s*/gu,
+      '',
+    )
+    .replace(/【(?:目标输出时长|成片使用时长)】[^\n【]*\n?/gu, '')
     .replace(
       /(?:视频)?(?:总)?时长\s*(?:控制在|设置为|设为|为|约|：|:)?\s*\d+(?:\.\d+)?\s*(?:～|-|至)?\s*\d*(?:\.\d+)?\s*秒[，。；;]?/giu,
       '',
@@ -41,8 +46,8 @@ export const normalizeVideoPromptDuration = (
     .trim();
   const maximumSeconds = videoTargetMaximumSeconds(duration);
   const instruction =
-    `【最高优先级硬性要求】成片总时长不得超过 ${maximumSeconds} 秒，所有主体动作、镜头运动和叙事必须在第 ${maximumSeconds} 秒前完整结束，最后自然定格，不要追加片尾、空镜、黑场或延长画面。` +
-    `【音频要求】只生成无声视频画面，禁止背景音乐、配乐、歌曲、配音、旁白、对白、人声和任何声音。` +
+    `【最高优先级硬性要求】成片总时长不得超过 ${maximumSeconds} 秒，所有主体动作、镜头运动和叙事必须在第 ${maximumSeconds} 秒前完整结束，最后自然定格，不要追加片尾、空镜、黑场或延长画面。\n` +
+    `【音频要求】只生成无声视频画面，禁止背景音乐、配乐、歌曲、配音、旁白、对白、人声和任何声音。\n` +
     `【目标输出时长】${videoDurationLabel(duration)}。以本段时长要求为准，忽略正文中的其他总时长描述。`;
   return `${instruction}\n${cleaned}`;
 };
