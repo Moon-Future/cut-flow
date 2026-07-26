@@ -1,6 +1,11 @@
 import {useRef, useState} from 'react';
 import type {Scene, VisualShot} from '../../core/schema';
 import type {AssetMetadata} from '../../media/asset-library';
+import type {
+  PixabayMediaKind,
+  PixabaySearchResponse,
+  PixabaySearchResult,
+} from '../../media/pixabay';
 import {useStudioStore} from '../store';
 
 const layouts: Scene['layout'][] = ['full-screen', 'center-card', 'split-top-bottom'];
@@ -13,6 +18,15 @@ const motions: Scene['motion'][] = [
 ];
 
 type Props = {projectId: string};
+type PixabayPanelState = {
+  shotId: string;
+  query: string;
+  kind: PixabayMediaKind;
+  status: 'idle' | 'searching' | 'downloading';
+  results: PixabaySearchResult[];
+  error?: string;
+  cached?: boolean;
+};
 
 export const SceneEditor = ({projectId}: Props) => {
   const {project, selectedSceneId, lockedSceneIds, updateScene, updateVisualShot, syncVisualShot} =
@@ -23,6 +37,7 @@ export const SceneEditor = ({projectId}: Props) => {
     shotId: string;
     message: string;
   } | null>(null);
+  const [pixabayPanel, setPixabayPanel] = useState<PixabayPanelState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scene = project?.scenes.find((item) => item.id === selectedSceneId);
   if (!scene) return <div className="empty-inspector">选择一个镜头开始编辑</div>;
@@ -150,6 +165,82 @@ export const SceneEditor = ({projectId}: Props) => {
       });
     } finally {
       setGeneratingShotId(null);
+    }
+  };
+
+  const searchPixabay = async (
+    shot: VisualShot,
+    kind: PixabayMediaKind,
+    explicitQuery?: string,
+  ) => {
+    const query = explicitQuery?.trim() || shot.searchQueries[0] || shot.visualPurpose;
+    setPixabayPanel({
+      shotId: shot.id,
+      query,
+      kind,
+      status: 'searching',
+      results: pixabayPanel?.shotId === shot.id ? pixabayPanel.results : [],
+    });
+    try {
+      const response = await fetch('/api/pixabay/search', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sceneId: scene.id, shotId: shot.id, query, kind}),
+      });
+      const value = (await response.json()) as PixabaySearchResponse & {error?: string};
+      if (!response.ok) throw new Error(value.error ?? 'Pixabay 搜索失败');
+      setPixabayPanel({
+        shotId: shot.id,
+        query: value.query,
+        kind: value.kind,
+        status: 'idle',
+        results: value.results,
+        cached: value.cached,
+      });
+    } catch (error) {
+      setPixabayPanel({
+        shotId: shot.id,
+        query,
+        kind,
+        status: 'idle',
+        results: [],
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  const downloadPixabay = async (shot: VisualShot, result: PixabaySearchResult) => {
+    if (!pixabayPanel || pixabayPanel.shotId !== shot.id) return;
+    setPixabayPanel({...pixabayPanel, status: 'downloading', error: undefined});
+    try {
+      const response = await fetch('/api/pixabay/download', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          sceneId: scene.id,
+          shotId: shot.id,
+          query: pixabayPanel.query,
+          result,
+        }),
+      });
+      const value = (await response.json()) as {
+        assetPath?: string;
+        shot?: VisualShot;
+        error?: string;
+      };
+      if (!response.ok || !value.assetPath || !value.shot) {
+        throw new Error(value.error ?? '素材下载失败');
+      }
+      updateVisualShot(scene.id, shot.id, value.shot);
+      change('assetPath', value.assetPath);
+      change('assetType', result.kind);
+      setPixabayPanel({...pixabayPanel, status: 'idle'});
+    } catch (error) {
+      setPixabayPanel({
+        ...pixabayPanel,
+        status: 'idle',
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 
@@ -358,6 +449,22 @@ export const SceneEditor = ({projectId}: Props) => {
                   </button>
                   <button
                     type="button"
+                    className="pixabay-action"
+                    onClick={() => void searchPixabay(shot, 'image')}
+                    disabled={pixabayPanel?.shotId === shot.id && pixabayPanel.status !== 'idle'}
+                  >
+                    Pixabay 搜图片
+                  </button>
+                  <button
+                    type="button"
+                    className="pixabay-action"
+                    onClick={() => void searchPixabay(shot, 'video')}
+                    disabled={pixabayPanel?.shotId === shot.id && pixabayPanel.status !== 'idle'}
+                  >
+                    Pixabay 搜视频
+                  </button>
+                  <button
+                    type="button"
                     className="image-to-video-button"
                     onClick={() => void imageToVideo(shot.id)}
                     disabled={
@@ -403,10 +510,98 @@ export const SceneEditor = ({projectId}: Props) => {
                     ))}
                   </div>
                 ) : null}
+                {pixabayPanel?.shotId === shot.id ? (
+                  <section className="pixabay-panel">
+                    <div className="pixabay-search-row">
+                      <input
+                        aria-label="Pixabay 素材搜索词"
+                        value={pixabayPanel.query}
+                        onChange={(event) =>
+                          setPixabayPanel({...pixabayPanel, query: event.target.value})
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void searchPixabay(shot, pixabayPanel.kind, pixabayPanel.query);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void searchPixabay(shot, pixabayPanel.kind, pixabayPanel.query)
+                        }
+                        disabled={!pixabayPanel.query.trim() || pixabayPanel.status !== 'idle'}
+                      >
+                        {pixabayPanel.status === 'searching' ? '搜索中…' : '重新搜索'}
+                      </button>
+                    </div>
+                    <div className="pixabay-panel-meta">
+                      <span>
+                        {pixabayPanel.kind === 'image' ? '图片' : '视频'} ·{' '}
+                        {pixabayPanel.results.length} 条结果
+                        {pixabayPanel.cached ? ' · 本地缓存' : ''}
+                      </span>
+                      <a href="https://pixabay.com/" target="_blank" rel="noreferrer">
+                        素材来源：Pixabay
+                      </a>
+                    </div>
+                    {pixabayPanel.error ? (
+                      <p className="candidate-error">{pixabayPanel.error}</p>
+                    ) : null}
+                    {pixabayPanel.status === 'searching' ? (
+                      <div className="pixabay-empty">正在搜索可用素材…</div>
+                    ) : pixabayPanel.results.length ? (
+                      <div className="pixabay-grid">
+                        {pixabayPanel.results.map((result) => (
+                          <article className="pixabay-card" key={`${result.kind}-${result.id}`}>
+                            <img src={result.previewUrl} alt={`${result.author} 的素材预览`} />
+                            <div>
+                              <strong>
+                                {result.kind === 'image' ? '图片' : '视频'} · {result.width}×
+                                {result.height}
+                              </strong>
+                              <span>
+                                {result.author} · {result.likes} 赞
+                              </span>
+                            </div>
+                            <div className="pixabay-card-actions">
+                              <a href={result.pageUrl} target="_blank" rel="noreferrer">
+                                查看来源
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => void downloadPixabay(shot, result)}
+                                disabled={pixabayPanel.status !== 'idle'}
+                              >
+                                {pixabayPanel.status === 'downloading' ? '下载中…' : '下载并使用'}
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="pixabay-empty">没有找到匹配素材，请更换英文搜索词</div>
+                    )}
+                  </section>
+                ) : null}
                 {shot.searchQueries.length ? (
                   <div className="query-chips">
                     {shot.searchQueries.map((query) => (
-                      <span key={query}>{query}</span>
+                      <button
+                        type="button"
+                        key={query}
+                        title="用这个关键词搜索 Pixabay"
+                        onClick={() =>
+                          void searchPixabay(
+                            shot,
+                            pixabayPanel?.shotId === shot.id ? pixabayPanel.kind : 'video',
+                            query,
+                          )
+                        }
+                      >
+                        {query}
+                      </button>
                     ))}
                   </div>
                 ) : null}

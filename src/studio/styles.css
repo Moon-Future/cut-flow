@@ -999,12 +999,109 @@ select:focus {
   gap: 5px;
   margin-top: 9px;
 }
-.query-chips span {
+.query-chips button {
   padding: 3px 6px;
   border: 1px solid #2a3b52;
   border-radius: 5px;
+  background: #111b29;
   color: #91a4bf;
   font-size: 9px;
+  cursor: pointer;
+}
+.query-chips button:hover {
+  border-color: #4b7695;
+  color: #b7d9ed;
+}
+.candidate-actions .pixabay-action {
+  border-color: #3b806f;
+  color: #70dfbe;
+}
+.pixabay-panel {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #274337;
+  border-radius: 8px;
+  background: #0b1717;
+}
+.pixabay-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+.pixabay-search-row input {
+  min-width: 0;
+}
+.pixabay-search-row button,
+.pixabay-card-actions button {
+  border: 1px solid #3b806f;
+  border-radius: 6px;
+  background: #15342e;
+  color: #8ce8cc;
+  cursor: pointer;
+}
+.pixabay-panel-meta,
+.pixabay-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pixabay-panel-meta {
+  margin: 8px 0;
+  color: #779388;
+  font-size: 9px;
+}
+.pixabay-panel a {
+  color: #6bc9ae;
+}
+.pixabay-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.pixabay-card {
+  overflow: hidden;
+  border: 1px solid #263d39;
+  border-radius: 7px;
+  background: #101c1d;
+}
+.pixabay-card > img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.pixabay-card > div {
+  padding: 6px;
+}
+.pixabay-card strong,
+.pixabay-card span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pixabay-card strong {
+  color: #b8ccc5;
+  font-size: 9px;
+}
+.pixabay-card span {
+  margin-top: 3px;
+  color: #728a83;
+  font-size: 8px;
+}
+.pixabay-card-actions {
+  border-top: 1px solid #263d39;
+}
+.pixabay-card-actions a,
+.pixabay-card-actions button {
+  font-size: 8px;
+}
+.pixabay-empty {
+  padding: 18px 8px;
+  text-align: center;
+  color: #71857f;
+  font-size: 10px;
 }
 .shot-plan-card details {
   margin-top: 8px;
@@ -2372,7 +2469,10 @@ select:focus {
   color: #dce1e9;
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 .recent-project-entry {
   position: relative;
@@ -2389,7 +2489,10 @@ select:focus {
   color: #dce1e9;
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 .recent-project-entry > .project-open-button:hover {
   border-color: #604a91;
@@ -2629,7 +2732,9 @@ select:focus {
   color: #dce2eb;
   text-align: left;
   cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
 }
 .topic-recommendation-list > button:hover {
   border-color: #654c9b;

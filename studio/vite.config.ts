@@ -1,8 +1,18 @@
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
-import {randomUUID} from 'node:crypto';
+import {createHash, randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {createReadStream, readFileSync} from 'node:fs';
-import {appendFile, cp, mkdir, readFile, readdir, rename, rm, stat, writeFile} from 'node:fs/promises';
+import {
+  appendFile,
+  cp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
@@ -20,11 +30,15 @@ import {
   createOpenAIVideoProvider,
 } from '../src/ai/media-provider';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
+import type {
+  PixabayMediaKind,
+  PixabaySearchResponse,
+  PixabaySearchResult,
+} from '../src/media/pixabay';
 import {
   loadAiSettings,
   publicAiSettings,
   saveAiSettings,
-  type AiProviderId,
 } from '../src/ai/settings';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
@@ -79,7 +93,9 @@ const saveHiddenProjects = async (ids: string[]) => {
   );
 };
 const directoryIsEmpty = async (directory: string): Promise<boolean> =>
-  readdir(directory).then((entries) => entries.length === 0).catch(() => true);
+  readdir(directory)
+    .then((entries) => entries.length === 0)
+    .catch(() => true);
 const migrateDirectory = async (source: string, destination: string): Promise<void> => {
   const from = path.resolve(source);
   const to = path.resolve(destination);
@@ -119,9 +135,7 @@ const syncProjectTitleMarker = async (
     entries
       .filter(
         (entry) =>
-          entry.isFile() &&
-          /^项目-.*\.txt$/u.test(entry.name) &&
-          entry.name !== markerName,
+          entry.isFile() && /^项目-.*\.txt$/u.test(entry.name) && entry.name !== markerName,
       )
       .map((entry) => rm(path.join(projectRoot, entry.name), {force: true})),
   );
@@ -167,6 +181,77 @@ const readBody = (request: IncomingMessage): Promise<Buffer> =>
     request.on('end', () => resolve(Buffer.concat(chunks)));
     request.on('error', reject);
   });
+
+const pixabayHostAllowed = (value: string): boolean => {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === 'pixabay.com' || hostname.endsWith('.pixabay.com');
+  } catch {
+    return false;
+  }
+};
+
+const pixabayExtension = (url: string, contentType: string | null, kind: PixabayMediaKind) => {
+  const pathnameExtension = path.extname(new URL(url).pathname).toLowerCase();
+  if (/^\.(jpe?g|png|webp|mp4|webm|mov)$/.test(pathnameExtension)) return pathnameExtension;
+  if (contentType?.includes('png')) return '.png';
+  if (contentType?.includes('webp')) return '.webp';
+  if (contentType?.includes('webm')) return '.webm';
+  if (contentType?.includes('quicktime')) return '.mov';
+  return kind === 'image' ? '.jpg' : '.mp4';
+};
+
+const normalizePixabayResults = (value: unknown, kind: PixabayMediaKind): PixabaySearchResult[] => {
+  const textValue = (input: unknown, fallback = '') =>
+    typeof input === 'string' ? input : fallback;
+  const hits = (value as {hits?: unknown[]})?.hits;
+  if (!Array.isArray(hits)) return [];
+  const results: PixabaySearchResult[] = [];
+  for (const raw of hits) {
+    const hit = raw as Record<string, unknown>;
+    if (kind === 'image') {
+      const previewUrl = textValue(hit.webformatURL) || textValue(hit.previewURL);
+      const downloadUrl = textValue(hit.largeImageURL) || textValue(hit.webformatURL);
+      if (!previewUrl || !downloadUrl || !hit.pageURL) continue;
+      results.push({
+        id: String(hit.id),
+        kind,
+        previewUrl,
+        downloadUrl,
+        pageUrl: textValue(hit.pageURL),
+        author: textValue(hit.user, 'Pixabay 创作者'),
+        width: Number(hit.imageWidth || hit.webformatWidth || 1),
+        height: Number(hit.imageHeight || hit.webformatHeight || 1),
+        views: Number(hit.views || 0),
+        downloads: Number(hit.downloads || 0),
+        likes: Number(hit.likes || 0),
+      });
+      continue;
+    }
+    const videos = hit.videos as
+      | Record<string, {url?: string; width?: number; height?: number; thumbnail?: string}>
+      | undefined;
+    const media = videos?.medium ?? videos?.small ?? videos?.large ?? videos?.tiny;
+    const previewUrl =
+      media?.thumbnail ?? videos?.small?.thumbnail ?? videos?.large?.thumbnail ?? '';
+    if (!media?.url || !previewUrl || !hit.pageURL) continue;
+    results.push({
+      id: String(hit.id),
+      kind,
+      previewUrl,
+      downloadUrl: media.url,
+      pageUrl: textValue(hit.pageURL),
+      author: textValue(hit.user, 'Pixabay 创作者'),
+      width: Number(media.width || 1),
+      height: Number(media.height || 1),
+      duration: Number(hit.duration || 0) || undefined,
+      views: Number(hit.views || 0),
+      downloads: Number(hit.downloads || 0),
+      likes: Number(hit.likes || 0),
+    });
+  }
+  return results;
+};
 
 const localApi = (): Plugin => ({
   name: 'cut-flow-local-api',
@@ -257,11 +342,7 @@ const localApi = (): Plugin => ({
               });
               return;
             }
-            const topics = await generateTopicRecommendations(
-              provider,
-              providerSetting,
-              project,
-            );
+            const topics = await generateTopicRecommendations(provider, providerSetting, project);
             const result = {
               topics,
               provider,
@@ -339,7 +420,10 @@ const localApi = (): Plugin => ({
               JSON.parse(await readFile(path.join(sourcePath, 'project.json'), 'utf8')) as unknown,
             );
             const safeName =
-              path.basename(sourcePath).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 40) || 'imported';
+              path
+                .basename(sourcePath)
+                .replace(/[^a-zA-Z0-9_-]/g, '-')
+                .slice(0, 40) || 'imported';
             const id = `${safeName}-${Date.now()}-${randomUUID().slice(0, 6)}`;
             const destination = path.resolve(projectsRoot, id);
             if (!destination.startsWith(`${path.resolve(projectsRoot)}${path.sep}`)) {
@@ -529,11 +613,7 @@ const localApi = (): Plugin => ({
             const temporary = `${projectFile}.tmp`;
             await writeFile(temporary, `${JSON.stringify(parsed.data, null, 2)}\n`, 'utf8');
             await rename(temporary, projectFile);
-            await syncProjectTitleMarker(
-              projectRoot,
-              activeProjectId,
-              parsed.data.project.title,
-            );
+            await syncProjectTitleMarker(projectRoot, activeProjectId, parsed.data.project.title);
             sendJson(response, 200, {savedAt: new Date().toISOString()});
             return;
           }
@@ -592,6 +672,167 @@ const localApi = (): Plugin => ({
             sendJson(response, 200, {version: 1, assets});
             return;
           }
+          if (url === '/api/pixabay/search' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              shotId?: string;
+              query?: string;
+              kind?: PixabayMediaKind;
+            };
+            if (!input.sceneId || !input.shotId || !['image', 'video'].includes(input.kind ?? '')) {
+              sendJson(response, 400, {error: '请选择要搜索的分镜和素材类型'});
+              return;
+            }
+            const settings = await loadAiSettings();
+            if (!settings.pixabay.apiKey) {
+              sendJson(response, 400, {error: '请先在设置中填写 Pixabay API Key'});
+              return;
+            }
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const scene = project.scenes.find((item) => item.id === input.sceneId);
+            const shot = scene?.shots?.find((item) => item.id === input.shotId);
+            if (!scene || !shot) {
+              sendJson(response, 404, {error: '找不到指定的分镜'});
+              return;
+            }
+            const query =
+              input.query?.trim() ||
+              shot.searchQueries.find((item) => item.trim()) ||
+              shot.visualPurpose.trim();
+            if (!query) {
+              sendJson(response, 400, {error: '该分镜没有可用的素材搜索词'});
+              return;
+            }
+            const kind: PixabayMediaKind = input.kind === 'image' ? 'image' : 'video';
+            const orientation =
+              project.project.width < project.project.height ? 'vertical' : 'horizontal';
+            const cacheKey = createHash('sha256')
+              .update(`${kind}\n${orientation}\n${query.toLocaleLowerCase()}`)
+              .digest('hex');
+            const cacheRoot = path.join(storageSettings.configRoot, 'pixabay-cache');
+            const cacheFile = path.join(cacheRoot, `${cacheKey}.json`);
+            const cacheAge = await stat(cacheFile)
+              .then((value) => Date.now() - value.mtimeMs)
+              .catch(() => Number.POSITIVE_INFINITY);
+            if (cacheAge < 24 * 60 * 60 * 1000) {
+              const cached = JSON.parse(await readFile(cacheFile, 'utf8')) as PixabaySearchResponse;
+              sendJson(response, 200, {...cached, cached: true});
+              return;
+            }
+            const endpoint =
+              kind === 'image' ? 'https://pixabay.com/api/' : 'https://pixabay.com/api/videos/';
+            const parameters = new URLSearchParams({
+              key: settings.pixabay.apiKey,
+              q: query,
+              orientation,
+              safesearch: 'true',
+              per_page: '12',
+            });
+            const pixabayResponse = await fetch(`${endpoint}?${parameters.toString()}`);
+            if (!pixabayResponse.ok) {
+              const detail = await pixabayResponse.text();
+              throw new Error(
+                `Pixabay 搜索失败（${pixabayResponse.status}）：${detail.slice(0, 180)}`,
+              );
+            }
+            const results = normalizePixabayResults(await pixabayResponse.json(), kind);
+            const payload: PixabaySearchResponse = {query, kind, cached: false, results};
+            await mkdir(cacheRoot, {recursive: true});
+            await writeFile(cacheFile, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+            sendJson(response, 200, payload);
+            return;
+          }
+          if (url === '/api/pixabay/download' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              shotId?: string;
+              query?: string;
+              result?: PixabaySearchResult;
+            };
+            const result = input.result;
+            if (
+              !input.sceneId ||
+              !input.shotId ||
+              !result ||
+              !['image', 'video'].includes(result.kind) ||
+              !pixabayHostAllowed(result.downloadUrl) ||
+              !pixabayHostAllowed(result.pageUrl)
+            ) {
+              sendJson(response, 400, {error: '素材信息无效，请重新搜索后再下载'});
+              return;
+            }
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const scene = project.scenes.find((item) => item.id === input.sceneId);
+            const shot = scene?.shots?.find((item) => item.id === input.shotId);
+            if (!scene || !shot) {
+              sendJson(response, 404, {error: '找不到指定的分镜'});
+              return;
+            }
+            const mediaResponse = await fetch(result.downloadUrl);
+            if (!mediaResponse.ok) {
+              throw new Error(`Pixabay 素材下载失败（${mediaResponse.status}）`);
+            }
+            const contentLength = Number(mediaResponse.headers.get('content-length') || 0);
+            if (contentLength > 500 * 1024 * 1024) {
+              sendJson(response, 413, {error: '该素材超过 500 MB，请在来源页面手动下载'});
+              return;
+            }
+            const bytes = Buffer.from(await mediaResponse.arrayBuffer());
+            if (bytes.byteLength > 500 * 1024 * 1024) {
+              sendJson(response, 413, {error: '该素材超过 500 MB，请在来源页面手动下载'});
+              return;
+            }
+            const extension = pixabayExtension(
+              result.downloadUrl,
+              mediaResponse.headers.get('content-type'),
+              result.kind,
+            );
+            const storedName = `${Date.now()}-pixabay-${result.id}${extension}`;
+            const assetPath = `assets/${storedName}`;
+            await mkdir(assetsRoot, {recursive: true});
+            await writeFile(path.join(assetsRoot, storedName), bytes);
+            const metadata = assetMetadataSchema.parse({
+              id: `pixabay-${result.kind}-${result.id}-${randomUUID()}`,
+              name: `Pixabay ${result.kind === 'image' ? '图片' : '视频'} ${result.id}`,
+              type: result.kind,
+              source: 'online',
+              path: assetPath,
+              license: 'licensed',
+              commercialUse: true,
+              originalUrl: result.pageUrl,
+              createdAt: new Date().toISOString(),
+              keywords: [input.query?.trim(), 'Pixabay', result.author].filter(Boolean),
+              width: result.width,
+              height: result.height,
+              duration: result.duration,
+              author: result.author,
+              sourceName: 'Pixabay',
+              licenseUrl: 'https://pixabay.com/service/license-summary/',
+            });
+            const library = await readFile(assetLibraryFile, 'utf8')
+              .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown))
+              .catch(() => ({version: 1 as const, assets: []}));
+            const nextLibrary = assetLibrarySchema.parse({
+              version: 1,
+              assets: [...library.assets, metadata],
+            });
+            shot.selectedAsset = assetPath;
+            shot.status = 'ready';
+            scene.assetPath = assetPath;
+            scene.assetType = result.kind;
+            const temporaryLibrary = `${assetLibraryFile}.tmp`;
+            const temporaryProject = `${projectFile}.tmp`;
+            await writeFile(temporaryLibrary, `${JSON.stringify(nextLibrary, null, 2)}\n`, 'utf8');
+            await writeFile(temporaryProject, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporaryLibrary, assetLibraryFile);
+            await rename(temporaryProject, projectFile);
+            sendJson(response, 200, {assetPath, asset: metadata, shot});
+            return;
+          }
           if (url === '/api/generate' && request.method === 'POST') {
             const input = JSON.parse((await readBody(request)).toString('utf8')) as WorkflowInput;
             if (
@@ -614,7 +855,7 @@ const localApi = (): Plugin => ({
             const selectedSetting =
               input.provider === 'mock'
                 ? undefined
-                : aiSettings.providers[input.provider as AiProviderId];
+                : aiSettings.providers[input.provider];
             if (
               input.provider !== 'mock' &&
               (!selectedSetting?.enabled ||
