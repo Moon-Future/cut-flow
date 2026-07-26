@@ -1965,9 +1965,10 @@ select:focus {
   display: flex;
   align-items: center;
   padding: 0 12px;
-  color: #9da7b7;
-  font-size: 9px;
-  font-weight: 500;
+  color: #b5bfce;
+  font-size: clamp(12px, 0.78vw, 14px);
+  font-weight: 600;
+  white-space: nowrap;
 }
 .track-row > div {
   min-width: 0;
@@ -1976,7 +1977,11 @@ select:focus {
   padding: 4px 5px;
 }
 .video-track {
-  min-height: 46px;
+  height: 36px;
+  min-height: 36px;
+}
+.video-track > div {
+  padding-block: 3px;
 }
 .video-track button,
 .caption-track button {
@@ -1988,6 +1993,9 @@ select:focus {
   background: #151b26;
   color: #e1e5ed;
   cursor: pointer;
+}
+.video-track button {
+  height: 30px;
 }
 .video-track button.selected {
   border: 2px solid #9a6cff;
