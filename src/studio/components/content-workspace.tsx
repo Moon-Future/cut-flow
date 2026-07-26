@@ -25,12 +25,25 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
     updateScene,
     duplicateScene,
     deleteScene,
+    restoreCopyVersion,
   } = useStudioStore();
   const totalChars = project.scenes.reduce((sum, scene) => sum + scene.narration.length, 0);
   const totalDuration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
   const hookScore = Math.min(100, 62 + Math.min(32, (project.content?.hook.length ?? 0) * 1.5));
   const clarityScore = Math.min(100, 72 + Math.min(20, project.scenes.length * 3));
   const rhythmScore = Math.min(100, 68 + Math.min(24, project.scenes.length * 4));
+  const copyVersions = project.copyVersions ?? [];
+  const currentVersionIndex = copyVersions.findIndex(
+    (item) => item.id === project.activeCopyVersionId,
+  );
+  const currentVersion =
+    currentVersionIndex >= 0 ? copyVersions[currentVersionIndex] : undefined;
+  const providerNames: Record<string, string> = {
+    mock: '本地演示',
+    openai: 'OpenAI',
+    deepseek: 'DeepSeek',
+    doubao: '豆包',
+  };
 
   return (
     <section className="content-studio">
@@ -151,8 +164,38 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
               {project.scenes.length} 个段落 · {totalChars} 字 · 约 {Math.round(totalDuration)} 秒
             </span>
           </div>
+          {currentVersion ? (
+            <span className="ai-copy-badge">
+              AI 生成 · {providerNames[currentVersion.provider] ?? currentVersion.provider} · V
+              {currentVersionIndex + 1}
+            </span>
+          ) : (
+            <span className="manual-copy-badge">手动文案</span>
+          )}
           <button onClick={() => duplicateScene(project.scenes.at(-1)!.id)}>＋ 添加段落</button>
         </header>
+        {copyVersions.length ? (
+          <div className="copy-version-bar">
+            <div>
+              <strong>AI 文案历史</strong>
+              <small>共保留 {copyVersions.length} 个版本，切换后仍可继续编辑</small>
+            </div>
+            <select
+              value={project.activeCopyVersionId ?? ''}
+              onChange={(event) => restoreCopyVersion(event.target.value)}
+            >
+              {copyVersions
+                .map((version, index) => ({version, index}))
+                .reverse()
+                .map(({version, index}) => (
+                  <option value={version.id} key={version.id}>
+                    V{index + 1} · {providerNames[version.provider] ?? version.provider} ·{' '}
+                    {new Date(version.createdAt).toLocaleString('zh-CN')}
+                  </option>
+                ))}
+            </select>
+          </div>
+        ) : null}
         <div className="copy-segments">
           {project.scenes.map((scene, index) => (
             <article key={scene.id}>

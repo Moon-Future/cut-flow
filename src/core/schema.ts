@@ -89,6 +89,18 @@ export const sceneSchema = z.object({
   shots: z.array(visualShotSchema).min(1).optional(),
 });
 
+export const copyVersionSchema = z.object({
+  id: z.string().min(1),
+  createdAt: z.string().min(1),
+  provider: z.string().min(1),
+  model: z.string().optional(),
+  title: z.string().min(1),
+  topic: z.string(),
+  hook: z.string(),
+  ending: z.string(),
+  scenes: z.array(sceneSchema).min(1),
+});
+
 export const projectFileSchema = z
   .object({
     version: z.literal(1),
@@ -127,6 +139,8 @@ export const projectFileSchema = z
     }),
     narrationAudio: z.string().min(1).nullable().optional(),
     scenes: z.array(sceneSchema).min(1),
+    copyVersions: z.array(copyVersionSchema).optional(),
+    activeCopyVersionId: z.string().nullable().optional(),
   })
   .superRefine((value, context) => {
     const seen = new Set<string>();
@@ -149,3 +163,4 @@ export type VisualShot = z.infer<typeof visualShotSchema>;
 export type GenerationCandidate = z.infer<typeof generationCandidateSchema>;
 export type GenerationTask = z.infer<typeof generationTaskSchema>;
 export type VideoType = z.infer<typeof videoTypeSchema>;
+export type CopyVersion = z.infer<typeof copyVersionSchema>;

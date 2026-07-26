@@ -43,8 +43,17 @@ export const GenerationPanel = ({
   const [topic, setTopic] = useState(initialTopic);
   const [provider, setProvider] = useState<'mock' | 'openai' | 'deepseek' | 'doubao'>('mock');
   const [availableProviders, setAvailableProviders] = useState<
-    Array<{id: 'openai' | 'deepseek' | 'doubao'; name: string}>
-  >([]);
+    Array<{
+      id: 'openai' | 'deepseek' | 'doubao';
+      name: string;
+      enabled: boolean;
+      configured: boolean;
+    }>
+  >([
+    {id: 'openai', name: 'OpenAI', enabled: false, configured: false},
+    {id: 'deepseek', name: 'DeepSeek', enabled: false, configured: false},
+    {id: 'doubao', name: '豆包', enabled: false, configured: false},
+  ]);
   const [targetDuration, setTargetDuration] = useState(30);
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
@@ -60,11 +69,19 @@ export const GenerationPanel = ({
           providers: Record<string, {enabled: boolean; configured: boolean; model: string}>;
         }) => {
           const names = {openai: 'OpenAI', deepseek: 'DeepSeek', doubao: '豆包'} as const;
-          const configured = (Object.keys(names) as Array<keyof typeof names>)
-            .filter((id) => value.providers[id]?.enabled && value.providers[id]?.configured)
-            .map((id) => ({id, name: names[id]}));
-          setAvailableProviders(configured);
-          if (configured.some((item) => item.id === value.activeProvider)) {
+          const providers = (Object.keys(names) as Array<keyof typeof names>).map((id) => ({
+            id,
+            name: names[id],
+            enabled: Boolean(value.providers[id]?.enabled),
+            configured: Boolean(value.providers[id]?.configured),
+          }));
+          setAvailableProviders(providers);
+          if (
+            providers.some(
+              (item) =>
+                item.id === value.activeProvider && item.enabled && item.configured,
+            )
+          ) {
             setProvider(value.activeProvider);
           }
         },
@@ -185,12 +202,20 @@ export const GenerationPanel = ({
             >
               <option value="mock">本地演示（不消耗 Token）</option>
               {availableProviders.map((item) => (
-                <option value={item.id} key={item.id}>
-                  {item.name} 正式生成
+                <option
+                  value={item.id}
+                  key={item.id}
+                  disabled={!item.enabled || !item.configured}
+                >
+                  {item.name}
+                  {!item.configured ? '（未配置）' : !item.enabled ? '（未启用）' : ' 正式生成'}
                 </option>
               ))}
             </select>
           </label>
+          {availableProviders.every((item) => !item.enabled || !item.configured) ? (
+            <p className="ai-config-hint">尚无可用 AI，请先到左下角“设置”中配置并启用服务。</p>
+          ) : null}
           <button
             className="generate-button"
             disabled={

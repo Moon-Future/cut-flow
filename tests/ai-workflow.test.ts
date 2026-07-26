@@ -58,6 +58,17 @@ describe('generation workflow', () => {
     expect(first.cacheHit).toBe(false);
     expect(second.cacheHit).toBe(true);
     expect(first.project.scenes).toHaveLength(3);
+    expect(first.project.copyVersions).toHaveLength(1);
+    expect(first.project.copyVersions?.[0]).toMatchObject({
+      provider: 'mock',
+      topic: '如何完成独立项目',
+    });
+    const regenerated = await runGenerationWorkflow(
+      {...input, forceRegenerate: true},
+      first.project,
+      projectRoot,
+    );
+    expect(regenerated.project.copyVersions).toHaveLength(2);
     expect(first.project.scenes.every((scene) => (scene.words?.length ?? 0) > 0)).toBe(true);
     expect(first.project.scenes.every((scene) => (scene.shots?.length ?? 0) > 0)).toBe(true);
     expect(

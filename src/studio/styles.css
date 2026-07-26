@@ -669,6 +669,16 @@ select {
 .generation-form .provider-field {
   max-width: 100%;
 }
+.ai-config-hint {
+  margin: -3px 0 10px;
+  padding: 8px 9px;
+  border: 1px solid #493c28;
+  border-radius: 7px;
+  background: #211a10;
+  color: #c9a667;
+  font-size: 9px;
+  line-height: 1.5;
+}
 .generate-button {
   width: 100%;
   border: 0;
@@ -3475,6 +3485,53 @@ select:focus {
   border-color: #7651d6;
   background: #6942c7;
   color: #fff;
+}
+.ai-copy-badge,
+.manual-copy-badge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #283d36;
+  color: #69d7b5 !important;
+  font-size: 9px !important;
+  white-space: nowrap;
+}
+.manual-copy-badge {
+  background: #272d39;
+  color: #8d98aa !important;
+}
+.copy-version-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin: 10px 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #2b3548;
+  border-radius: 8px;
+  background: #0b111a;
+}
+.copy-version-bar strong,
+.copy-version-bar small {
+  display: block;
+}
+.copy-version-bar strong {
+  color: #d9dfea;
+  font-size: 10px;
+}
+.copy-version-bar small {
+  margin-top: 3px;
+  color: #69768b;
+  font-size: 8px;
+}
+.copy-version-bar select {
+  min-width: 210px;
+  padding: 7px 9px;
+  border: 1px solid #3a465c;
+  border-radius: 7px;
+  background: #111824;
+  color: #b8c1cf;
+  font-size: 9px;
 }
 .copy-segments {
   display: grid;

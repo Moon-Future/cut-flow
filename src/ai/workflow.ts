@@ -155,6 +155,19 @@ export const runGenerationWorkflow = async (
       ...visual,
     };
   });
+  const createdAt = new Date().toISOString();
+  const versionId = `copy-${Date.now()}-${cacheKey(input).slice(0, 6)}`;
+  const copyVersion = {
+    id: versionId,
+    createdAt,
+    provider: input.provider,
+    model: providerSetting?.model,
+    title: script.title,
+    topic: input.topic,
+    hook: script.hook,
+    ending: script.ending,
+    scenes,
+  };
 
   return {
     project: {
@@ -173,6 +186,8 @@ export const runGenerationWorkflow = async (
       style: {...currentProject.style, captionAnimation: 'fade'},
       narrationAudio: 'audio/narration.wav',
       scenes,
+      copyVersions: [...(currentProject.copyVersions ?? []), copyVersion],
+      activeCopyVersionId: versionId,
     },
     cacheHit,
     provider: input.provider,

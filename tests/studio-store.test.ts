@@ -115,4 +115,27 @@ describe('studio store', () => {
     expect(useStudioStore.getState().project?.scenes[0]?.shots?.[0]?.status).toBe('ready');
     expect(useStudioStore.getState().saveStatus).toBe('saved');
   });
+
+  it('restores a retained AI copy version and marks it for saving', () => {
+    const withHistory = projectFileSchema.parse({
+      ...project,
+      copyVersions: [
+        {
+          id: 'copy-v1',
+          createdAt: '2026-07-26T00:00:00.000Z',
+          provider: 'deepseek',
+          title: '历史标题',
+          topic: '历史选题',
+          hook: '历史开头',
+          ending: '历史结尾',
+          scenes: project.scenes,
+        },
+      ],
+    });
+    useStudioStore.getState().setProject(withHistory);
+    useStudioStore.getState().restoreCopyVersion('copy-v1');
+    expect(useStudioStore.getState().project?.project.title).toBe('历史标题');
+    expect(useStudioStore.getState().project?.activeCopyVersionId).toBe('copy-v1');
+    expect(useStudioStore.getState().saveStatus).toBe('saving');
+  });
 });
