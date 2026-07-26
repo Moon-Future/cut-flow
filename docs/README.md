@@ -8,6 +8,7 @@ Cut Flow 是一个面向开发者自媒体的本地短视频自动生产工作�
 - [技术文档](./technical-design.md)：系统架构、数据模型、模块边界和关键技术决策。
 - [开发文档](./development-guide.md)：工程约定、目录结构、命令、实现规范和测试策略。
 - [开发计划](./development-plan.md)：阶段、任务、交付物、里程碑和风险控制。
+- [AI 科普短视频视觉素材工作流](./science-video-asset-workflow.md)：公共素材库、项目素材库、素材缺口分析与低成本成片方案。
 
 ## 一句话目标
 
