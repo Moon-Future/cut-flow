@@ -75,6 +75,12 @@ export const EditingWorkspace = ({
   const [candidatePath, setCandidatePath] = useState<string | null>(null);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [inspectorTab, setInspectorTab] = useState<'properties' | 'captions'>('properties');
+  const [timelineHeight, setTimelineHeight] = useState(() => {
+    if (typeof window === 'undefined') return 218;
+    const saved = Number(window.localStorage.getItem('cut-flow-timeline-height'));
+    return Number.isFinite(saved) && saved >= 150 ? saved : 218;
+  });
+  const timelineResizeStart = useRef<{pointerY: number; height: number} | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const timeline = useMemo(() => buildTimeline(project), [project]);
   const selectedIndex = Math.max(
@@ -84,6 +90,13 @@ export const EditingWorkspace = ({
   const scene = project.scenes[selectedIndex] ?? project.scenes[0]!;
   const selectedTimelineItem = timeline.scenes[selectedIndex];
   const totalSeconds = timeline.durationInFrames / project.project.fps;
+  const clampTimelineHeight = (height: number) =>
+    Math.round(Math.max(150, Math.min(Math.max(150, window.innerHeight - 320), height)));
+  const saveTimelineHeight = (height: number) => {
+    const next = clampTimelineHeight(height);
+    setTimelineHeight(next);
+    window.localStorage.setItem('cut-flow-timeline-height', String(next));
+  };
 
   useEffect(() => {
     fetch('/api/assets/library')
@@ -98,6 +111,16 @@ export const EditingWorkspace = ({
     setCandidatePath(null);
     setPreviewPath(null);
   }, [selectedSceneId]);
+
+  useEffect(() => {
+    const fitTimelineToWindow = () =>
+      setTimelineHeight((current) =>
+        Math.round(Math.max(150, Math.min(Math.max(150, window.innerHeight - 320), current))),
+      );
+    window.addEventListener('resize', fitTimelineToWindow);
+    fitTimelineToWindow();
+    return () => window.removeEventListener('resize', fitTimelineToWindow);
+  }, []);
 
   const shotCandidates = (scene.shots ?? []).flatMap((shot) => shot.candidates);
   const candidates =
@@ -170,6 +193,11 @@ export const EditingWorkspace = ({
         className={`edit-main ${section === 'edit' ? '' : 'stage-mode'} ${
           section === 'overview' ? 'overview-mode' : ''
         }`}
+        style={
+          section === 'edit'
+            ? {gridTemplateRows: `60px minmax(220px, 1fr) ${timelineHeight}px`}
+            : undefined
+        }
       >
         {section !== 'overview' ? (
           <header className="edit-header">
@@ -473,6 +501,45 @@ export const EditingWorkspace = ({
             </section>
 
             <section className="timeline-panel edit-panel">
+              <div
+                className="timeline-resize-handle"
+                role="separator"
+                aria-label="拖动调整时间线高度"
+                aria-orientation="horizontal"
+                aria-valuemin={150}
+                aria-valuemax={Math.max(150, window.innerHeight - 320)}
+                aria-valuenow={timelineHeight}
+                tabIndex={0}
+                onPointerDown={(event) => {
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  timelineResizeStart.current = {
+                    pointerY: event.clientY,
+                    height: timelineHeight,
+                  };
+                }}
+                onPointerMove={(event) => {
+                  const start = timelineResizeStart.current;
+                  if (!start) return;
+                  setTimelineHeight(
+                    clampTimelineHeight(start.height + start.pointerY - event.clientY),
+                  );
+                }}
+                onPointerUp={(event) => {
+                  const start = timelineResizeStart.current;
+                  if (!start) return;
+                  const next = clampTimelineHeight(start.height + start.pointerY - event.clientY);
+                  timelineResizeStart.current = null;
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                  saveTimelineHeight(next);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                  event.preventDefault();
+                  saveTimelineHeight(timelineHeight + (event.key === 'ArrowUp' ? 20 : -20));
+                }}
+              >
+                <span />
+              </div>
               <header className="timeline-toolbar">
                 <button disabled>↶ 撤销</button>
                 <button disabled>↷ 重做</button>

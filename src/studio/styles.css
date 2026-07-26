@@ -1916,8 +1916,35 @@ select:focus {
 }
 .timeline-panel {
   position: relative;
-  min-height: 218px;
+  min-height: 150px;
   overflow: auto;
+}
+.timeline-resize-handle {
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 9px;
+  display: flex;
+  justify-content: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.timeline-resize-handle span {
+  width: 64px;
+  height: 3px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: #465166;
+  transition:
+    width 0.15s ease,
+    background 0.15s ease;
+}
+.timeline-resize-handle:hover span,
+.timeline-resize-handle:focus span {
+  width: 92px;
+  background: #9a76ed;
 }
 .timeline-toolbar {
   height: 38px;
