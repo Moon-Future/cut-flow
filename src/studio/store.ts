@@ -89,6 +89,8 @@ export const useStudioStore = create<StudioState>((set) => ({
             topic: version.topic,
             videoType: state.project.content?.videoType ?? 'science-explainer',
             description: state.project.content?.description,
+            audience: state.project.content?.audience,
+            purpose: state.project.content?.purpose,
             sourceText: state.project.content?.sourceText,
             keywords: state.project.content?.keywords,
             hook: version.hook,

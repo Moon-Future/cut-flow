@@ -75,6 +75,7 @@ export const visualShotSchema = z.object({
 
 export const sceneSchema = z.object({
   id: z.string().min(1),
+  copyRole: z.enum(['digital-human', 'visual-explanation']).optional(),
   narration: z.string(),
   caption: z.string().min(1),
   assetType: z.enum(['image', 'video']),
@@ -120,6 +121,8 @@ export const projectFileSchema = z
         topic: z.string().default(''),
         videoType: videoTypeSchema.default('science-explainer'),
         description: z.string().optional(),
+        audience: z.string().optional(),
+        purpose: z.string().optional(),
         sourceText: z.string().optional(),
         keywords: z.string().optional(),
         hook: z.string().default(''),

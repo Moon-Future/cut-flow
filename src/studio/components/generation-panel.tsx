@@ -14,11 +14,14 @@ type Props = {
     videoType: VideoType;
     tone: string;
     platformLabel?: string;
+    audience: string;
+    purpose: string;
+    coreViewpoint: string;
+    sourceMaterial: string;
   };
 };
 
-const defaultPrompt =
-  '请围绕标题提炼一个鲜明观点：前 3 秒用反常识或问题制造悬念；正文分层解释，每段只讲一个重点；语言口语化、句子简短；结尾总结并给出自然的互动引导。不要虚构数据。';
+const defaultPrompt = '';
 
 const videoTypeLabels: Record<VideoType, string> = {
   'science-explainer': '科普讲解',
@@ -103,7 +106,10 @@ export const GenerationPanel = ({
           provider,
           targetWordCount,
           videoType: effectiveVideoType,
-          audience: '短视频平台的普通观众',
+          audience: generationContext?.audience ?? '短视频平台的普通观众',
+          purpose: generationContext?.purpose ?? '科普与引发讨论',
+          coreViewpoint: generationContext?.coreViewpoint ?? effectiveTopic,
+          sourceMaterial: generationContext?.sourceMaterial ?? '',
           tone: generationContext?.tone ?? '清晰、有画面感、节奏紧凑',
           forceRegenerate: status === 'success',
         }),
@@ -159,6 +165,7 @@ export const GenerationPanel = ({
                 <b>{generationContext.topic || '请先填写选题与内容方向'}</b>
                 <em>{videoTypeLabels[generationContext.videoType]}</em>
                 <em>{generationContext.tone}</em>
+                <em>{generationContext.purpose}</em>
                 {generationContext.platformLabel ? <em>{generationContext.platformLabel}</em> : null}
               </div>
               <small>如需修改主题、类型或语气，请在左侧“内容设定”中调整。</small>

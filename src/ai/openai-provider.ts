@@ -79,6 +79,12 @@ const normalizeCompatibleScript = (value: unknown): unknown => {
       const shots = Array.isArray(scene.shots) ? scene.shots : [];
       return {
         ...scene,
+        segmentType:
+          scene.segmentType === 'digital-human' || scene.segmentType === 'visual-explanation'
+            ? scene.segmentType
+            : /画面|案例|步骤|数据|操作|界面/.test(String(scene.visualIntent ?? ''))
+              ? 'visual-explanation'
+              : 'digital-human',
         shots: shots.map((shotValue) => {
           const shot =
             shotValue && typeof shotValue === 'object'
@@ -107,19 +113,51 @@ const normalizeCompatibleScript = (value: unknown): unknown => {
 export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
   text: {
     generateScript: async (input: GenerateInput) => {
-      const prompt = `生成中文短视频导演脚本。
-视频标题/主题：${input.topic}
+      const prompt = `请根据以下信息创作一篇专业的短视频文案。
+
+【视频主题】
+${input.topic}
+
 视频类型：${videoTypeLabels[input.videoType]}
-受众：${input.audience}
-语气：${input.tone}
-目标字数：约 ${input.targetWordCount} 个中文字符（允许上下浮动 10%）
 
-用户补充要求：
-${input.customPrompt?.trim() || '从标题提炼核心观点，开头快速建立悬念，正文层层推进，结尾给出明确收束。'}
+【目标观众】
+${input.audience}
 
-根据视频类型选择叙事结构、镜头语言和素材策略。每个旁白段拆成1到5个视觉镜头，优先真实视频，其次科学动画、AI生成内容；为每个镜头给出中英文素材搜索词和生成提示词。字幕不是主体。`;
+【视频目的】
+${input.purpose}
+
+【核心观点】
+${input.coreViewpoint}
+
+【补充资料】
+${input.sourceMaterial || '无'}
+
+【表达语气】
+${input.tone}
+
+【目标字数】
+约 ${input.targetWordCount} 个中文字符，允许上下浮动 10%。
+
+【额外创作要求】
+${input.customPrompt?.trim() || '无'}
+
+必须严格遵守系统提示词中的文案质量、段落交替和 JSON 输出要求。`;
       const useChatCompletions = config.apiMode === 'chat-completions';
-      const jsonSystemPrompt = `只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 3-12 项，每项包含 narration、caption、visualPrompt、suggestedDuration、visualIntent、shots。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
+      const jsonSystemPrompt = `你是一名专业的抖音短视频文案策划，擅长创作“数字人口播 + 画面讲解”交替呈现的短视频文案。
+
+文案质量要求：
+1. 前 3 秒对应的第一段必须使用冲突、痛点、结果或反常识形成强钩子。
+2. 全文口语化、短句化，像真人自然说话；每句话只表达一个重点。
+3. 禁止使用“随着时代发展”“众所周知”“在当今社会”等空洞开场。
+4. 不堆砌形容词，不写没有信息量的正确废话。
+5. 不编造补充资料中没有的数据、案例、经历或用户反馈。
+6. 结尾给出明确结论，并自然引导评论、收藏或关注。
+7. 全文安排 6-9 个段落，digital-human 与 visual-explanation 交替出现，不得连续出现超过两个 digital-human。
+8. digital-human 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 1-3 句话。
+9. visual-explanation 负责原因、案例、步骤、对比、产品功能、数据和过程，语言必须具体到后期人员能判断该配什么画面。
+10. 数字人口播负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
+
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、shots。segmentType 只能是 digital-human 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
 shotType 只能使用英文枚举：real-footage、stock-video、generated-video、generated-image、science-animation、digital-human。
 assetStrategy 只能使用英文枚举：local-first、stock-search、ai-generate、programmatic、digital-human。
 searchQueries 必须是字符串数组，不能是单个字符串。
@@ -128,9 +166,13 @@ JSON 输出格式示例：
   "title": "示例标题",
   "hook": "示例开头",
   "scenes": [
-    {"narration":"第一段旁白","caption":"第一段字幕","visualPrompt":"第一段画面","suggestedDuration":10,"visualIntent":"建立问题","shots":[{"visualPurpose":"展示场景","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["keyword one","关键词一"],"imagePrompt":"","videoPrompt":"真实视频画面"}]},
-    {"narration":"第二段旁白","caption":"第二段字幕","visualPrompt":"第二段画面","suggestedDuration":10,"visualIntent":"解释原因","shots":[{"visualPurpose":"解释原理","shotType":"science-animation","assetStrategy":"programmatic","durationWeight":1,"searchQueries":["concept animation"],"imagePrompt":"科普动画","videoPrompt":""}]},
-    {"narration":"第三段旁白","caption":"第三段字幕","visualPrompt":"第三段画面","suggestedDuration":10,"visualIntent":"总结观点","shots":[{"visualPurpose":"完成收束","shotType":"real-footage","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["closing scene"],"imagePrompt":"","videoPrompt":"结尾真实镜头"}]}
+    {"segmentType":"digital-human","narration":"第一段旁白","caption":"开场钩子","visualPrompt":"数字人正面出镜","suggestedDuration":6,"visualIntent":"提出冲突","shots":[{"visualPurpose":"数字人说出钩子","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human presenter"],"imagePrompt":"","videoPrompt":"数字人口播"}]},
+    {"segmentType":"visual-explanation","narration":"第二段旁白","caption":"问题展示","visualPrompt":"具体问题场景","suggestedDuration":8,"visualIntent":"用场景展示问题","shots":[{"visualPurpose":"展示具体问题","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["problem scenario"],"imagePrompt":"","videoPrompt":"真实场景"}]},
+    {"segmentType":"digital-human","narration":"第三段旁白","caption":"核心判断","visualPrompt":"数字人强调观点","suggestedDuration":6,"visualIntent":"说出核心判断","shots":[{"visualPurpose":"数字人强调观点","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human presenter"],"imagePrompt":"","videoPrompt":"数字人口播"}]},
+    {"segmentType":"visual-explanation","narration":"第四段旁白","caption":"原因拆解","visualPrompt":"原因拆解过程","suggestedDuration":8,"visualIntent":"解释原因","shots":[{"visualPurpose":"可视化解释原因","shotType":"science-animation","assetStrategy":"programmatic","durationWeight":1,"searchQueries":["concept animation"],"imagePrompt":"解释动画","videoPrompt":""}]},
+    {"segmentType":"digital-human","narration":"第五段旁白","caption":"关键观点","visualPrompt":"数字人强调结论","suggestedDuration":6,"visualIntent":"强化记忆点","shots":[{"visualPurpose":"数字人强调关键结论","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human presenter"],"imagePrompt":"","videoPrompt":"数字人口播"}]},
+    {"segmentType":"visual-explanation","narration":"第六段旁白","caption":"解决方法","visualPrompt":"具体操作步骤","suggestedDuration":8,"visualIntent":"给出可执行方法","shots":[{"visualPurpose":"展示操作步骤","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["step by step solution"],"imagePrompt":"","videoPrompt":"步骤演示"}]},
+    {"segmentType":"digital-human","narration":"第七段旁白","caption":"结尾收束","visualPrompt":"数字人结尾出镜","suggestedDuration":6,"visualIntent":"总结并互动引导","shots":[{"visualPurpose":"数字人总结","shotType":"digital-human","assetStrategy":"digital-human","durationWeight":1,"searchQueries":["digital human closing"],"imagePrompt":"","videoPrompt":"数字人结尾"}]}
   ],
   "ending": "示例结尾"
 }`;
@@ -174,12 +216,13 @@ JSON 输出格式示例：
                   ending: {type: 'string'},
                   scenes: {
                     type: 'array',
-                    minItems: 3,
-                    maxItems: 12,
+                    minItems: 6,
+                    maxItems: 9,
                     items: {
                       type: 'object',
                       additionalProperties: false,
                       required: [
+                        'segmentType',
                         'narration',
                         'caption',
                         'visualPrompt',
@@ -188,6 +231,10 @@ JSON 输出格式示例：
                         'shots',
                       ],
                       properties: {
+                        segmentType: {
+                          type: 'string',
+                          enum: ['digital-human', 'visual-explanation'],
+                        },
                         narration: {type: 'string'},
                         caption: {type: 'string'},
                         visualPrompt: {type: 'string'},

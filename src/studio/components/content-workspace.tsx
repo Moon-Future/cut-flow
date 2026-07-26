@@ -80,6 +80,28 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
             </select>
           </label>
           <label>
+            <span>目标观众</span>
+            <input
+              value={project.content?.audience ?? ''}
+              onChange={(event) => updateContent({audience: event.target.value})}
+              placeholder="例如：想用 AI 做短视频的新媒体从业者"
+            />
+          </label>
+          <label>
+            <span>视频目的</span>
+            <select
+              value={project.content?.purpose ?? '科普'}
+              onChange={(event) => updateContent({purpose: event.target.value})}
+            >
+              <option>科普</option>
+              <option>涨粉</option>
+              <option>引发讨论</option>
+              <option>产品推广</option>
+              <option>课程引流</option>
+              <option>建立个人品牌</option>
+            </select>
+          </label>
+          <label>
             <span>发布平台</span>
             <select
               value={project.project.platform ?? 'douyin'}
@@ -117,6 +139,15 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
               placeholder="希望观众记住的核心结论"
             />
           </label>
+          <label>
+            <span>补充资料</span>
+            <textarea
+              rows={6}
+              value={project.content?.sourceText ?? ''}
+              onChange={(event) => updateContent({sourceText: event.target.value})}
+              placeholder="可填写案例、产品信息、数据、经历或已有观点；没有可留空"
+            />
+          </label>
         </div>
         <div className="copy-generation">
           <header>
@@ -130,6 +161,12 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
               topic: project.content?.topic?.trim() || project.project.title,
               videoType: project.content?.videoType ?? 'science-explainer',
               tone: project.style.tone ?? '自然清晰',
+              audience: project.content?.audience?.trim() || '短视频平台的普通观众',
+              purpose: project.content?.purpose ?? '科普',
+              coreViewpoint:
+                project.content?.description?.trim() ||
+                `观众应理解并记住：${project.content?.topic || project.project.title}`,
+              sourceMaterial: project.content?.sourceText?.trim() ?? '',
               platformLabel:
                 platformLabels[project.project.platform ?? 'douyin'] ?? '自定义平台',
             }}
@@ -184,11 +221,15 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
             <article key={scene.id}>
               <header>
                 <b>
-                  {index === 0
-                    ? '开头 Hook'
-                    : index === project.scenes.length - 1
-                      ? '结尾 CTA'
-                      : `正文 ${String(index).padStart(2, '0')}`}
+                  {scene.copyRole === 'digital-human'
+                    ? `数字人口播 ${index + 1}`
+                    : scene.copyRole === 'visual-explanation'
+                      ? `画面讲解 ${index + 1}`
+                      : index === 0
+                        ? '开头 Hook'
+                        : index === project.scenes.length - 1
+                          ? '结尾 CTA'
+                          : `正文 ${String(index).padStart(2, '0')}`}
                 </b>
                 <span>{scene.duration.toFixed(1)} 秒</span>
                 <div>

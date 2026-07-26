@@ -4,12 +4,16 @@ export type GenerateInput = {
   topic: string;
   customPrompt?: string;
   audience: string;
+  purpose: string;
+  coreViewpoint: string;
+  sourceMaterial: string;
   tone: string;
   targetWordCount: number;
   videoType: VideoType;
 };
 
 export type GeneratedScene = {
+  segmentType: 'digital-human' | 'visual-explanation';
   narration: string;
   caption: string;
   visualPrompt: string;

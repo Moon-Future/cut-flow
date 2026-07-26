@@ -136,6 +136,7 @@ export const runGenerationWorkflow = async (
     });
     return {
       id: `scene-${String(index + 1).padStart(3, '0')}`,
+      copyRole: scene.segmentType,
       narration: scene.narration,
       caption: scene.caption,
       assetQuery: scene.visualPrompt,
