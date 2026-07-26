@@ -26,6 +26,7 @@ export const ProjectDashboard = ({
   onNavigate,
 }: Props) => {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(currentProjectId);
 
   useEffect(() => {
     fetch('/api/projects')
@@ -45,6 +46,10 @@ export const ProjectDashboard = ({
   );
   const hour = new Date().getHours();
   const greeting = hour < 6 ? '夜深了' : hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好';
+  const enterProject = async (projectId: string) => {
+    await onOpenProject(projectId);
+    onNavigate('content');
+  };
 
   return (
     <section className="dashboard-page">
@@ -87,7 +92,7 @@ export const ProjectDashboard = ({
         <header>
           <div>
             <strong>最近项目</strong>
-            <span>{projects.length} 个本地项目</span>
+            <span>{projects.length} 个本地项目 · 单击选择，双击进入</span>
           </div>
           <button onClick={onNewProject}>管理项目 →</button>
         </header>
@@ -95,8 +100,13 @@ export const ProjectDashboard = ({
           {projects.slice(0, 5).map((item) => (
             <button
               key={item.id}
-              className={item.id === currentProjectId ? 'current' : ''}
-              onClick={() => void onOpenProject(item.id)}
+              className={item.id === selectedProjectId ? 'current' : ''}
+              onClick={() => setSelectedProjectId(item.id)}
+              onDoubleClick={() => void enterProject(item.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void enterProject(item.id);
+              }}
+              title="单击选择项目，双击进入制作空间"
             >
               <div className="recent-cover">
                 {item.coverPath ? (
@@ -113,6 +123,7 @@ export const ProjectDashboard = ({
               <em>
                 {item.sceneCount} 个镜头 · {new Date(item.updatedAt).toLocaleString('zh-CN')}
               </em>
+              <span className="enter-project-tip">双击进入 →</span>
             </button>
           ))}
         </div>

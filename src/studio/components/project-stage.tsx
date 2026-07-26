@@ -5,6 +5,7 @@ import {ProjectDashboard} from './project-dashboard';
 import {StoryboardWorkspace} from './storyboard-workspace';
 import {VoiceWorkspace} from './voice-workspace';
 import type {WorkspaceSection} from './workspace-sidebar';
+import {SettingsWorkspace} from './settings-workspace';
 
 type Props = {
   section: Exclude<WorkspaceSection, 'edit'>;
@@ -27,6 +28,7 @@ const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]>
   voice: ['配音', '生成或导入旁白，并检查时间对齐'],
   assets: ['素材', '集中管理本地素材和 AI 生成结果'],
   export: ['导出', '完成最终检查并渲染成片'],
+  settings: ['设置', '配置本机 AI 服务与密钥'],
 };
 
 export const ProjectStage = ({
@@ -47,7 +49,7 @@ export const ProjectStage = ({
 
   return (
     <section className="project-stage">
-      {section !== 'overview' ? (
+      {section !== 'overview' && section !== 'settings' ? (
         <header className="stage-heading">
           <div>
             <span className="eyebrow">CUT FLOW WORKSPACE</span>
@@ -116,6 +118,7 @@ export const ProjectStage = ({
           </button>
         </div>
       ) : null}
+      {section === 'settings' ? <SettingsWorkspace /> : null}
     </section>
   );
 };

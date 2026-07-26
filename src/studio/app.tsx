@@ -142,6 +142,10 @@ export const App = () => {
         }}
         onNavigate={(value) => {
           if (value === 'overview') setShowProjects(true);
+          if (value === 'settings' && project) {
+            setSection('settings');
+            setShowProjects(false);
+          }
         }}
       />
     );

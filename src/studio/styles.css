@@ -618,6 +618,57 @@ select {
   font-size: 9px;
   margin-bottom: 5px;
 }
+.generation-form .prompt-input {
+  min-height: 112px;
+  line-height: 1.65;
+  border-color: #3a465d;
+  background: #0b111c;
+}
+.field-help {
+  display: block;
+  margin-top: 6px;
+  color: #66748a;
+  font-size: 9px;
+  line-height: 1.55;
+}
+.generation-context {
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px solid #2c384c;
+  border-radius: 9px;
+  background: #0b111b;
+}
+.generation-context > span,
+.generation-context > small {
+  display: block;
+  color: #718097;
+  font-size: 9px;
+  line-height: 1.55;
+}
+.generation-context > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0;
+}
+.generation-context b {
+  width: 100%;
+  color: #e3e8f0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.generation-context em {
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #24203b;
+  color: #aa92df;
+  font-size: 8px;
+  font-style: normal;
+}
+.generation-form .provider-field {
+  max-width: 100%;
+}
 .generate-button {
   width: 100%;
   border: 0;
@@ -2264,6 +2315,12 @@ select:focus {
   color: #dce1e9;
   text-align: left;
   cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+.recent-projects > div > button:hover {
+  border-color: #604a91;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px #0005;
 }
 .recent-projects > div > button.current {
   border-color: #8058e6;
@@ -2313,6 +2370,151 @@ select:focus {
   color: #697488;
   font-size: 8px;
   font-style: normal;
+}
+.recent-projects .enter-project-tip {
+  display: block;
+  margin: 9px 10px 0;
+  color: #9d82df;
+  font-size: 8px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.recent-projects > div > button:hover .enter-project-tip,
+.recent-projects > div > button.current .enter-project-tip {
+  opacity: 1;
+}
+.nav-entry-hint {
+  margin: 12px 10px;
+  padding: 10px;
+  border: 1px solid #2b3547;
+  border-radius: 8px;
+  color: #718097;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.settings-loading {
+  padding: 40px;
+  color: #7e899c;
+}
+.settings-workspace {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px;
+}
+.settings-workspace > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.settings-workspace h1 {
+  margin: 6px 0;
+  font-size: 26px;
+}
+.settings-workspace > header p {
+  margin: 0;
+  color: #7a8699;
+  font-size: 11px;
+}
+.settings-security-note {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 13px 15px;
+  border: 1px solid #25493f;
+  border-radius: 10px;
+  background: #0d1c19;
+}
+.settings-security-note b {
+  color: #67d9b8;
+  font-size: 11px;
+}
+.settings-security-note span,
+.settings-security-note small {
+  color: #798a89;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.provider-settings-list {
+  display: grid;
+  gap: 12px;
+}
+.provider-settings-list article {
+  padding: 16px;
+  border: 1px solid #273143;
+  border-radius: 11px;
+  background: #0d121a;
+}
+.provider-settings-list article.enabled {
+  border-color: #5c478d;
+  box-shadow: inset 3px 0 #7c59d2;
+}
+.provider-settings-list article > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.provider-settings-list article > header strong {
+  font-size: 14px;
+}
+.provider-settings-list article > header p {
+  margin: 5px 0 0;
+  color: #737f92;
+  font-size: 10px;
+}
+.provider-switch {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: #9ca7b8;
+  font-size: 10px;
+}
+.provider-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.provider-form label > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #7f8a9d;
+  font-size: 9px;
+}
+.provider-form input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #2b3547;
+  border-radius: 7px;
+  outline: 0;
+  background: #090d14;
+  color: #dfe4ec;
+}
+.provider-form input:focus {
+  border-color: #7657c8;
+}
+.default-provider {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  margin-top: 12px;
+  color: #9c8bc8;
+  font-size: 10px;
+}
+.settings-message {
+  margin: 14px 0 0;
+  color: #65d8b7;
+  font-size: 10px;
+}
+.settings-message.error {
+  color: #ff8190;
+}
+@media (max-width: 900px) {
+  .provider-form {
+    grid-template-columns: 1fr;
+  }
 }
 .dashboard-lower {
   display: grid;

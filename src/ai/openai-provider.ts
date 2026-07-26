@@ -9,11 +9,13 @@ const videoTypeLabels: Record<GenerateInput['videoType'], string> = {
   storytelling: '故事叙事',
 };
 
-type OpenAIConfig = {
+export type OpenAIConfig = {
   apiKey: string;
+  baseUrl?: string;
   textModel?: string;
   ttsModel?: string;
   transcriptionModel?: string;
+  apiMode?: 'responses' | 'chat-completions';
 };
 
 const request = async (url: string, apiKey: string, init: RequestInit): Promise<Response> => {
@@ -28,12 +30,35 @@ const request = async (url: string, apiKey: string, init: RequestInit): Promise<
 export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
   text: {
     generateScript: async (input: GenerateInput) => {
-      const response = await request('https://api.openai.com/v1/responses', config.apiKey, {
+      const prompt = `生成中文短视频导演脚本。
+视频标题/主题：${input.topic}
+视频类型：${videoTypeLabels[input.videoType]}
+受众：${input.audience}
+语气：${input.tone}
+目标时长：${input.targetDuration}秒
+
+用户补充要求：
+${input.customPrompt?.trim() || '从标题提炼核心观点，开头快速建立悬念，正文层层推进，结尾给出明确收束。'}
+
+根据视频类型选择叙事结构、镜头语言和素材策略。每个旁白段拆成1到5个视觉镜头，优先真实视频，其次科学动画、AI生成内容；为每个镜头给出中英文素材搜索词和生成提示词。字幕不是主体。`;
+      const useChatCompletions = config.apiMode === 'chat-completions';
+      const response = await request(`${config.baseUrl ?? 'https://api.openai.com/v1'}/${useChatCompletions ? 'chat/completions' : 'responses'}`, config.apiKey, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
+        body: JSON.stringify(useChatCompletions ? {
+          model: config.textModel,
+          messages: [
+            {
+              role: 'system',
+              content:
+                '只输出合法 JSON，结构必须为 {title, hook, scenes, ending}。scenes 每项包含 narration、caption、visualPrompt、suggestedDuration、visualIntent、shots；shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。',
+            },
+            {role: 'user', content: prompt},
+          ],
+          response_format: {type: 'json_object'},
+        } : {
           model: config.textModel ?? 'gpt-5.6-luna',
-          input: `生成中文短视频导演脚本。视频类型：${videoTypeLabels[input.videoType]}；主题：${input.topic}；受众：${input.audience}；语气：${input.tone}；目标时长：${input.targetDuration}秒。根据视频类型选择叙事结构、镜头语言和素材策略。每个旁白段拆成1到5个视觉镜头，优先真实视频，其次科学动画、AI生成内容；为每个镜头给出中英文素材搜索词和生成提示词。字幕不是主体。`,
+          input: prompt,
           text: {
             format: {
               type: 'json_schema',
@@ -123,14 +148,18 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
           },
         }),
       });
-      const result = (await response.json()) as {output_text?: string};
-      if (!result.output_text) throw new Error('OpenAI response did not include output_text');
-      return videoScriptSchema.parse(JSON.parse(result.output_text) as unknown);
+      const result = (await response.json()) as {
+        output_text?: string;
+        choices?: Array<{message?: {content?: string}}>;
+      };
+      const output = result.output_text ?? result.choices?.[0]?.message?.content;
+      if (!output) throw new Error('AI 服务未返回可用的文案内容');
+      return videoScriptSchema.parse(JSON.parse(output) as unknown);
     },
   },
   tts: {
     synthesize: async (text) => {
-      const response = await request('https://api.openai.com/v1/audio/speech', config.apiKey, {
+      const response = await request(`${config.baseUrl ?? 'https://api.openai.com/v1'}/audio/speech`, config.apiKey, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -151,7 +180,7 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
       form.append('response_format', 'verbose_json');
       form.append('timestamp_granularities[]', 'word');
       const response = await request(
-        'https://api.openai.com/v1/audio/transcriptions',
+        `${config.baseUrl ?? 'https://api.openai.com/v1'}/audio/transcriptions`,
         config.apiKey,
         {method: 'POST', body: form},
       );

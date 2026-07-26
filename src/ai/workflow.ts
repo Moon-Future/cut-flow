@@ -7,8 +7,12 @@ import {createMockProviders} from './mock-provider';
 import {createOpenAIProviders} from './openai-provider';
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, VideoScript} from './types';
+import type {AiProviderId, AiProviderSetting} from './settings';
 
-export type WorkflowInput = GenerateInput & {provider: 'mock' | 'openai'};
+export type WorkflowInput = GenerateInput & {
+  provider: 'mock' | AiProviderId;
+  forceRegenerate?: boolean;
+};
 export type WorkflowResult = {project: ProjectFile; cacheHit: boolean; provider: string};
 
 const cacheKey = (input: WorkflowInput): string =>
@@ -17,16 +21,27 @@ const cacheKey = (input: WorkflowInput): string =>
     .digest('hex')
     .slice(0, 20);
 
-const providersFor = (input: WorkflowInput): ProviderSet => {
+const providersFor = (
+  input: WorkflowInput,
+  providerSetting?: AiProviderSetting,
+): ProviderSet => {
   if (input.provider === 'mock') return createMockProviders(input.targetDuration);
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('使用 OpenAI Provider 前请设置 OPENAI_API_KEY');
-  return createOpenAIProviders({
+  const apiKey =
+    providerSetting?.apiKey ||
+    providerSetting?.secretKey ||
+    (input.provider === 'openai' ? process.env.OPENAI_API_KEY : undefined);
+  if (!apiKey) throw new Error('请先在“设置 → AI 服务”中配置并启用服务商密钥');
+  const remote = createOpenAIProviders({
     apiKey,
-    textModel: process.env.OPENAI_TEXT_MODEL,
+    baseUrl: providerSetting?.baseUrl,
+    textModel: providerSetting?.model || process.env.OPENAI_TEXT_MODEL,
     ttsModel: process.env.OPENAI_TTS_MODEL,
     transcriptionModel: process.env.OPENAI_TRANSCRIPTION_MODEL,
+    apiMode: input.provider === 'openai' ? 'responses' : 'chat-completions',
   });
+  if (input.provider === 'openai') return remote;
+  const localAudio = createMockProviders(input.targetDuration);
+  return {...localAudio, text: remote.text};
 };
 
 const loadOrGenerateScript = async (
@@ -35,24 +50,28 @@ const loadOrGenerateScript = async (
   cacheRoot: string,
 ): Promise<{script: VideoScript; cacheHit: boolean}> => {
   const file = path.join(cacheRoot, `${cacheKey(input)}-script.json`);
-  try {
-    return {
-      script: videoScriptSchema.parse(JSON.parse(await readFile(file, 'utf8'))),
-      cacheHit: true,
-    };
-  } catch {
-    const script = await providers.text.generateScript(input);
-    await writeFile(file, `${JSON.stringify(script, null, 2)}\n`, 'utf8');
-    return {script, cacheHit: false};
+  if (!input.forceRegenerate) {
+    try {
+      return {
+        script: videoScriptSchema.parse(JSON.parse(await readFile(file, 'utf8'))),
+        cacheHit: true,
+      };
+    } catch {
+      // Continue with a fresh generation when there is no reusable script.
+    }
   }
+  const script = await providers.text.generateScript(input);
+  await writeFile(file, `${JSON.stringify(script, null, 2)}\n`, 'utf8');
+  return {script, cacheHit: false};
 };
 
 export const runGenerationWorkflow = async (
   input: WorkflowInput,
   currentProject: ProjectFile,
   projectRoot: string,
+  providerSetting?: AiProviderSetting,
 ): Promise<WorkflowResult> => {
-  const providers = providersFor(input);
+  const providers = providersFor(input, providerSetting);
   const cacheRoot = path.join(projectRoot, 'cache');
   const audioRoot = path.join(projectRoot, 'audio');
   await mkdir(cacheRoot, {recursive: true});

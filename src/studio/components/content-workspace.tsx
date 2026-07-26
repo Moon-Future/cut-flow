@@ -43,11 +43,15 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
         </header>
         <div className="stage-form">
           <label>
-            <span>视频主题</span>
+            <span>选题与内容方向</span>
             <input
               value={project.content?.topic ?? ''}
               onChange={(event) => updateContent({topic: event.target.value})}
+              placeholder={`例如：用生活化例子解释“为什么天空是蓝色的”`}
             />
+            <small className="field-help">
+              告诉 AI 这条视频具体讲什么、从什么角度讲。留空时可直接使用项目标题。
+            </small>
           </label>
           <label>
             <span>视频类型</span>
@@ -120,11 +124,19 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
         <div className="copy-generation">
           <header>
             <strong>AI 文案生成</strong>
-            <span>基于当前配置重新生成</span>
+            <span>确认左侧内容设定后，由你手动触发生成</span>
           </header>
           <GenerationPanel
-            initialTopic={project.content?.topic ?? project.project.title}
-            initialVideoType={project.content?.videoType}
+            defaultOpen
+            prominent
+            generationContext={{
+              topic: project.content?.topic?.trim() || project.project.title,
+              videoType: project.content?.videoType ?? 'science-explainer',
+              targetDuration: project.project.durationTarget ?? 60,
+              tone: project.style.tone ?? '自然清晰',
+              platformLabel:
+                platformLabels[project.project.platform ?? 'douyin'] ?? '自定义平台',
+            }}
             onGenerated={onGenerated}
             onAudioReady={onAudioReady}
           />

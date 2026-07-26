@@ -39,6 +39,7 @@ const startLocalServer = async (appRoot: string, workspaceRoot: string): Promise
   process.env.CUT_FLOW_APP_ROOT = appRoot;
   process.env.CUT_FLOW_WORKSPACE_ROOT = workspaceRoot;
   process.env.CUT_FLOW_RUNTIME_ROOT = runtimeRoot;
+  process.env.CUT_FLOW_USER_DATA_ROOT = app.getPath('userData');
   if (app.isPackaged) {
     process.env.NODE_PATH = path.join(appRoot, 'node_modules');
     (Module as typeof Module & {_initPaths: () => void})._initPaths();

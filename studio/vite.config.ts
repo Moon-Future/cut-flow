@@ -15,6 +15,12 @@ import {
   createOpenAIVideoProvider,
 } from '../src/ai/media-provider';
 import {assetLibrarySchema, assetMetadataSchema} from '../src/media/asset-library';
+import {
+  loadAiSettings,
+  publicAiSettings,
+  saveAiSettings,
+  type AiProviderId,
+} from '../src/ai/settings';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
   ? path.resolve(process.env.CUT_FLOW_APP_ROOT)
@@ -75,6 +81,18 @@ const localApi = (): Plugin => ({
       void (async () => {
         const url = request.url?.split('?')[0];
         try {
+          if (url === '/api/settings/ai' && request.method === 'GET') {
+            sendJson(response, 200, publicAiSettings(await loadAiSettings()));
+            return;
+          }
+          if (url === '/api/settings/ai' && request.method === 'PUT') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as Parameters<
+              typeof saveAiSettings
+            >[0];
+            const saved = await saveAiSettings(input);
+            sendJson(response, 200, publicAiSettings(saved));
+            return;
+          }
           if (url === '/api/projects' && request.method === 'GET') {
             const directories = await readdir(projectsRoot, {withFileTypes: true});
             const projects = (
@@ -323,7 +341,7 @@ const localApi = (): Plugin => ({
             const input = JSON.parse((await readBody(request)).toString('utf8')) as WorkflowInput;
             if (
               !input.topic?.trim() ||
-              !['mock', 'openai'].includes(input.provider) ||
+              !['mock', 'openai', 'deepseek', 'doubao'].includes(input.provider) ||
               !Number.isFinite(input.targetDuration)
             ) {
               sendJson(response, 400, {error: '生成参数不完整'});
@@ -335,7 +353,28 @@ const localApi = (): Plugin => ({
             input.videoType = videoTypeSchema
               .catch(currentProject.content?.videoType ?? 'science-explainer')
               .parse(input.videoType);
-            const result = await runGenerationWorkflow(input, currentProject, projectRoot);
+            const aiSettings = await loadAiSettings();
+            const selectedSetting =
+              input.provider === 'mock'
+                ? undefined
+                : aiSettings.providers[input.provider as AiProviderId];
+            if (
+              input.provider !== 'mock' &&
+              (!selectedSetting?.enabled ||
+                !(selectedSetting.apiKey || selectedSetting.secretKey) ||
+                !selectedSetting.model)
+            ) {
+              sendJson(response, 400, {
+                error: '该 AI 服务尚未完整配置，请在设置中启用并填写密钥和模型',
+              });
+              return;
+            }
+            const result = await runGenerationWorkflow(
+              input,
+              currentProject,
+              projectRoot,
+              selectedSetting,
+            );
             const temporary = `${projectFile}.tmp`;
             await writeFile(temporary, `${JSON.stringify(result.project, null, 2)}\n`, 'utf8');
             await rename(temporary, projectFile);

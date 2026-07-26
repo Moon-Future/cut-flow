@@ -2,6 +2,7 @@ import type {CaptionWord, VideoType} from '../core/schema';
 
 export type GenerateInput = {
   topic: string;
+  customPrompt?: string;
   audience: string;
   tone: string;
   targetDuration: number;
