@@ -51,6 +51,8 @@ describe('generation workflow', () => {
       purpose: '涨粉',
       coreViewpoint: '先完成最小闭环',
       sourceMaterial: '',
+      visualStyle: '电影级写实',
+      aspectRatio: '9:16',
       tone: '真诚',
       targetWordCount: 500,
     };
@@ -94,6 +96,8 @@ describe('generation workflow', () => {
         purpose: '科普',
         coreViewpoint: '蓝光更容易被空气分子散射',
         sourceMaterial: '',
+        visualStyle: '电影级写实',
+        aspectRatio: '9:16',
         tone: '轻松科普',
         targetWordCount: 800,
       },

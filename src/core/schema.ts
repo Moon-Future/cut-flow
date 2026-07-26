@@ -87,6 +87,10 @@ export const sceneSchema = z.object({
   motion: motionSchema,
   words: z.array(captionWordSchema).optional(),
   visualIntent: z.string().optional(),
+  digitalHumanEmotion: z.string().optional(),
+  digitalHumanAction: z.string().optional(),
+  digitalHumanBackground: z.string().optional(),
+  soundEffect: z.string().optional(),
   shots: z.array(visualShotSchema).min(1).optional(),
 });
 
@@ -123,6 +127,7 @@ export const projectFileSchema = z
         description: z.string().optional(),
         audience: z.string().optional(),
         purpose: z.string().optional(),
+        visualStyle: z.string().optional(),
         sourceText: z.string().optional(),
         keywords: z.string().optional(),
         hook: z.string().default(''),

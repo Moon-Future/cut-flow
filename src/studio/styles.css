@@ -3612,6 +3612,30 @@ select:focus {
   background: #0c1119;
   color: #9fa9ba;
 }
+.copy-role-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+.copy-role-details.single {
+  grid-template-columns: 1fr;
+}
+.copy-role-details label span {
+  display: block;
+  margin-bottom: 5px;
+  color: #6f7a8e;
+  font-size: 9px;
+}
+.copy-role-details input {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid #263042;
+  border-radius: 6px;
+  background: #0c1119;
+  color: #aab4c3;
+  font-size: 9px;
+}
 .copy-analysis {
   min-width: 0;
   display: grid;

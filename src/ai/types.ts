@@ -7,6 +7,8 @@ export type GenerateInput = {
   purpose: string;
   coreViewpoint: string;
   sourceMaterial: string;
+  visualStyle: string;
+  aspectRatio: string;
   tone: string;
   targetWordCount: number;
   videoType: VideoType;
@@ -19,6 +21,10 @@ export type GeneratedScene = {
   visualPrompt: string;
   suggestedDuration: number;
   visualIntent: string;
+  digitalHumanEmotion: string;
+  digitalHumanAction: string;
+  digitalHumanBackground: string;
+  soundEffect: string;
   shots: Array<{
     visualPurpose: string;
     shotType:

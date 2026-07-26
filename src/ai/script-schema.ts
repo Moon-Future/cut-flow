@@ -12,6 +12,10 @@ export const videoScriptSchema = z.object({
         visualPrompt: z.string().min(1),
         suggestedDuration: z.number().positive().max(30),
         visualIntent: z.string().min(1),
+        digitalHumanEmotion: z.string().default(''),
+        digitalHumanAction: z.string().default(''),
+        digitalHumanBackground: z.string().default(''),
+        soundEffect: z.string().default(''),
         shots: z
           .array(
             z.object({

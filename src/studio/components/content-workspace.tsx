@@ -148,6 +148,14 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
               placeholder="可填写案例、产品信息、数据、经历或已有观点；没有可留空"
             />
           </label>
+          <label>
+            <span>整体视觉风格</span>
+            <input
+              value={project.content?.visualStyle ?? ''}
+              onChange={(event) => updateContent({visualStyle: event.target.value})}
+              placeholder="例如：电影级写实、科技感、温暖生活化、3D 卡通"
+            />
+          </label>
         </div>
         <div className="copy-generation">
           <header>
@@ -167,6 +175,9 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
                 project.content?.description?.trim() ||
                 `观众应理解并记住：${project.content?.topic || project.project.title}`,
               sourceMaterial: project.content?.sourceText?.trim() ?? '',
+              visualStyle: project.content?.visualStyle?.trim() || '电影级写实',
+              aspectRatio:
+                project.project.width < project.project.height ? '9:16' : '16:9',
               platformLabel:
                 platformLabels[project.project.platform ?? 'douyin'] ?? '自定义平台',
             }}
@@ -259,6 +270,47 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
                 />
                 <small>{scene.narration.length} 字</small>
               </footer>
+              {scene.copyRole === 'digital-human' ? (
+                <div className="copy-role-details">
+                  <label>
+                    <span>数字人情绪</span>
+                    <input
+                      value={scene.digitalHumanEmotion ?? ''}
+                      onChange={(event) =>
+                        updateScene(scene.id, {digitalHumanEmotion: event.target.value})
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>动作建议</span>
+                    <input
+                      value={scene.digitalHumanAction ?? ''}
+                      onChange={(event) =>
+                        updateScene(scene.id, {digitalHumanAction: event.target.value})
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>背景建议</span>
+                    <input
+                      value={scene.digitalHumanBackground ?? ''}
+                      onChange={(event) =>
+                        updateScene(scene.id, {digitalHumanBackground: event.target.value})
+                      }
+                    />
+                  </label>
+                </div>
+              ) : scene.copyRole === 'visual-explanation' ? (
+                <div className="copy-role-details single">
+                  <label>
+                    <span>建议音效</span>
+                    <input
+                      value={scene.soundEffect ?? ''}
+                      onChange={(event) => updateScene(scene.id, {soundEffect: event.target.value})}
+                    />
+                  </label>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

@@ -18,6 +18,8 @@ type Props = {
     purpose: string;
     coreViewpoint: string;
     sourceMaterial: string;
+    visualStyle: string;
+    aspectRatio: string;
   };
 };
 
@@ -110,6 +112,8 @@ export const GenerationPanel = ({
           purpose: generationContext?.purpose ?? '科普与引发讨论',
           coreViewpoint: generationContext?.coreViewpoint ?? effectiveTopic,
           sourceMaterial: generationContext?.sourceMaterial ?? '',
+          visualStyle: generationContext?.visualStyle ?? '电影级写实',
+          aspectRatio: generationContext?.aspectRatio ?? '9:16',
           tone: generationContext?.tone ?? '清晰、有画面感、节奏紧凑',
           forceRegenerate: status === 'success',
         }),

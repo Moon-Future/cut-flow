@@ -142,6 +142,10 @@ export const runGenerationWorkflow = async (
       assetQuery: scene.visualPrompt,
       duration: Math.max(0.5, duration),
       visualIntent: scene.visualIntent,
+      digitalHumanEmotion: scene.digitalHumanEmotion,
+      digitalHumanAction: scene.digitalHumanAction,
+      digitalHumanBackground: scene.digitalHumanBackground,
+      soundEffect: scene.soundEffect,
       shots,
       ...visual,
     };

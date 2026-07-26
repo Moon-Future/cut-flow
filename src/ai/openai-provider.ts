@@ -77,14 +77,24 @@ const normalizeCompatibleScript = (value: unknown): unknown => {
           ? (sceneValue as Record<string, unknown>)
           : {};
       const shots = Array.isArray(scene.shots) ? scene.shots : [];
+      const segmentType =
+        scene.segmentType === 'digital-human' || scene.segmentType === 'visual-explanation'
+          ? scene.segmentType
+          : /画面|案例|步骤|数据|操作|界面/.test(String(scene.visualIntent ?? ''))
+            ? 'visual-explanation'
+            : 'digital-human';
       return {
         ...scene,
-        segmentType:
-          scene.segmentType === 'digital-human' || scene.segmentType === 'visual-explanation'
-            ? scene.segmentType
-            : /画面|案例|步骤|数据|操作|界面/.test(String(scene.visualIntent ?? ''))
-              ? 'visual-explanation'
-              : 'digital-human',
+        segmentType,
+        digitalHumanEmotion:
+          segmentType === 'digital-human' ? String(scene.digitalHumanEmotion ?? '认真') : '',
+        digitalHumanAction:
+          segmentType === 'digital-human' ? String(scene.digitalHumanAction ?? '正视镜头') : '',
+        digitalHumanBackground:
+          segmentType === 'digital-human'
+            ? String(scene.digitalHumanBackground ?? '简洁演播室背景')
+            : '',
+        soundEffect: String(scene.soundEffect ?? '无'),
         shots: shots.map((shotValue) => {
           const shot =
             shotValue && typeof shotValue === 'object'
@@ -103,6 +113,20 @@ const normalizeCompatibleScript = (value: unknown): unknown => {
             assetStrategy: normalizeStrategy(shot.assetStrategy, shotType),
             durationWeight: Number(shot.durationWeight) || 1,
             searchQueries: queries.slice(0, 8),
+            imagePrompt:
+              segmentType === 'visual-explanation'
+                ? String(
+                    shot.imagePrompt ??
+                      `竖屏关键帧，${String(scene.visualPrompt ?? scene.visualIntent ?? '')}，不要文字、字幕、Logo、水印`,
+                  )
+                : String(shot.imagePrompt ?? ''),
+            videoPrompt:
+              segmentType === 'visual-explanation'
+                ? `${String(
+                    shot.videoPrompt ??
+                      `${String(scene.visualPrompt ?? scene.visualIntent ?? '')}，包含自然动作和稳定运镜`,
+                  )}。以对应 AI 图片作为首帧，保持主体外貌、服装、场景布局、物体位置和色彩风格一致，只增加自然动作、镜头运动和环境动态，不改变主体结构。不要文字、字幕、Logo 和水印。`
+                : String(shot.videoPrompt ?? ''),
           };
         }),
       };
@@ -135,6 +159,12 @@ ${input.sourceMaterial || '无'}
 【表达语气】
 ${input.tone}
 
+【整体视觉风格】
+${input.visualStyle}
+
+【画面比例】
+${input.aspectRatio}
+
 【目标字数】
 约 ${input.targetWordCount} 个中文字符，允许上下浮动 10%。
 
@@ -143,6 +173,21 @@ ${input.customPrompt?.trim() || '无'}
 
 必须严格遵守系统提示词中的文案质量、段落交替和 JSON 输出要求。`;
       const useChatCompletions = config.apiMode === 'chat-completions';
+      const digitalHumanDirection =
+        input.videoType === 'digital-human'
+          ? `
+数字人口播专项要求：
+1. 视频形式是“数字人口播 + AI 生成画面讲解”交替切换。
+2. digital-human 段必须填写 digitalHumanEmotion、digitalHumanAction、digitalHumanBackground；动作简单自然，不频繁挥手。
+3. visual-explanation 段的旁白必须与具体画面同步，画面描述要写清主体、环境、构图位置、动作、变化和观众应理解的信息。
+4. 每个 visual-explanation 段必须同时提供完整 imagePrompt 和 videoPrompt，不能留空。
+5. imagePrompt 必须包含主体、环境、构图、人物或物体特征、动作定格、光线、色彩、景别、视觉风格、${input.aspectRatio}，并明确不要文字、字幕、Logo、水印。
+6. videoPrompt 不能复制 imagePrompt；必须描述初始画面、动作顺序、场景变化、镜头运动、节奏、建议时长、光线、色彩、风格和 ${input.aspectRatio}。
+7. videoPrompt 结尾必须追加：以对应 AI 图片作为首帧，保持主体外貌、服装、场景布局、物体位置和色彩风格一致，只增加自然动作、镜头运动和环境动态，不改变主体结构。
+8. 所有图片与视频提示词重复使用一致的主角特征、服装、主场景、核心物体、主色调、光线、视觉风格和镜头语言。
+9. 避免变脸、异常手指、服装变色、场景突变、物体消失、大幅旋转、违反物理的动作、无关人物和无法辨认的界面文字。
+10. visual-explanation 段填写具体 soundEffect，没有则写“无”。`
+          : '';
       const jsonSystemPrompt = `你是一名专业的抖音短视频文案策划，擅长创作“数字人口播 + 画面讲解”交替呈现的短视频文案。
 
 文案质量要求：
@@ -156,8 +201,9 @@ ${input.customPrompt?.trim() || '无'}
 8. digital-human 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 1-3 句话。
 9. visual-explanation 负责原因、案例、步骤、对比、产品功能、数据和过程，语言必须具体到后期人员能判断该配什么画面。
 10. 数字人口播负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
+${digitalHumanDirection}
 
-只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、shots。segmentType 只能是 digital-human 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 digital-human 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
 shotType 只能使用英文枚举：real-footage、stock-video、generated-video、generated-image、science-animation、digital-human。
 assetStrategy 只能使用英文枚举：local-first、stock-search、ai-generate、programmatic、digital-human。
 searchQueries 必须是字符串数组，不能是单个字符串。
@@ -228,6 +274,10 @@ JSON 输出格式示例：
                         'visualPrompt',
                         'suggestedDuration',
                         'visualIntent',
+                        'digitalHumanEmotion',
+                        'digitalHumanAction',
+                        'digitalHumanBackground',
+                        'soundEffect',
                         'shots',
                       ],
                       properties: {
@@ -240,6 +290,10 @@ JSON 输出格式示例：
                         visualPrompt: {type: 'string'},
                         suggestedDuration: {type: 'number'},
                         visualIntent: {type: 'string'},
+                        digitalHumanEmotion: {type: 'string'},
+                        digitalHumanAction: {type: 'string'},
+                        digitalHumanBackground: {type: 'string'},
+                        soundEffect: {type: 'string'},
                         shots: {
                           type: 'array',
                           minItems: 1,
