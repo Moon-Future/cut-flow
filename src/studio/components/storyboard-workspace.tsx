@@ -141,23 +141,42 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 />
               </label>
               <label>
-                <span>AI 图片提示词</span>
+                <span>图片提示词（中文展示）</span>
                 <textarea
                   rows={5}
-                  value={shot.imagePrompt ?? ''}
+                  value={shot.imagePromptZh ?? shot.imagePrompt ?? ''}
                   placeholder="描述主体、场景、构图、光线、色彩、景别、风格和画面比例"
-                  onChange={(event) => updateShot(shot, {imagePrompt: event.target.value})}
+                  onChange={(event) => updateShot(shot, {imagePromptZh: event.target.value})}
                 />
               </label>
               <label>
-                <span>AI 视频提示词</span>
+                <span>视频提示词（中文展示）</span>
                 <textarea
                   rows={7}
-                  value={shot.videoPrompt ?? ''}
+                  value={shot.videoPromptZh ?? shot.videoPrompt ?? ''}
                   placeholder="描述初始画面、动作顺序、场景变化、运镜、节奏、时长及一致性"
-                  onChange={(event) => updateShot(shot, {videoPrompt: event.target.value})}
+                  onChange={(event) => updateShot(shot, {videoPromptZh: event.target.value})}
                 />
               </label>
+              <details className="original-prompts">
+                <summary>查看英文原始提示词（实际生成使用）</summary>
+                <label>
+                  <span>英文图片提示词</span>
+                  <textarea
+                    rows={5}
+                    value={shot.imagePrompt ?? ''}
+                    onChange={(event) => updateShot(shot, {imagePrompt: event.target.value})}
+                  />
+                </label>
+                <label>
+                  <span>英文视频提示词</span>
+                  <textarea
+                    rows={7}
+                    value={shot.videoPrompt ?? ''}
+                    onChange={(event) => updateShot(shot, {videoPrompt: event.target.value})}
+                  />
+                </label>
+              </details>
               <div className="shot-assets">
                 {shot.candidates.slice(0, 3).map((candidate) => (
                   <button

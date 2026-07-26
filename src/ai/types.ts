@@ -47,6 +47,8 @@ export type GeneratedScene = {
     searchQueries: string[];
     imagePrompt?: string;
     videoPrompt?: string;
+    imagePromptZh?: string;
+    videoPromptZh?: string;
   }>;
 };
 

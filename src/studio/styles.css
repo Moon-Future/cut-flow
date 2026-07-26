@@ -3644,6 +3644,21 @@ select:focus {
   color: #aab4c3;
   font-size: 9px;
 }
+.original-prompts {
+  margin-top: 8px;
+  padding: 9px;
+  border: 1px solid #293348;
+  border-radius: 7px;
+  background: #0a0f17;
+}
+.original-prompts summary {
+  color: #81719f;
+  font-size: 9px;
+  cursor: pointer;
+}
+.original-prompts[open] summary {
+  margin-bottom: 10px;
+}
 .copy-analysis {
   min-width: 0;
   display: grid;

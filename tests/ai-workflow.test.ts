@@ -89,7 +89,10 @@ describe('generation workflow', () => {
         .flatMap((scene) => scene.shots ?? [])
         .every(
           (shot) =>
-            !/[A-Za-z]{3,}/.test(`${shot.imagePrompt ?? ''}${shot.videoPrompt ?? ''}`),
+            /[A-Za-z]{3,}/.test(`${shot.imagePrompt ?? ''}${shot.videoPrompt ?? ''}`) &&
+            !/[A-Za-z]{3,}/.test(
+              `${shot.imagePromptZh ?? ''}${shot.videoPromptZh ?? ''}`,
+            ),
         ),
     ).toBe(true);
     expect(
