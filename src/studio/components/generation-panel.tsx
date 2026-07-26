@@ -113,13 +113,24 @@ export const GenerationPanel = ({
       const value = (await response.json()) as {
         project?: ProjectFile;
         cacheHit?: boolean;
+        audioGenerated?: boolean;
         error?: string;
       };
       if (!response.ok || !value.project) throw new Error(value.error ?? '生成失败');
       onGenerated(value.project);
-      onAudioReady();
+      if (value.audioGenerated) onAudioReady();
       setStatus('success');
-      setMessage(`${provider === 'mock' ? '本地 Mock' : 'OpenAI'} 生成完成，可继续编辑或再次生成`);
+      const providerName =
+        provider === 'mock'
+          ? '本地演示'
+          : provider === 'openai'
+            ? 'OpenAI'
+            : provider === 'deepseek'
+              ? 'DeepSeek'
+              : '豆包';
+      setMessage(
+        `${providerName} 文案生成完成${value.audioGenerated ? '，已生成配音与字幕' : '，已根据文本生成字幕时间轴'}，可继续编辑或再次生成`,
+      );
     } catch (error) {
       setStatus('error');
       setMessage(error instanceof Error ? error.message : String(error));

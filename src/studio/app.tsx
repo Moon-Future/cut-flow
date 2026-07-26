@@ -171,7 +171,10 @@ export const App = () => {
         onNewProject={() => setShowProjects(true)}
         onAssets={() => setAssetLibraryOpen(true)}
         onRender={() => void startRender()}
-        onGenerated={setProject}
+        onGenerated={(generatedProject) => {
+          setProject(generatedProject);
+          setAudioAvailable(Boolean(generatedProject.narrationAudio));
+        }}
         onAudioReady={() => setAudioAvailable(true)}
         onOpenProject={openProject}
       />

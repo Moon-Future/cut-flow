@@ -8,12 +8,18 @@ import {createOpenAIProviders} from './openai-provider';
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, VideoScript} from './types';
 import type {AiProviderId, AiProviderSetting} from './settings';
+import {distributeWords} from './text-utils';
 
 export type WorkflowInput = GenerateInput & {
   provider: 'mock' | AiProviderId;
   forceRegenerate?: boolean;
 };
-export type WorkflowResult = {project: ProjectFile; cacheHit: boolean; provider: string};
+export type WorkflowResult = {
+  project: ProjectFile;
+  cacheHit: boolean;
+  provider: string;
+  audioGenerated: boolean;
+};
 
 const cacheKey = (input: WorkflowInput): string =>
   createHash('sha256')
@@ -79,10 +85,14 @@ export const runGenerationWorkflow = async (
 
   const {script, cacheHit} = await loadOrGenerateScript(input, providers, cacheRoot);
   const narration = script.scenes.map((scene) => scene.narration).join(' ');
-  const audio = await providers.tts.synthesize(narration);
-  const audioPath = path.join(audioRoot, 'narration.wav');
-  await writeFile(audioPath, audio.audio);
-  const transcript = await providers.transcription.transcribe(audio.audio, narration);
+  const audioGenerated = input.provider === 'openai' || input.provider === 'mock';
+  const transcript = audioGenerated
+    ? await providers.tts.synthesize(narration).then(async (audio) => {
+        const audioPath = path.join(audioRoot, 'narration.wav');
+        await writeFile(audioPath, audio.audio);
+        return providers.transcription.transcribe(audio.audio, narration);
+      })
+    : distributeWords(narration, input.targetDuration);
   const assetLibrary = await readFile(path.join(projectRoot, 'assets.json'), 'utf8')
     .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown).assets)
     .catch(() => []);
@@ -184,12 +194,13 @@ export const runGenerationWorkflow = async (
         ending: script.ending,
       },
       style: {...currentProject.style, captionAnimation: 'fade'},
-      narrationAudio: 'audio/narration.wav',
+      narrationAudio: audioGenerated ? 'audio/narration.wav' : null,
       scenes,
       copyVersions: [...(currentProject.copyVersions ?? []), copyVersion],
       activeCopyVersionId: versionId,
     },
     cacheHit,
     provider: input.provider,
+    audioGenerated,
   };
 };

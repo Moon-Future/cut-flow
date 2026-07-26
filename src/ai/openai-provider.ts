@@ -27,6 +27,81 @@ const request = async (url: string, apiKey: string, init: RequestInit): Promise<
   return response;
 };
 
+const normalizeCompatibleScript = (value: unknown): unknown => {
+  if (!value || typeof value !== 'object') return value;
+  const script = value as Record<string, unknown>;
+  const scenes = Array.isArray(script.scenes) ? script.scenes : [];
+  const shotTypes = new Set([
+    'real-footage',
+    'stock-video',
+    'generated-video',
+    'generated-image',
+    'science-animation',
+    'digital-human',
+  ]);
+  const strategies = new Set([
+    'local-first',
+    'stock-search',
+    'ai-generate',
+    'programmatic',
+    'digital-human',
+  ]);
+  const normalizeShotType = (input: unknown) => {
+    const text = String(input ?? '').toLowerCase();
+    if (shotTypes.has(text)) return text;
+    if (/数字人|digital/.test(text)) return 'digital-human';
+    if (/科学|动画|animation/.test(text)) return 'science-animation';
+    if (/生成.*视频|generated.*video/.test(text)) return 'generated-video';
+    if (/图片|图像|image/.test(text)) return 'generated-image';
+    if (/实拍|真实|footage/.test(text)) return 'real-footage';
+    return 'stock-video';
+  };
+  const normalizeStrategy = (input: unknown, shotType: string) => {
+    const text = String(input ?? '').toLowerCase();
+    if (strategies.has(text)) return text;
+    if (/数字人|digital/.test(text)) return 'digital-human';
+    if (/程序|program|动画/.test(text)) return 'programmatic';
+    if (/生成|generate/.test(text)) return 'ai-generate';
+    if (/本地|local/.test(text)) return 'local-first';
+    return shotType === 'real-footage' || shotType === 'stock-video'
+      ? 'stock-search'
+      : 'ai-generate';
+  };
+  return {
+    ...script,
+    scenes: scenes.map((sceneValue) => {
+      const scene =
+        sceneValue && typeof sceneValue === 'object'
+          ? (sceneValue as Record<string, unknown>)
+          : {};
+      const shots = Array.isArray(scene.shots) ? scene.shots : [];
+      return {
+        ...scene,
+        shots: shots.map((shotValue) => {
+          const shot =
+            shotValue && typeof shotValue === 'object'
+              ? (shotValue as Record<string, unknown>)
+              : {};
+          const shotType = normalizeShotType(shot.shotType);
+          const queries = Array.isArray(shot.searchQueries)
+            ? shot.searchQueries
+            : String(shot.searchQueries ?? '')
+                .split(/[,，;；\n]/)
+                .map((item) => item.trim())
+                .filter(Boolean);
+          return {
+            ...shot,
+            shotType,
+            assetStrategy: normalizeStrategy(shot.assetStrategy, shotType),
+            durationWeight: Number(shot.durationWeight) || 1,
+            searchQueries: queries.slice(0, 8),
+          };
+        }),
+      };
+    }),
+  };
+};
+
 export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
   text: {
     generateScript: async (input: GenerateInput) => {
@@ -51,7 +126,7 @@ ${input.customPrompt?.trim() || '从标题提炼核心观点，开头快速建�
             {
               role: 'system',
               content:
-                '只输出合法 JSON，结构必须为 {title, hook, scenes, ending}。scenes 每项包含 narration、caption、visualPrompt、suggestedDuration、visualIntent、shots；shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。',
+                '只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 每项包含 narration、caption、visualPrompt、suggestedDuration、visualIntent、shots。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。shotType 只能使用英文枚举 real-footage、stock-video、generated-video、generated-image、science-animation、digital-human；assetStrategy 只能使用英文枚举 local-first、stock-search、ai-generate、programmatic、digital-human；searchQueries 必须是字符串数组，不能是单个字符串。',
             },
             {role: 'user', content: prompt},
           ],
@@ -154,7 +229,7 @@ ${input.customPrompt?.trim() || '从标题提炼核心观点，开头快速建�
       };
       const output = result.output_text ?? result.choices?.[0]?.message?.content;
       if (!output) throw new Error('AI 服务未返回可用的文案内容');
-      return videoScriptSchema.parse(JSON.parse(output) as unknown);
+      return videoScriptSchema.parse(normalizeCompatibleScript(JSON.parse(output) as unknown));
     },
   },
   tts: {
