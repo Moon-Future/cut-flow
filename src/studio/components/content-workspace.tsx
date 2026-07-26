@@ -333,6 +333,10 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
               <span>预计字数</span>
               <b>{totalChars} 字</b>
             </div>
+            <div>
+              <span>生成目标</span>
+              <b>{currentVersion?.targetWordCount ? `${currentVersion.targetWordCount} 字` : '未记录'}</b>
+            </div>
           </div>
           <div className="score-grid">
             <i style={{'--score': `${hookScore * 3.6}deg`} as React.CSSProperties}>

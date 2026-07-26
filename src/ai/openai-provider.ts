@@ -172,6 +172,9 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
 export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
   text: {
     generateScript: async (input: GenerateInput) => {
+      const minimumNarrationChars = Math.floor(input.targetWordCount * 0.9);
+      const maximumNarrationChars = Math.ceil(input.targetWordCount * 1.1);
+      const suggestedCharsPerScene = Math.round(input.targetWordCount / 8);
       const prompt = `请根据以下信息创作一篇专业的短视频文案。
 
 【视频主题】
@@ -201,7 +204,9 @@ ${input.visualStyle}
 ${input.aspectRatio}
 
 【目标字数】
-约 ${input.targetWordCount} 个中文字符，允许上下浮动 10%。
+所有 scenes[].narration 拼接后的文案总字数约 ${input.targetWordCount} 个汉字。
+合格范围：${minimumNarrationChars}-${maximumNarrationChars} 个汉字；建议按 8 段规划，每段约 ${suggestedCharsPerScene} 个汉字。
+只统计 narration 中的汉字；title、hook、ending、caption、画面描述、搜索词以及图片/视频提示词均不计入目标字数。
 
 【额外创作要求】
 ${input.customPrompt?.trim() || '无'}
@@ -249,9 +254,11 @@ ${input.customPrompt?.trim() || '无'}
 8. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 1-3 句话。
 9. visual-explanation 负责原因、案例、步骤、对比、产品功能、数据和过程，语言必须具体到后期人员能判断该配什么画面。
 10. ${isDigitalHuman ? '数字人口播' : '普通旁白'}负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
+11. 字数目标只针对所有 scenes[].narration 的汉字合计。生成后必须在内部逐段统计并补充或精简 narration，使总数达到 ${minimumNarrationChars}-${maximumNarrationChars} 个汉字；不要把其他 JSON 字段计入文案字数。
 ${digitalHumanDirection}
 
 只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 6-9 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。
+输出 JSON 前再次检查：仅将 scenes 中每个 narration 的汉字数量相加，结果必须在 ${minimumNarrationChars}-${maximumNarrationChars} 之间。
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
 assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
 searchQueries 必须是字符串数组，不能是单个字符串。

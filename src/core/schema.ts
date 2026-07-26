@@ -107,6 +107,7 @@ export const copyVersionSchema = z.object({
   model: z.string().optional(),
   title: z.string().min(1),
   topic: z.string(),
+  targetWordCount: z.number().int().min(100).max(5000).optional(),
   hook: z.string(),
   ending: z.string(),
   scenes: z.array(sceneSchema).min(1),

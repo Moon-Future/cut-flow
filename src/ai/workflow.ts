@@ -159,6 +159,7 @@ export const runGenerationWorkflow = async (
     model: providerSetting?.model,
     title: script.title,
     topic: input.topic,
+    targetWordCount: input.targetWordCount,
     hook: script.hook,
     ending: script.ending,
     scenes,

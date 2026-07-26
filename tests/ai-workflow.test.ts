@@ -67,6 +67,7 @@ describe('generation workflow', () => {
     expect(first.project.copyVersions?.[0]).toMatchObject({
       provider: 'mock',
       topic: '如何完成独立项目',
+      targetWordCount: 500,
     });
     const regenerated = await runGenerationWorkflow(
       {...input, forceRegenerate: true},
