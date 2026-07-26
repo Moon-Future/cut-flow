@@ -16,6 +16,7 @@ export type OpenAIConfig = {
   ttsModel?: string;
   transcriptionModel?: string;
   apiMode?: 'responses' | 'chat-completions';
+  disableThinking?: boolean;
 };
 
 const request = async (url: string, apiKey: string, init: RequestInit): Promise<Response> => {
@@ -117,6 +118,21 @@ ${input.customPrompt?.trim() || '从标题提炼核心观点，开头快速建�
 
 根据视频类型选择叙事结构、镜头语言和素材策略。每个旁白段拆成1到5个视觉镜头，优先真实视频，其次科学动画、AI生成内容；为每个镜头给出中英文素材搜索词和生成提示词。字幕不是主体。`;
       const useChatCompletions = config.apiMode === 'chat-completions';
+      const jsonSystemPrompt = `只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须有 3-12 项，每项包含 narration、caption、visualPrompt、suggestedDuration、visualIntent、shots。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。
+shotType 只能使用英文枚举：real-footage、stock-video、generated-video、generated-image、science-animation、digital-human。
+assetStrategy 只能使用英文枚举：local-first、stock-search、ai-generate、programmatic、digital-human。
+searchQueries 必须是字符串数组，不能是单个字符串。
+JSON 输出格式示例：
+{
+  "title": "示例标题",
+  "hook": "示例开头",
+  "scenes": [
+    {"narration":"第一段旁白","caption":"第一段字幕","visualPrompt":"第一段画面","suggestedDuration":10,"visualIntent":"建立问题","shots":[{"visualPurpose":"展示场景","shotType":"stock-video","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["keyword one","关键词一"],"imagePrompt":"","videoPrompt":"真实视频画面"}]},
+    {"narration":"第二段旁白","caption":"第二段字幕","visualPrompt":"第二段画面","suggestedDuration":10,"visualIntent":"解释原因","shots":[{"visualPurpose":"解释原理","shotType":"science-animation","assetStrategy":"programmatic","durationWeight":1,"searchQueries":["concept animation"],"imagePrompt":"科普动画","videoPrompt":""}]},
+    {"narration":"第三段旁白","caption":"第三段字幕","visualPrompt":"第三段画面","suggestedDuration":10,"visualIntent":"总结观点","shots":[{"visualPurpose":"完成收束","shotType":"real-footage","assetStrategy":"stock-search","durationWeight":1,"searchQueries":["closing scene"],"imagePrompt":"","videoPrompt":"结尾真实镜头"}]}
+  ],
+  "ending": "示例结尾"
+}`;
       const response = await request(`${config.baseUrl ?? 'https://api.openai.com/v1'}/${useChatCompletions ? 'chat/completions' : 'responses'}`, config.apiKey, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -125,12 +141,14 @@ ${input.customPrompt?.trim() || '从标题提炼核心观点，开头快速建�
           messages: [
             {
               role: 'system',
-              content:
-                '只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 每项包含 narration、caption、visualPrompt、suggestedDuration、visualIntent、shots。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、imagePrompt、videoPrompt。shotType 只能使用英文枚举 real-footage、stock-video、generated-video、generated-image、science-animation、digital-human；assetStrategy 只能使用英文枚举 local-first、stock-search、ai-generate、programmatic、digital-human；searchQueries 必须是字符串数组，不能是单个字符串。',
+              content: jsonSystemPrompt,
             },
             {role: 'user', content: prompt},
           ],
           response_format: {type: 'json_object'},
+          max_tokens: 16000,
+          stream: false,
+          ...(config.disableThinking ? {thinking: {type: 'disabled'}} : {}),
         } : {
           model: config.textModel ?? 'gpt-5.6-luna',
           input: prompt,

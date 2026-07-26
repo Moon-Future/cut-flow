@@ -44,6 +44,7 @@ const providersFor = (
     ttsModel: process.env.OPENAI_TTS_MODEL,
     transcriptionModel: process.env.OPENAI_TRANSCRIPTION_MODEL,
     apiMode: input.provider === 'openai' ? 'responses' : 'chat-completions',
+    disableThinking: input.provider === 'deepseek',
   });
   if (input.provider === 'openai') return remote;
   const localAudio = createMockProviders(input.targetDuration);
