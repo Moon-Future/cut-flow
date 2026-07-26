@@ -3008,6 +3008,7 @@ select:focus {
   gap: 7px;
   align-items: center;
   margin-top: 12px;
+  margin-right: 10px;
   color: #9c8bc8;
   font-size: 10px;
   white-space: nowrap;
@@ -4886,9 +4887,43 @@ select:focus {
   opacity: 0.6;
 }
 .video-generation-status {
+  display: grid;
+  gap: 7px;
   margin: 0;
   color: #8d7bb8;
-  font-size: 9px;
+  font-size: clamp(12px, 0.8vw, 14px);
+}
+.video-generation-status span,
+.video-generation-status small {
+  display: block;
+}
+.video-generation-status small {
+  color: var(--text-muted);
+}
+.video-generation-status i {
+  display: block;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.video-generation-status.active i::after {
+  display: block;
+  width: 36%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: video-generation-progress 1.4s ease-in-out infinite;
+  content: '';
+}
+@keyframes video-generation-progress {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(310%);
+  }
 }
 .settings-group-heading {
   grid-column: 1 / -1;

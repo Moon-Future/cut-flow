@@ -1053,6 +1053,16 @@ const localApi = (): Plugin => ({
               sendJson(response, 404, {error: '找不到指定的分镜'});
               return;
             }
+            if (
+              shot.generationTask?.provider === 'volcengine-pippit-video' &&
+              (shot.generationTask.status === 'queued' || shot.generationTask.status === 'running')
+            ) {
+              sendJson(response, 409, {
+                error: '该分镜已有视频生成任务正在处理，请勿重复提交',
+                task: shot.generationTask,
+              });
+              return;
+            }
             const provider = createVolcengineVideoProvider({
               accessKey: aiSettings.volcengineVideo.accessKey,
               secretKey: aiSettings.volcengineVideo.secretKey,

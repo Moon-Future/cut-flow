@@ -1,5 +1,5 @@
-import {useEffect, useState} from 'react';
-import type {ProjectFile, VisualShot} from '../../core/schema';
+import {useEffect, useRef, useState} from 'react';
+import type {GenerationTask, ProjectFile, VisualShot} from '../../core/schema';
 import type {
   PixabayMediaKind,
   PixabaySearchResponse,
@@ -15,6 +15,16 @@ import {useStudioStore} from '../store';
 
 type Props = {project: ProjectFile; projectId: string; onAssets: () => void};
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
+const activeGenerationStatuses = new Set<GenerationTask['status']>(['queued', 'running']);
+const generationStatusLabel = (status: GenerationTask['status']) =>
+  ({
+    queued: '已提交，等待处理',
+    running: '正在生成',
+    'needs-selection': '生成完成，等待选择',
+    succeeded: '已选用',
+    failed: '生成失败',
+    cancelled: '已取消',
+  })[status];
 const contentSearchLinks = (query: string) => {
   const encoded = encodeURIComponent(query);
   return [
@@ -37,6 +47,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     error?: string;
   } | null>(null);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
+  const generationRequestLock = useRef(new Set<string>());
   const [videoDefaultDuration, setVideoDefaultDuration] = useState<VideoTargetDuration>('～15s');
   const [videoWatermark, setVideoWatermark] = useState(true);
   const [videoDraft, setVideoDraft] = useState<{
@@ -87,6 +98,36 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
       )
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    const activeShots = project.scenes.flatMap((scene) =>
+      (scene.shots ?? [])
+        .filter(
+          (shot) =>
+            shot.generationTask?.provider === 'volcengine-pippit-video' &&
+            activeGenerationStatuses.has(shot.generationTask.status),
+        )
+        .map((shot) => ({sceneId: scene.id, shotId: shot.id})),
+    );
+    if (!activeShots.length) return;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/project');
+        if (!response.ok) return;
+        const latestProject = (await response.json()) as ProjectFile;
+        for (const active of activeShots) {
+          const latestShot = latestProject.scenes
+            .find((scene) => scene.id === active.sceneId)
+            ?.shots?.find((shot) => shot.id === active.shotId);
+          if (latestShot) syncVisualShot(active.sceneId, active.shotId, latestShot);
+        }
+      } catch {
+        // 临时查询失败时保留当前状态，下一轮继续查询。
+      }
+    };
+    const interval = window.setInterval(() => void refresh(), 5_000);
+    return () => window.clearInterval(interval);
+  }, [project.scenes, syncVisualShot]);
 
   const searchOnline = async (
     shot: VisualShot,
@@ -156,6 +197,13 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
   };
 
   const generateVideo = async (shot: VisualShot) => {
+    if (
+      generationRequestLock.current.has(shot.id) ||
+      (shot.generationTask && activeGenerationStatuses.has(shot.generationTask.status))
+    ) {
+      return;
+    }
+    generationRequestLock.current.add(shot.id);
     const draft =
       videoDraft?.shotId === shot.id
         ? videoDraft
@@ -215,6 +263,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
         message: error instanceof Error ? error.message : String(error),
       });
     } finally {
+      generationRequestLock.current.delete(shot.id);
       setGeneratingVideoShotId(null);
     }
   };
@@ -582,7 +631,13 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                     <strong>AI 视频生成</strong>
                     <small>确认模型、时长和最终提示词后手动生成</small>
                   </span>
-                  <b>{generatingVideoShotId === shot.id ? '生成中' : '展开设置'}</b>
+                  <b>
+                    {generatingVideoShotId === shot.id ||
+                    (shot.generationTask &&
+                      activeGenerationStatuses.has(shot.generationTask.status))
+                      ? '生成中'
+                      : '展开设置'}
+                  </b>
                 </summary>
                 {videoDraft?.shotId === shot.id ? (
                   <div>
@@ -663,10 +718,19 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                       </p>
                       <button
                         type="button"
-                        disabled={generatingVideoShotId === shot.id || !videoDraft.prompt.trim()}
+                        disabled={
+                          generatingVideoShotId === shot.id ||
+                          Boolean(
+                            shot.generationTask &&
+                            activeGenerationStatuses.has(shot.generationTask.status),
+                          ) ||
+                          !videoDraft.prompt.trim()
+                        }
                         onClick={() => void generateVideo(shot)}
                       >
-                        {generatingVideoShotId === shot.id
+                        {generatingVideoShotId === shot.id ||
+                        (shot.generationTask &&
+                          activeGenerationStatuses.has(shot.generationTask.status))
                           ? '正在生成，请勿关闭应用…'
                           : '确认并生成视频'}
                       </button>
@@ -697,12 +761,22 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 </button>
               </div>
               {shot.generationTask?.provider === 'volcengine-pippit-video' ? (
-                <p className="video-generation-status">
-                  任务状态：{shot.generationTask.status}
-                  {shot.generationTask.status === 'needs-selection'
-                    ? '，请在上方候选素材中选择生成结果'
-                    : ''}
-                </p>
+                <div
+                  className={`video-generation-status ${activeGenerationStatuses.has(shot.generationTask.status) ? 'active' : ''}`}
+                >
+                  <span>
+                    任务状态：{generationStatusLabel(shot.generationTask.status)}
+                    {shot.generationTask.status === 'needs-selection'
+                      ? '，请在上方候选素材中选择生成结果'
+                      : ''}
+                  </span>
+                  {activeGenerationStatuses.has(shot.generationTask.status) ? (
+                    <>
+                      <i aria-label="视频生成处理中" />
+                      <small>生成服务暂不返回精确百分比，页面会每 5 秒自动更新状态。</small>
+                    </>
+                  ) : null}
+                </div>
               ) : null}
               {videoGenerationError?.shotId === shot.id ? (
                 <p className="candidate-error">{videoGenerationError.message}</p>
