@@ -649,6 +649,48 @@ const localApi = (): Plugin => ({
             return;
           }
           if (url === '/api/assets/library' && request.method === 'GET') {
+            const scopeAll =
+              new URL(request.url ?? '', 'http://localhost').searchParams.get('scope') === 'all';
+            if (scopeAll) {
+              const directories = await readdir(projectsRoot, {withFileTypes: true});
+              const assets = (
+                await Promise.all(
+                  directories
+                    .filter((entry) => entry.isDirectory())
+                    .map(async (entry) => {
+                      try {
+                        const sourceProject = projectFileSchema.parse(
+                          JSON.parse(
+                            await readFile(
+                              path.join(projectsRoot, entry.name, 'project.json'),
+                              'utf8',
+                            ),
+                          ) as unknown,
+                        );
+                        const sourceLibrary = assetLibrarySchema.parse(
+                          JSON.parse(
+                            await readFile(
+                              path.join(projectsRoot, entry.name, 'assets.json'),
+                              'utf8',
+                            ),
+                          ) as unknown,
+                        );
+                        return sourceLibrary.assets.map((asset) => ({
+                          ...asset,
+                          width: asset.width ?? sourceProject.project.width,
+                          height: asset.height ?? sourceProject.project.height,
+                          projectId: entry.name,
+                          projectTitle: sourceProject.project.title,
+                        }));
+                      } catch {
+                        return [];
+                      }
+                    }),
+                )
+              ).flat();
+              sendJson(response, 200, {version: 1, assets});
+              return;
+            }
             sendJson(
               response,
               200,
@@ -656,6 +698,60 @@ const localApi = (): Plugin => ({
                 JSON.parse(await readFile(assetLibraryFile, 'utf8')) as unknown,
               ),
             );
+            return;
+          }
+          if (url === '/api/assets/import-from-project' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              projectId?: string;
+              assetId?: string;
+            };
+            if (
+              !input.projectId ||
+              path.basename(input.projectId) !== input.projectId ||
+              !input.assetId
+            ) {
+              sendJson(response, 400, {error: '素材来源参数不完整'});
+              return;
+            }
+            const sourceLibrary = assetLibrarySchema.parse(
+              JSON.parse(
+                await readFile(path.join(projectsRoot, input.projectId, 'assets.json'), 'utf8'),
+              ) as unknown,
+            );
+            const sourceProject = projectFileSchema.parse(
+              JSON.parse(
+                await readFile(path.join(projectsRoot, input.projectId, 'project.json'), 'utf8'),
+              ) as unknown,
+            );
+            const sourceAsset = sourceLibrary.assets.find((asset) => asset.id === input.assetId);
+            if (!sourceAsset) {
+              sendJson(response, 404, {error: '找不到来源素材'});
+              return;
+            }
+            const sourceFile = path.resolve(projectsRoot, input.projectId, sourceAsset.path);
+            const sourceRoot = path.resolve(projectsRoot, input.projectId);
+            if (!sourceFile.startsWith(`${sourceRoot}${path.sep}`)) {
+              sendJson(response, 400, {error: '素材路径无效'});
+              return;
+            }
+            const storedName = `${Date.now()}-${path.basename(sourceAsset.path)}`;
+            await mkdir(assetsRoot, {recursive: true});
+            await cp(sourceFile, path.join(assetsRoot, storedName));
+            const imported = assetMetadataSchema.parse({
+              ...sourceAsset,
+              id: `asset-${randomUUID()}`,
+              path: `assets/${storedName}`,
+              createdAt: new Date().toISOString(),
+              projectId: activeProjectId,
+              originProjectId: sourceAsset.originProjectId ?? input.projectId,
+              originProjectTitle: sourceAsset.originProjectTitle ?? sourceProject.project.title,
+            });
+            const library = assetLibrarySchema.parse(
+              JSON.parse(await readFile(assetLibraryFile, 'utf8')) as unknown,
+            );
+            library.assets.push(imported);
+            await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
+            sendJson(response, 201, {asset: imported});
             return;
           }
           if (url === '/api/assets/library' && request.method === 'POST') {
@@ -1126,8 +1222,12 @@ const localApi = (): Plugin => ({
                   .find((scene) => scene.id === input.sceneId)
                   ?.shots?.find((item) => item.id === input.shotId);
                 if (!latestShot) return;
-                latestShot.candidates = [...latestShot.candidates, ...candidates];
                 const maximumDuration = videoTargetMaximumSeconds(targetDuration);
+                candidates = candidates.map((candidate) => ({
+                  ...candidate,
+                  duration: maximumDuration,
+                }));
+                latestShot.candidates = [...latestShot.candidates, ...candidates];
                 latestShot.sourceStart = 0;
                 latestShot.sourceEnd = maximumDuration;
                 latestShot.generationTask = {
@@ -1195,6 +1295,20 @@ const localApi = (): Plugin => ({
               return;
             }
             shot.selectedAsset = candidate.path;
+            if (candidate.kind === 'video') {
+              const candidateDuration =
+                candidate.duration ??
+                (await readFile(assetLibraryFile, 'utf8')
+                  .then(
+                    (value) =>
+                      assetLibrarySchema
+                        .parse(JSON.parse(value) as unknown)
+                        .assets.find((asset) => asset.path === candidate.path)?.duration,
+                  )
+                  .catch(() => undefined));
+              shot.sourceStart = 0;
+              shot.sourceEnd = candidateDuration;
+            }
             shot.status = 'ready';
             const scene = project.scenes.find((item) => item.id === input.sceneId);
             if (candidate.kind === 'video' && scene) {

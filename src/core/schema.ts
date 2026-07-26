@@ -35,6 +35,7 @@ export const generationCandidateSchema = z.object({
   model: z.string().min(1),
   prompt: z.string().min(1),
   createdAt: z.string().min(1),
+  duration: z.number().positive().optional(),
 });
 
 export const generationTaskSchema = z.object({

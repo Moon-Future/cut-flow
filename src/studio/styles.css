@@ -1256,7 +1256,7 @@ select:focus {
 }
 .asset-toolbar {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, auto) auto auto;
   gap: 12px;
   align-items: center;
   padding: 15px 24px;
@@ -1264,6 +1264,14 @@ select:focus {
 }
 .asset-toolbar > input {
   max-width: 420px;
+}
+.asset-toolbar > select,
+.asset-browser-toolbar > select {
+  min-width: 140px;
+  border: 1px solid #2d3648;
+  border-radius: 7px;
+  background: #111722;
+  color: #c9d1dc;
 }
 .asset-filters {
   display: flex;
@@ -1285,6 +1293,7 @@ select:focus {
   color: #dffaf3;
 }
 .asset-grid {
+  min-height: 0;
   padding: 20px 24px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1307,7 +1316,7 @@ select:focus {
 .asset-preview video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 .asset-preview > span {
   position: absolute;
@@ -5116,6 +5125,7 @@ select:focus {
   color: #e1ad65 !important;
 }
 .assets-studio {
+  height: clamp(620px, calc(100dvh - 190px), 900px);
   min-height: 620px;
   display: grid;
   grid-template-columns: minmax(230px, 0.68fr) minmax(560px, 1.75fr) minmax(230px, 0.68fr);
@@ -5124,6 +5134,12 @@ select:focus {
 .asset-scene-map,
 .asset-browser {
   overflow: auto;
+}
+.asset-browser {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  flex-direction: column;
 }
 .asset-scene-map > div {
   display: grid;
@@ -5179,6 +5195,9 @@ select:focus {
   background: #090d14;
   color: #d8dee7;
 }
+.asset-browser-toolbar select {
+  padding: 8px 10px;
+}
 .asset-browser-toolbar > div {
   display: flex;
   gap: 4px;
@@ -5194,6 +5213,8 @@ select:focus {
   color: #b79aec;
 }
 .embedded-assets-grid {
+  min-height: 0;
+  overflow: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
   gap: 9px;
@@ -5216,7 +5237,7 @@ select:focus {
 .current-asset-preview video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 .embedded-assets-grid article > div span {
   position: absolute;

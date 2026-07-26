@@ -15,11 +15,12 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
+  const [projectFilter, setProjectFilter] = useState('all');
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = () =>
-    fetch('/api/assets/library')
+    fetch('/api/assets/library?scope=all')
       .then((response) => response.json())
       .then((library: AssetLibrary) => setAssets(library.assets));
 
@@ -31,14 +32,34 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
     const term = query.trim().toLocaleLowerCase();
     return assets.filter((asset) => {
       if (filter !== 'all' && asset.type !== filter) return false;
+      if (projectFilter !== 'all' && asset.projectId !== projectFilter) return false;
       if (!term) return true;
       return [asset.name, ...asset.keywords].join(' ').toLocaleLowerCase().includes(term);
     });
-  }, [assets, filter, query]);
+  }, [assets, filter, projectFilter, query]);
+  const projects = useMemo(
+    () =>
+      [...new Map(assets.map((asset) => [asset.projectId, asset.projectTitle])).entries()].filter(
+        (entry): entry is [string, string] => Boolean(entry[0] && entry[1]),
+      ),
+    [assets],
+  );
 
-  const apply = (asset: AssetMetadata) => {
+  const apply = async (asset: AssetMetadata) => {
     if (!selectedSceneId || asset.type === 'audio') return;
-    replaceSceneAsset(selectedSceneId, asset.path, asset.type);
+    let selectedAsset = asset;
+    if (asset.projectId && asset.projectId !== projectId) {
+      const response = await fetch('/api/assets/import-from-project', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({projectId: asset.projectId, assetId: asset.id}),
+      });
+      const value = (await response.json()) as {asset?: AssetMetadata; error?: string};
+      if (!response.ok || !value.asset) throw new Error(value.error ?? '跨项目复制素材失败');
+      selectedAsset = value.asset;
+    }
+    if (selectedAsset.type === 'audio') return;
+    replaceSceneAsset(selectedSceneId, selectedAsset.path, selectedAsset.type);
     onClose();
   };
 
@@ -96,6 +117,14 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
+          <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
+            <option value="all">全部项目</option>
+            {projects.map(([id, title]) => (
+              <option key={id} value={id}>
+                {title}
+              </option>
+            ))}
+          </select>
           <div className="asset-filters">
             {(['all', 'image', 'video'] as const).map((value) => (
               <button
@@ -124,11 +153,17 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
         <div className="asset-grid">
           {visible.map((asset) => (
             <article key={asset.id} className="asset-card">
-              <div className="asset-preview">
+              <div
+                className="asset-preview"
+                style={{
+                  aspectRatio:
+                    asset.width && asset.height ? `${asset.width} / ${asset.height}` : undefined,
+                }}
+              >
                 {asset.type === 'image' ? (
-                  <img src={`/${projectId}/${asset.path}`} alt={asset.name} />
+                  <img src={`/${asset.projectId ?? projectId}/${asset.path}`} alt={asset.name} />
                 ) : (
-                  <video src={`/${projectId}/${asset.path}`} muted />
+                  <video src={`/${asset.projectId ?? projectId}/${asset.path}`} muted />
                 )}
                 <span>{asset.type === 'image' ? 'IMG' : 'VIDEO'}</span>
               </div>
@@ -136,13 +171,18 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
                 <strong>{asset.name}</strong>
                 <p>{asset.keywords.slice(0, 3).join(' · ') || '暂无关键词'}</p>
                 <div>
-                  <span className={`asset-source ${asset.source}`}>{sourceLabels[asset.source]}</span>
+                  <span className={`asset-source ${asset.source}`}>
+                    {sourceLabels[asset.source]}
+                  </span>
+                  <span>
+                    来源项目：{asset.originProjectTitle ?? asset.projectTitle ?? '当前项目'}
+                  </span>
                   <span className={asset.commercialUse ? 'license-ok' : 'license-warn'}>
                     {asset.commercialUse ? '可商用' : '不可商用'}
                   </span>
                   <span>{asset.license}</span>
                 </div>
-                <button disabled={!asset.commercialUse} onClick={() => apply(asset)}>
+                <button disabled={!asset.commercialUse} onClick={() => void apply(asset)}>
                   应用到当前镜头
                 </button>
               </div>

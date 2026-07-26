@@ -17,6 +17,10 @@ export const assetMetadataSchema = z.object({
   author: z.string().min(1).optional(),
   sourceName: z.string().min(1).optional(),
   licenseUrl: z.url().optional(),
+  projectId: z.string().min(1).optional(),
+  projectTitle: z.string().min(1).optional(),
+  originProjectId: z.string().min(1).optional(),
+  originProjectTitle: z.string().min(1).optional(),
 });
 
 export const assetLibrarySchema = z.object({

@@ -789,7 +789,12 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                       ) : (
                         <img src={mediaUrl(projectId, candidate.path)} alt="" />
                       )}
-                      <span>{candidate.provider}</span>
+                      <span>
+                        {candidate.provider}
+                        {candidate.kind === 'video' && candidate.duration
+                          ? ` · ${candidate.duration} 秒`
+                          : ''}
+                      </span>
                     </button>
                   ))}
                 <button className="add-shot-asset" onClick={onAssets}>

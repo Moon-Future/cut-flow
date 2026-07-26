@@ -4,13 +4,19 @@ import type {ProjectFile} from '../../core/schema';
 import {useStudioStore} from '../store';
 
 type Props = {project: ProjectFile; projectId: string; onOpenLibrary: () => void};
+const sourceLabels: Record<AssetMetadata['source'], string> = {
+  local: '本地导入',
+  generated: 'AI 生成',
+  online: '在线素材',
+};
 export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
   const {selectedSceneId, selectScene, replaceSceneAsset} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
+  const [projectFilter, setProjectFilter] = useState('all');
   useEffect(() => {
-    fetch('/api/assets/library')
+    fetch('/api/assets/library?scope=all')
       .then((response) => response.json())
       .then((library: AssetLibrary) => setAssets(library.assets))
       .catch(() => setAssets([]));
@@ -20,16 +26,42 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
       assets.filter(
         (asset) =>
           asset.type !== 'audio' &&
+          (projectFilter === 'all' || asset.projectId === projectFilter) &&
           (filter === 'all' || asset.type === filter) &&
           (!query ||
             `${asset.name} ${asset.keywords.join(' ')}`
               .toLowerCase()
               .includes(query.toLowerCase())),
       ),
-    [assets, filter, query],
+    [assets, filter, projectFilter, query],
+  );
+  const projects = useMemo(
+    () =>
+      [...new Map(assets.map((asset) => [asset.projectId, asset.projectTitle])).entries()].filter(
+        (entry): entry is [string, string] => Boolean(entry[0] && entry[1]),
+      ),
+    [assets],
   );
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
+  const applyAsset = async (asset: AssetMetadata) => {
+    let selectedAsset = asset;
+    if (asset.projectId && asset.projectId !== projectId) {
+      const response = await fetch('/api/assets/import-from-project', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({projectId: asset.projectId, assetId: asset.id}),
+      });
+      const value = (await response.json()) as {asset?: AssetMetadata; error?: string};
+      if (!response.ok || !value.asset) throw new Error(value.error ?? '跨项目复制素材失败');
+      selectedAsset = value.asset;
+    }
+    replaceSceneAsset(
+      selected.id,
+      selectedAsset.path,
+      selectedAsset.type === 'video' ? 'video' : 'image',
+    );
+  };
   return (
     <section className="assets-studio">
       <aside className="asset-scene-map stage-panel">
@@ -70,6 +102,14 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
+          <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
+            <option value="all">全部项目</option>
+            {projects.map(([id, title]) => (
+              <option key={id} value={id}>
+                {title}
+              </option>
+            ))}
+          </select>
           <div>
             {(['all', 'image', 'video'] as const).map((value) => (
               <button
@@ -85,27 +125,26 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
         <div className="embedded-assets-grid">
           {visible.map((asset) => (
             <article key={asset.id}>
-              <div>
+              <div
+                style={{
+                  aspectRatio:
+                    asset.width && asset.height ? `${asset.width} / ${asset.height}` : undefined,
+                }}
+              >
                 {asset.type === 'video' ? (
-                  <video src={`/${projectId}/${asset.path}`} muted />
+                  <video src={`/${asset.projectId ?? projectId}/${asset.path}`} muted />
                 ) : (
-                  <img src={`/${projectId}/${asset.path}`} alt="" />
+                  <img src={`/${asset.projectId ?? projectId}/${asset.path}`} alt="" />
                 )}
                 <span>{asset.type === 'video' ? 'VIDEO' : 'IMG'}</span>
               </div>
               <strong>{asset.name}</strong>
               <small>{asset.keywords.slice(0, 3).join(' · ') || '本地素材'}</small>
-              <button
-                onClick={() =>
-                  replaceSceneAsset(
-                    selected.id,
-                    asset.path,
-                    asset.type === 'video' ? 'video' : 'image',
-                  )
-                }
-              >
-                应用到当前镜头
-              </button>
+              <small>
+                {sourceLabels[asset.source]} · 来源项目：
+                {asset.originProjectTitle ?? asset.projectTitle ?? project.project.title}
+              </small>
+              <button onClick={() => void applyAsset(asset)}>应用到当前镜头</button>
             </article>
           ))}
         </div>

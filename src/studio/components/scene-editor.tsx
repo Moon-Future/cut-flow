@@ -506,6 +506,9 @@ export const SceneEditor = ({projectId}: Props) => {
                         )}
                         <span>
                           {candidate.provider} · {candidate.model}
+                          {candidate.kind === 'video' && candidate.duration
+                            ? ` · ${candidate.duration} 秒`
+                            : ''}
                         </span>
                       </button>
                     ))}
