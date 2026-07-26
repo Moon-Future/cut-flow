@@ -23,7 +23,7 @@ const request = async (url: string, apiKey: string, init: RequestInit): Promise<
     ...init,
     headers: {Authorization: `Bearer ${apiKey}`, ...init.headers},
   });
-  if (!response.ok) throw new Error(`OpenAI API ${response.status}: ${await response.text()}`);
+  if (!response.ok) throw new Error(`AI 服务 ${response.status}: ${await response.text()}`);
   return response;
 };
 

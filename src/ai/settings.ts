@@ -32,7 +32,7 @@ const defaults: AiSettings = {
       apiKey: '',
       secretKey: '',
       baseUrl: 'https://api.deepseek.com',
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
     },
     doubao: {
       enabled: false,
@@ -54,7 +54,7 @@ export const aiSettingsFile = () => path.join(settingsRoot(), 'ai-settings.json'
 export const loadAiSettings = async (): Promise<AiSettings> => {
   try {
     const saved = JSON.parse(await readFile(aiSettingsFile(), 'utf8')) as Partial<AiSettings>;
-    return {
+    const settings: AiSettings = {
       activeProvider: saved.activeProvider ?? defaults.activeProvider,
       providers: {
         openai: {...defaults.providers.openai, ...saved.providers?.openai},
@@ -62,6 +62,11 @@ export const loadAiSettings = async (): Promise<AiSettings> => {
         doubao: {...defaults.providers.doubao, ...saved.providers?.doubao},
       },
     };
+    // 迁移早期版本使用的旧模型名，避免兼容接口直接返回 400。
+    if (settings.providers.deepseek.model === 'deepseek-chat') {
+      settings.providers.deepseek.model = 'deepseek-v4-flash';
+    }
+    return settings;
   } catch {
     return structuredClone(defaults);
   }

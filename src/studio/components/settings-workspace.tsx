@@ -139,8 +139,15 @@ export const SettingsWorkspace = () => {
                   <span>{id === 'doubao' ? '模型 / 推理接入点 ID' : '模型'}</span>
                   <input
                     value={provider.model}
+                    list={id === 'deepseek' ? 'deepseek-model-options' : undefined}
                     onChange={(event) => updateProvider(id, {model: event.target.value})}
                   />
+                  {id === 'deepseek' ? (
+                    <datalist id="deepseek-model-options">
+                      <option value="deepseek-v4-flash" />
+                      <option value="deepseek-v4-pro" />
+                    </datalist>
+                  ) : null}
                 </label>
                 <label>
                   <span>API Key / AK</span>
