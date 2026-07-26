@@ -2503,7 +2503,12 @@ select:focus {
   white-space: nowrap;
 }
 .provider-switch input {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  margin: 0;
   flex: 0 0 auto;
+  padding: 0;
 }
 .provider-switch span {
   min-width: 3em;
@@ -2544,7 +2549,12 @@ select:focus {
   white-space: nowrap;
 }
 .default-provider input {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  margin: 0;
   flex: 0 0 auto;
+  padding: 0;
 }
 .settings-message {
   margin: 14px 0 0;
