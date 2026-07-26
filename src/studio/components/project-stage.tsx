@@ -102,6 +102,7 @@ export const ProjectStage = ({
           onNewProject={onNewProject}
           onOpenProject={onOpenProject}
           onNavigate={onNavigate}
+          onAssets={onAssets}
         />
       ) : null}
 

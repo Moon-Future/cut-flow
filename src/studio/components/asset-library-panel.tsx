@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
+import type {InputHTMLAttributes} from 'react';
 import type {AssetLibrary, AssetMetadata} from '../../media/asset-library';
 import {useStudioStore} from '../store';
 
@@ -17,7 +18,10 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
   const [projectFilter, setProjectFilter] = useState('all');
   const [uploading, setUploading] = useState(false);
+  const [targetDirectory, setTargetDirectory] = useState('imported');
+  const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const load = () =>
     fetch('/api/assets/library?scope=all')
@@ -63,12 +67,15 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
     onClose();
   };
 
-  const upload = async (file: File) => {
+  const upload = async (file: File, reload = true) => {
     setUploading(true);
     try {
       const response = await fetch('/api/assets', {
         method: 'POST',
-        headers: {'X-File-Name': encodeURIComponent(file.name)},
+        headers: {
+          'X-File-Name': encodeURIComponent(file.name),
+          'X-Target-Directory': encodeURIComponent(targetDirectory),
+        },
         body: file,
       });
       const uploaded = (await response.json()) as {assetPath?: string; error?: string};
@@ -94,10 +101,48 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
         body: JSON.stringify(asset),
       });
       if (!saved.ok) throw new Error('素材元数据保存失败');
-      await load();
+      if (reload) await load();
     } finally {
       setUploading(false);
     }
+  };
+  const uploadFolder = async (files: FileList) => {
+    setUploading(true);
+    setMessage(`正在导入 ${files.length} 个文件…`);
+    try {
+      for (const file of Array.from(files)) await upload(file, false);
+      await load();
+      setMessage(`已导入 ${files.length} 个文件`);
+    } finally {
+      setUploading(false);
+    }
+  };
+  const scan = async () => {
+    const response = await fetch('/api/assets/scan', {method: 'POST'});
+    const value = (await response.json()) as {added?: number; error?: string};
+    setMessage(
+      response.ok ? `扫描完成，识别到 ${value.added ?? 0} 个新素材` : (value.error ?? '扫描失败'),
+    );
+    if (response.ok) await load();
+  };
+  const openLocation = async (asset: AssetMetadata) => {
+    const response = await fetch('/api/assets/open-location', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({projectId: asset.projectId, assetId: asset.id}),
+    });
+    if (!response.ok) setMessage('无法打开素材所在目录');
+  };
+  const remove = async (asset: AssetMetadata) => {
+    if (!window.confirm(`确定删除素材“${asset.name}”及其磁盘文件吗？此操作无法撤销。`)) return;
+    const response = await fetch('/api/assets/delete', {
+      method: 'DELETE',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({projectId: asset.projectId, assetId: asset.id, deleteFile: true}),
+    });
+    const value = (await response.json()) as {error?: string};
+    setMessage(response.ok ? `已删除“${asset.name}”` : (value.error ?? '删除失败'));
+    if (response.ok) await load();
   };
 
   if (!open) return null;
@@ -125,6 +170,13 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
               </option>
             ))}
           </select>
+          <input
+            className="asset-target-directory"
+            value={targetDirectory}
+            onChange={(event) => setTargetDirectory(event.target.value)}
+            placeholder="导入到子目录，如 imported"
+            title="文件将保存到当前项目 assets 下的这个子目录"
+          />
           <div className="asset-filters">
             {(['all', 'image', 'video'] as const).map((value) => (
               <button
@@ -146,10 +198,23 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
               if (file) void upload(file);
             }}
           />
+          <input
+            ref={folderInputRef}
+            className="file-input"
+            type="file"
+            multiple
+            {...({webkitdirectory: ''} as InputHTMLAttributes<HTMLInputElement>)}
+            onChange={(event) => {
+              if (event.target.files?.length) void uploadFolder(event.target.files);
+            }}
+          />
           <button className="primary-button" onClick={() => inputRef.current?.click()}>
             {uploading ? '导入中…' : '导入素材'}
           </button>
+          <button onClick={() => folderInputRef.current?.click()}>导入文件夹</button>
+          <button onClick={() => void scan()}>扫描素材目录</button>
         </div>
+        {message ? <p className="asset-management-message">{message}</p> : null}
         <div className="asset-grid">
           {visible.map((asset) => (
             <article key={asset.id} className="asset-card">
@@ -185,6 +250,12 @@ export const AssetLibraryPanel = ({open, projectId, onClose}: Props) => {
                 <button disabled={!asset.commercialUse} onClick={() => void apply(asset)}>
                   应用到当前镜头
                 </button>
+                <div className="asset-management-actions">
+                  <button onClick={() => void openLocation(asset)}>打开目录</button>
+                  <button className="danger" onClick={() => void remove(asset)}>
+                    删除
+                  </button>
+                </div>
               </div>
             </article>
           ))}

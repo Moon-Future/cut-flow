@@ -1255,15 +1255,19 @@ select:focus {
   cursor: pointer;
 }
 .asset-toolbar {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(150px, auto) auto auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
   padding: 15px 24px;
   border-bottom: 1px solid #20283a;
 }
 .asset-toolbar > input {
+  flex: 1 1 220px;
   max-width: 420px;
+}
+.asset-toolbar .asset-target-directory {
+  flex: 0 1 210px;
 }
 .asset-toolbar > select,
 .asset-browser-toolbar > select {
@@ -1298,15 +1302,22 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 15px;
+  align-content: start;
+  grid-auto-rows: max-content;
   overflow: auto;
 }
 .asset-card {
+  display: flex;
+  align-self: start;
+  flex-direction: column;
   background: #111621;
   border: 1px solid #222b3c;
   border-radius: 13px;
   overflow: hidden;
 }
 .asset-preview {
+  display: grid;
+  place-items: center;
   height: 180px;
   background: #070a10;
   position: relative;
@@ -1330,6 +1341,8 @@ select:focus {
   font-weight: 800;
 }
 .asset-info {
+  display: flex;
+  flex-direction: column;
   padding: 13px;
 }
 .asset-info strong {
@@ -1382,6 +1395,29 @@ select:focus {
 .asset-info button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.asset-info .asset-management-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.asset-info .asset-management-actions button {
+  margin-top: 8px;
+  border-color: #344154;
+  background: #171e29;
+  color: #aab5c5;
+}
+.asset-info .asset-management-actions button.danger {
+  border-color: #673b43;
+  background: #301c21;
+  color: #e994a1;
+}
+.asset-management-message {
+  margin: 0;
+  padding: 8px 24px;
+  border-bottom: 1px solid #20283a;
+  color: #8fcdbb;
+  font-size: 11px;
 }
 
 /* Integrated editing workspace */
@@ -5228,6 +5264,8 @@ select:focus {
   background: #111720;
 }
 .embedded-assets-grid article > div {
+  display: grid;
+  place-items: center;
   position: relative;
   height: 95px;
 }
@@ -5274,6 +5312,8 @@ select:focus {
   min-width: 0;
 }
 .current-asset-preview {
+  display: grid;
+  place-items: center;
   height: 230px;
   margin: 12px;
   overflow: hidden;

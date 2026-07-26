@@ -10,6 +10,7 @@ type Props = {
   onNewProject: () => void;
   onOpenProject: (projectId: string) => Promise<void>;
   onNavigate: (section: WorkspaceSection) => void;
+  onAssets: () => void;
 };
 
 const formatDuration = (seconds: number) => {
@@ -25,6 +26,7 @@ export const ProjectDashboard = ({
   onNewProject,
   onOpenProject,
   onNavigate,
+  onAssets,
 }: Props) => {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState(currentProjectId);
@@ -45,9 +47,7 @@ export const ProjectDashboard = ({
   useEffect(() => {
     fetch('/api/topic-recommendations')
       .then((response) => response.json())
-      .then((value: {topics?: TopicRecommendation[]}) =>
-        setRecommendedTopics(value.topics ?? []),
-      )
+      .then((value: {topics?: TopicRecommendation[]}) => setRecommendedTopics(value.topics ?? []))
       .catch(() => setRecommendedTopics([]));
   }, []);
 
@@ -166,6 +166,9 @@ export const ProjectDashboard = ({
           <p>所有项目与素材都保存在你的本地工作区。</p>
         </div>
         <button onClick={onNewProject}>＋ 新建项目</button>
+        <button className="secondary-button" onClick={onAssets}>
+          打开素材库
+        </button>
       </header>
 
       <div className="dashboard-stats">
@@ -228,7 +231,8 @@ export const ProjectDashboard = ({
                 </div>
                 <strong>{item.title}</strong>
                 <small>
-                  {item.width < item.height ? '9:16 竖屏' : '16:9 横屏'} · {item.width}×{item.height}
+                  {item.width < item.height ? '9:16 竖屏' : '16:9 横屏'} · {item.width}×
+                  {item.height}
                 </small>
                 <em>
                   {item.sceneCount} 个镜头 · {new Date(item.updatedAt).toLocaleString('zh-CN')}
@@ -245,7 +249,9 @@ export const ProjectDashboard = ({
             </article>
           ))}
         </div>
-        {projectActionMessage ? <p className="project-action-message">{projectActionMessage}</p> : null}
+        {projectActionMessage ? (
+          <p className="project-action-message">{projectActionMessage}</p>
+        ) : null}
       </section>
 
       <section className="topic-recommendations">
@@ -321,7 +327,9 @@ export const ProjectDashboard = ({
                 <small>删除项目文件夹、文案、素材、音频和缓存</small>
               </button>
             </div>
-            <button className="cancel" onClick={() => setProjectToDelete(null)}>取消</button>
+            <button className="cancel" onClick={() => setProjectToDelete(null)}>
+              取消
+            </button>
           </section>
         </div>
       ) : null}

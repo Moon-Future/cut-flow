@@ -158,6 +158,36 @@ const activeProjectPaths = () => {
     assetLibraryFile: path.join(projectRoot, 'assets.json'),
   };
 };
+const mediaExtensions = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.gif',
+  '.svg',
+  '.mp4',
+  '.mov',
+  '.webm',
+  '.mkv',
+  '.mp3',
+  '.wav',
+  '.m4a',
+]);
+const scanMediaFiles = async (root: string, relative = ''): Promise<string[]> => {
+  const directory = path.join(root, relative);
+  const entries = await readdir(directory, {withFileTypes: true}).catch(() => []);
+  const nested = await Promise.all(
+    entries.map((entry) => {
+      const child = path.join(relative, entry.name);
+      return entry.isDirectory()
+        ? scanMediaFiles(root, child)
+        : Promise.resolve(
+            mediaExtensions.has(path.extname(entry.name).toLowerCase()) ? [child] : [],
+          );
+    }),
+  );
+  return nested.flat();
+};
 
 type RenderState = {
   status: 'idle' | 'running' | 'success' | 'error';
@@ -643,9 +673,23 @@ const localApi = (): Plugin => ({
               return;
             }
             const storedName = `${Date.now()}-${fileName}`;
-            await mkdir(assetsRoot, {recursive: true});
-            await writeFile(path.join(assetsRoot, storedName), await readBody(request));
-            sendJson(response, 200, {assetPath: `assets/${storedName}`});
+            const rawTarget = request.headers['x-target-directory'];
+            const targetHeader = Array.isArray(rawTarget) ? rawTarget[0] : rawTarget;
+            const targetDirectory = (targetHeader ? decodeURIComponent(targetHeader) : '')
+              .split(/[\\/]+/u)
+              .map((part) => part.replace(/[^\p{L}\p{N}._-]/gu, '-'))
+              .filter((part) => part && part !== '.' && part !== '..')
+              .join(path.sep);
+            const outputDirectory = path.join(assetsRoot, targetDirectory);
+            await mkdir(outputDirectory, {recursive: true});
+            await writeFile(path.join(outputDirectory, storedName), await readBody(request));
+            sendJson(response, 200, {
+              assetPath: path.posix.join(
+                'assets',
+                targetDirectory.split(path.sep).join('/'),
+                storedName,
+              ),
+            });
             return;
           }
           if (url === '/api/assets/library' && request.method === 'GET') {
@@ -752,6 +796,103 @@ const localApi = (): Plugin => ({
             library.assets.push(imported);
             await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
             sendJson(response, 201, {asset: imported});
+            return;
+          }
+          if (url === '/api/assets/scan' && request.method === 'POST') {
+            const library = await readFile(assetLibraryFile, 'utf8')
+              .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown))
+              .catch(() => assetLibrarySchema.parse({version: 1, assets: []}));
+            const knownPaths = new Set(library.assets.map((asset) => asset.path));
+            const files = await scanMediaFiles(assetsRoot);
+            const discovered = files
+              .map((file) => {
+                const assetPath = path.posix.join('assets', file.split(path.sep).join('/'));
+                if (knownPaths.has(assetPath)) return null;
+                const extension = path.extname(file).toLowerCase();
+                const type = ['.mp4', '.mov', '.webm', '.mkv'].includes(extension)
+                  ? 'video'
+                  : ['.mp3', '.wav', '.m4a'].includes(extension)
+                    ? 'audio'
+                    : 'image';
+                return assetMetadataSchema.parse({
+                  id: `asset-${randomUUID()}`,
+                  name: path.basename(file, extension),
+                  type,
+                  source: 'local',
+                  path: assetPath,
+                  license: 'user-owned',
+                  commercialUse: true,
+                  originalUrl: null,
+                  createdAt: new Date().toISOString(),
+                  keywords: path
+                    .basename(file, extension)
+                    .split(/[\s_-]+/u)
+                    .filter(Boolean),
+                });
+              })
+              .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
+            library.assets.push(...discovered);
+            await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
+            sendJson(response, 200, {added: discovered.length});
+            return;
+          }
+          if (url === '/api/assets/open-location' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              projectId?: string;
+              assetId?: string;
+            };
+            const sourceProjectId = input.projectId ?? activeProjectId;
+            if (path.basename(sourceProjectId) !== sourceProjectId) {
+              sendJson(response, 400, {error: '项目标识无效'});
+              return;
+            }
+            const library = assetLibrarySchema.parse(
+              JSON.parse(
+                await readFile(path.join(projectsRoot, sourceProjectId, 'assets.json'), 'utf8'),
+              ) as unknown,
+            );
+            const asset = library.assets.find((item) => item.id === input.assetId);
+            if (!asset) {
+              sendJson(response, 404, {error: '找不到素材'});
+              return;
+            }
+            const file = path.resolve(projectsRoot, sourceProjectId, asset.path);
+            spawn('explorer.exe', ['/select,', file], {detached: true, stdio: 'ignore'}).unref();
+            sendJson(response, 200, {opened: true});
+            return;
+          }
+          if (url === '/api/assets/delete' && request.method === 'DELETE') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              projectId?: string;
+              assetId?: string;
+              deleteFile?: boolean;
+            };
+            const sourceProjectId = input.projectId ?? activeProjectId;
+            if (path.basename(sourceProjectId) !== sourceProjectId) {
+              sendJson(response, 400, {error: '项目标识无效'});
+              return;
+            }
+            const sourceRoot = path.resolve(projectsRoot, sourceProjectId);
+            const libraryFile = path.join(sourceRoot, 'assets.json');
+            const library = assetLibrarySchema.parse(
+              JSON.parse(await readFile(libraryFile, 'utf8')) as unknown,
+            );
+            const asset = library.assets.find((item) => item.id === input.assetId);
+            if (!asset) {
+              sendJson(response, 404, {error: '找不到素材'});
+              return;
+            }
+            if (input.deleteFile) {
+              const file = path.resolve(sourceRoot, asset.path);
+              if (!file.startsWith(`${sourceRoot}${path.sep}`)) {
+                sendJson(response, 400, {error: '素材路径无效'});
+                return;
+              }
+              await rm(file, {force: true});
+            }
+            library.assets = library.assets.filter((item) => item.id !== input.assetId);
+            await writeFile(libraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
+            sendJson(response, 200, {deleted: true});
             return;
           }
           if (url === '/api/assets/library' && request.method === 'POST') {
