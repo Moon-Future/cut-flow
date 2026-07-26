@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 export type AiProviderId = 'openai' | 'deepseek' | 'doubao';
+export type VideoProviderId = 'volcengine-pippit';
 
 export type AiProviderSetting = {
   enabled: boolean;
@@ -14,6 +15,7 @@ export type AiProviderSetting = {
 
 export type AiSettings = {
   activeProvider: AiProviderId;
+  activeVideoProvider: VideoProviderId;
   providers: Record<AiProviderId, AiProviderSetting>;
   pixabay: {
     apiKey: string;
@@ -23,11 +25,13 @@ export type AiSettings = {
     accessKey: string;
     secretKey: string;
     enableWatermark: boolean;
+    defaultDuration: '～15s' | '～30s' | '40～60s';
   };
 };
 
 const defaults: AiSettings = {
   activeProvider: 'openai',
+  activeVideoProvider: 'volcengine-pippit',
   providers: {
     openai: {
       enabled: false,
@@ -59,6 +63,7 @@ const defaults: AiSettings = {
     accessKey: '',
     secretKey: '',
     enableWatermark: true,
+    defaultDuration: '～15s',
   },
 };
 
@@ -72,6 +77,7 @@ export const aiSettingsFile = () => path.join(settingsRoot(), 'ai-settings.json'
 const mergeSettings = (saved: Partial<AiSettings>): AiSettings => {
   const settings: AiSettings = {
     activeProvider: saved.activeProvider ?? defaults.activeProvider,
+    activeVideoProvider: saved.activeVideoProvider ?? defaults.activeVideoProvider,
     providers: {
       openai: {...defaults.providers.openai, ...saved.providers?.openai},
       deepseek: {...defaults.providers.deepseek, ...saved.providers?.deepseek},
@@ -125,6 +131,7 @@ export const saveAiSettings = async (
   const current = await loadAiSettings();
   const next: AiSettings = {
     activeProvider: input.activeProvider ?? current.activeProvider,
+    activeVideoProvider: input.activeVideoProvider ?? current.activeVideoProvider,
     providers: structuredClone(current.providers),
     pixabay: {
       apiKey: input.pixabay?.apiKey?.trim() || current.pixabay.apiKey,
@@ -135,6 +142,8 @@ export const saveAiSettings = async (
       secretKey: input.volcengineVideo?.secretKey?.trim() || current.volcengineVideo.secretKey,
       enableWatermark:
         input.volcengineVideo?.enableWatermark ?? current.volcengineVideo.enableWatermark,
+      defaultDuration:
+        input.volcengineVideo?.defaultDuration ?? current.volcengineVideo.defaultDuration,
     },
   };
   for (const id of ['openai', 'deepseek', 'doubao'] as const) {
@@ -160,6 +169,7 @@ export const saveAiSettings = async (
 
 export const publicAiSettings = (settings: AiSettings) => ({
   activeProvider: settings.activeProvider,
+  activeVideoProvider: settings.activeVideoProvider,
   storage: aiSettingsFile(),
   pixabay: {
     configured: Boolean(settings.pixabay.apiKey),
@@ -168,6 +178,9 @@ export const publicAiSettings = (settings: AiSettings) => ({
     enabled: settings.volcengineVideo.enabled,
     configured: Boolean(settings.volcengineVideo.accessKey && settings.volcengineVideo.secretKey),
     enableWatermark: settings.volcengineVideo.enableWatermark,
+    defaultDuration: settings.volcengineVideo.defaultDuration,
+    provider: 'volcengine-pippit' as const,
+    model: 'pippit_iv2v_cvtob',
   },
   providers: Object.fromEntries(
     Object.entries(settings.providers).map(([id, value]) => [

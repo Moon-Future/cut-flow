@@ -1013,12 +1013,20 @@ const localApi = (): Plugin => ({
             const input = JSON.parse((await readBody(request)).toString('utf8')) as {
               sceneId?: string;
               shotId?: string;
+              provider?: 'volcengine-pippit';
+              duration?: '～15s' | '～30s' | '40～60s';
+              prompt?: string;
             };
             if (!input.sceneId || !input.shotId) {
               sendJson(response, 400, {error: '缺少场景或镜头标识'});
               return;
             }
             const aiSettings = await loadAiSettings();
+            const providerChoice = input.provider ?? aiSettings.activeVideoProvider;
+            if (providerChoice !== 'volcengine-pippit') {
+              sendJson(response, 400, {error: '暂不支持所选的视频生成服务'});
+              return;
+            }
             if (
               !aiSettings.volcengineVideo.enabled ||
               !aiSettings.volcengineVideo.accessKey ||
@@ -1045,7 +1053,7 @@ const localApi = (): Plugin => ({
               outputDirectory: path.join(assetsRoot, 'generated'),
               projectRelativeDirectory: 'assets/generated',
               ratio: project.project.width < project.project.height ? '9:16' : '16:9',
-              duration: '～15s',
+              duration: input.duration ?? aiSettings.volcengineVideo.defaultDuration,
               enableWatermark: aiSettings.volcengineVideo.enableWatermark,
             });
             const task = {
@@ -1065,7 +1073,10 @@ const localApi = (): Plugin => ({
             sendJson(response, 202, {task});
 
             void provider
-              .generate(shot)
+              .generate({
+                ...shot,
+                videoPromptZh: input.prompt?.trim().slice(0, 2000) || shot.videoPromptZh,
+              })
               .then(async (candidates) => {
                 const latest = projectFileSchema.parse(
                   JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
@@ -1096,7 +1107,12 @@ const localApi = (): Plugin => ({
                     originalUrl: null,
                     createdAt: candidate.createdAt,
                     keywords: latestShot.searchQueries,
-                    duration: 15,
+                    duration:
+                      (input.duration ?? aiSettings.volcengineVideo.defaultDuration) === '～15s'
+                        ? 15
+                        : (input.duration ?? aiSettings.volcengineVideo.defaultDuration) === '～30s'
+                          ? 30
+                          : 50,
                   })),
                 );
                 await writeFile(assetLibraryFile, `${JSON.stringify(library, null, 2)}\n`, 'utf8');

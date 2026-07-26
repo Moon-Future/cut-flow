@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import type {ProjectFile, VisualShot} from '../../core/schema';
 import type {
   PixabayMediaKind,
@@ -31,6 +31,16 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     error?: string;
   } | null>(null);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
+  const [videoDefaultDuration, setVideoDefaultDuration] = useState<'～15s' | '～30s' | '40～60s'>(
+    '～15s',
+  );
+  const [videoWatermark, setVideoWatermark] = useState(true);
+  const [videoDraft, setVideoDraft] = useState<{
+    shotId: string;
+    provider: 'volcengine-pippit';
+    duration: '～15s' | '～30s' | '40～60s';
+    prompt: string;
+  } | null>(null);
   const [videoGenerationError, setVideoGenerationError] = useState<{
     shotId: string;
     message: string;
@@ -52,6 +62,27 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     const duration = Math.max(3, Math.min(8, shot.duration || 5));
     return `${aspectRatio} 竖屏电影感视频，时长约 ${duration} 秒，围绕“${subject}”完成一个有起点、变化和结果的微型镜头叙事。以对应图片作为首帧：前景核心主体、中景人物、背景环境、服装、道具位置、光线方向和色彩完全保持一致。开始 0—1 秒，镜头稳定建立场景，让观众看清主体与人物关系；1—${Math.max(2, duration - 2)} 秒，人物依次完成与旁白直接相关的自然动作，清楚表现视线、手部动作、面部情绪和身体反应，关键物体同步产生符合真实物理规律的变化；最后 1—2 秒，动作停留在最能说明观点、差异或结果的状态。镜头先保持稳定，再缓慢推近核心主体或进行小幅平滑横移，必要时轻微跟随人物动作，不大幅旋转、不突然切换场景。节奏由观察到变化再到强调结果，环境中只加入轻微且合理的动态。保持人物外貌、手指数量、服装颜色、物体结构和空间布局稳定，动作自然连贯，不新增无关人物，不让物体凭空出现或消失。使用真实电影摄影质感、清晰光影和统一色调，不要抽象特效，不要生成无法辨认的界面内容，不要文字、字幕、标志、Logo 和水印。`;
   };
+
+  useEffect(() => {
+    fetch('/api/settings/ai')
+      .then((response) => response.json())
+      .then(
+        (value: {
+          volcengineVideo?: {
+            defaultDuration?: typeof videoDefaultDuration;
+            enableWatermark?: boolean;
+          };
+        }) => {
+          if (value.volcengineVideo?.defaultDuration) {
+            setVideoDefaultDuration(value.volcengineVideo.defaultDuration);
+          }
+          if (typeof value.volcengineVideo?.enableWatermark === 'boolean') {
+            setVideoWatermark(value.volcengineVideo.enableWatermark);
+          }
+        },
+      )
+      .catch(() => undefined);
+  }, []);
 
   const searchOnline = async (
     shot: VisualShot,
@@ -121,13 +152,27 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
   };
 
   const generateVideo = async (shot: VisualShot) => {
+    const draft =
+      videoDraft?.shotId === shot.id
+        ? videoDraft
+        : {
+            provider: 'volcengine-pippit' as const,
+            duration: videoDefaultDuration,
+            prompt: shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
+          };
     setGeneratingVideoShotId(shot.id);
     setVideoGenerationError(null);
     try {
       const response = await fetch('/api/shots/image-to-video', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({sceneId: selected.id, shotId: shot.id}),
+        body: JSON.stringify({
+          sceneId: selected.id,
+          shotId: shot.id,
+          provider: draft.provider,
+          duration: draft.duration,
+          prompt: draft.prompt,
+        }),
       });
       const value = (await response.json()) as {
         task?: VisualShot['generationTask'];
@@ -441,10 +486,13 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   </div>
                 ) : null}
               </div>
-              <label>
-                <span>图片提示词（中文展示）</span>
+              <details className="prompt-editor">
+                <summary>
+                  <span>图片生成提示词</span>
+                  <small>展开查看或编辑</small>
+                </summary>
                 <textarea
-                  rows={5}
+                  rows={9}
                   value={
                     (shot.imagePromptZh?.trim().length ?? 0) >= 220
                       ? shot.imagePromptZh
@@ -453,11 +501,14 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   placeholder="描述主体、场景、构图、光线、色彩、景别、风格和画面比例"
                   onChange={(event) => updateShot(shot, {imagePromptZh: event.target.value})}
                 />
-              </label>
-              <label>
-                <span>视频提示词（中文展示）</span>
+              </details>
+              <details className="prompt-editor">
+                <summary>
+                  <span>视频生成提示词</span>
+                  <small>展开查看或编辑</small>
+                </summary>
                 <textarea
-                  rows={7}
+                  rows={11}
                   value={
                     (shot.videoPromptZh?.trim().length ?? 0) >= 260
                       ? shot.videoPromptZh
@@ -466,7 +517,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   placeholder="描述初始画面、动作顺序、场景变化、运镜、节奏、时长及一致性"
                   onChange={(event) => updateShot(shot, {videoPromptZh: event.target.value})}
                 />
-              </label>
+              </details>
               <details className="original-prompts">
                 <summary>查看英文原始提示词（实际生成使用）</summary>
                 <label>
@@ -502,6 +553,98 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   />
                 </label>
               </details>
+              <details
+                className="video-generation-panel"
+                onToggle={(event) => {
+                  if (!event.currentTarget.open || videoDraft?.shotId === shot.id) return;
+                  setVideoDraft({
+                    shotId: shot.id,
+                    provider: 'volcengine-pippit',
+                    duration: videoDefaultDuration,
+                    prompt:
+                      (shot.videoPromptZh?.trim().length ?? 0) >= 260
+                        ? shot.videoPromptZh!
+                        : fallbackVideoPromptZh(shot),
+                  });
+                }}
+              >
+                <summary>
+                  <span>
+                    <strong>AI 视频生成</strong>
+                    <small>确认模型、时长和最终提示词后手动生成</small>
+                  </span>
+                  <b>{generatingVideoShotId === shot.id ? '生成中' : '展开设置'}</b>
+                </summary>
+                {videoDraft?.shotId === shot.id ? (
+                  <div>
+                    <div className="video-generation-options">
+                      <label>
+                        <span>生成服务</span>
+                        <select
+                          value={videoDraft.provider}
+                          onChange={(event) =>
+                            setVideoDraft({
+                              ...videoDraft,
+                              provider: event.target.value as 'volcengine-pippit',
+                            })
+                          }
+                        >
+                          <option value="volcengine-pippit">火山引擎 · 小云雀智能生视频</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>目标时长</span>
+                        <select
+                          value={videoDraft.duration}
+                          onChange={(event) =>
+                            setVideoDraft({
+                              ...videoDraft,
+                              duration: event.target.value as '～15s' | '～30s' | '40～60s',
+                            })
+                          }
+                        >
+                          <option value="～15s">约 15 秒</option>
+                          <option value="～30s">约 30 秒</option>
+                          <option value="40～60s">40～60 秒</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>模型</span>
+                        <input value="pippit_iv2v_cvtob" disabled />
+                      </label>
+                    </div>
+                    <label className="final-video-prompt">
+                      <span>
+                        最终发送给视频模型的提示词
+                        <em>{videoDraft.prompt.length} / 2000</em>
+                      </span>
+                      <textarea
+                        rows={12}
+                        maxLength={2000}
+                        value={videoDraft.prompt}
+                        onChange={(event) =>
+                          setVideoDraft({...videoDraft, prompt: event.target.value})
+                        }
+                      />
+                    </label>
+                    <div className="video-generation-footer">
+                      <p>
+                        {videoWatermark ? '已开启平台明水印' : '未开启平台明水印'}；目标时长仅供
+                        Agent 匹配，最终时长可能存在偏差。
+                      </p>
+                      <button
+                        type="button"
+                        disabled={generatingVideoShotId === shot.id || !videoDraft.prompt.trim()}
+                        onClick={() => void generateVideo(shot)}
+                      >
+                        {generatingVideoShotId === shot.id
+                          ? '正在生成，请勿关闭应用…'
+                          : '确认并生成视频'}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </details>
               <div className="shot-assets">
                 {[...shot.candidates]
                   .reverse()
@@ -522,13 +665,6 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   ))}
                 <button className="add-shot-asset" onClick={onAssets}>
                   ＋ 选择素材
-                </button>
-                <button
-                  className="generate-shot-video"
-                  disabled={generatingVideoShotId === shot.id}
-                  onClick={() => void generateVideo(shot)}
-                >
-                  {generatingVideoShotId === shot.id ? '小云雀生成中…' : '小云雀生成视频'}
                 </button>
               </div>
               {shot.generationTask?.provider === 'volcengine-pippit-video' ? (

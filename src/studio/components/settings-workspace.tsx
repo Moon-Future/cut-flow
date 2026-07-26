@@ -3,6 +3,7 @@ import {useEffect, useState} from 'react';
 type ProviderId = 'openai' | 'deepseek' | 'doubao';
 type PublicSettings = {
   activeProvider: ProviderId;
+  activeVideoProvider: 'volcengine-pippit';
   storage: string;
   providers: Record<
     ProviderId,
@@ -13,6 +14,9 @@ type PublicSettings = {
     enabled: boolean;
     configured: boolean;
     enableWatermark: boolean;
+    defaultDuration: '～15s' | '～30s' | '40～60s';
+    provider: 'volcengine-pippit';
+    model: string;
   };
 };
 type StorageSettings = {
@@ -88,6 +92,7 @@ export const SettingsWorkspace = () => {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           activeProvider: settings.activeProvider,
+          activeVideoProvider: settings.activeVideoProvider,
           providers: Object.fromEntries(
             (Object.keys(settings.providers) as ProviderId[]).map((id) => [
               id,
@@ -190,6 +195,12 @@ export const SettingsWorkspace = () => {
       </div>
 
       <div className="provider-settings-list">
+        <div className="settings-group-heading">
+          <div>
+            <strong>文案生成服务</strong>
+            <p>选择默认大语言模型，用于文案、脚本和分镜内容生成。</p>
+          </div>
+        </div>
         {(Object.keys(providerMeta) as ProviderId[]).map((id) => {
           const provider = settings.providers[id];
           return (
@@ -267,6 +278,12 @@ export const SettingsWorkspace = () => {
             </article>
           );
         })}
+        <div className="settings-group-heading">
+          <div>
+            <strong>在线素材服务</strong>
+            <p>配置图片和视频素材库，仅在用户主动搜索时调用。</p>
+          </div>
+        </div>
         <article className={settings.pixabay.configured ? 'enabled' : ''}>
           <header>
             <div>
@@ -290,6 +307,12 @@ export const SettingsWorkspace = () => {
             </label>
           </div>
         </article>
+        <div className="settings-group-heading">
+          <div>
+            <strong>视频生成服务</strong>
+            <p>独立选择视频模型；以后新增其他服务时可在这里切换默认模型。</p>
+          </div>
+        </div>
         <article
           className={
             settings.volcengineVideo.enabled && settings.volcengineVideo.configured ? 'enabled' : ''
@@ -309,6 +332,29 @@ export const SettingsWorkspace = () => {
             </span>
           </header>
           <div className="provider-form">
+            <label>
+              <span>服务 / 模型</span>
+              <input value="小云雀 · pippit_iv2v_cvtob" disabled />
+            </label>
+            <label>
+              <span>默认生成时长</span>
+              <select
+                value={settings.volcengineVideo.defaultDuration}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    volcengineVideo: {
+                      ...settings.volcengineVideo,
+                      defaultDuration: event.target.value as '～15s' | '～30s' | '40～60s',
+                    },
+                  })
+                }
+              >
+                <option value="～15s">约 15 秒</option>
+                <option value="～30s">约 30 秒</option>
+                <option value="40～60s">40～60 秒</option>
+              </select>
+            </label>
             <label>
               <span>Access Key（AK）</span>
               <input
@@ -344,6 +390,15 @@ export const SettingsWorkspace = () => {
               />
             </label>
           </div>
+          <label className="default-provider">
+            <input
+              type="radio"
+              name="active-video-provider"
+              checked={settings.activeVideoProvider === 'volcengine-pippit'}
+              onChange={() => setSettings({...settings, activeVideoProvider: 'volcengine-pippit'})}
+            />
+            设为默认视频生成服务
+          </label>
           <label className="default-provider">
             <input
               type="checkbox"
