@@ -111,8 +111,15 @@ export const GenerationPanel = ({
       const value = (await response.json()) as {
         project?: ProjectFile;
         cacheHit?: boolean;
+        debugPrompt?: {system: string; user: string};
         error?: string;
       };
+      if (value.debugPrompt) {
+        console.groupCollapsed(`[CutFlow AI] 最终 Prompt · ${provider}`);
+        console.log('System Prompt:\n', value.debugPrompt.system);
+        console.log('User Prompt:\n', value.debugPrompt.user);
+        console.groupEnd();
+      }
       if (!response.ok || !value.project) throw new Error(value.error ?? '生成失败');
       onGenerated(value.project);
       setStatus('success');

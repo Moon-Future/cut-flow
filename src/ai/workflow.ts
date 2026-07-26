@@ -13,7 +13,12 @@ export type WorkflowInput = GenerateInput & {
   provider: 'mock' | AiProviderId;
   forceRegenerate?: boolean;
 };
-export type WorkflowResult = {project: ProjectFile; cacheHit: boolean; provider: string};
+export type WorkflowResult = {
+  project: ProjectFile;
+  cacheHit: boolean;
+  provider: string;
+  debugPrompt?: {system: string; user: string};
+};
 
 const cacheKey = (input: WorkflowInput): string =>
   createHash('sha256')
@@ -24,6 +29,7 @@ const cacheKey = (input: WorkflowInput): string =>
 const providersFor = (
   input: WorkflowInput,
   providerSetting?: AiProviderSetting,
+  onPrompt?: (prompt: {system: string; user: string}) => void,
 ): ProviderSet => {
   if (input.provider === 'mock') return createMockProviders(Math.max(10, input.targetWordCount / 4));
   const apiKey =
@@ -39,6 +45,7 @@ const providersFor = (
     transcriptionModel: process.env.OPENAI_TRANSCRIPTION_MODEL,
     apiMode: input.provider === 'openai' ? 'responses' : 'chat-completions',
     disableThinking: input.provider === 'deepseek',
+    onPrompt,
   });
   if (input.provider === 'openai') return remote;
   const localAudio = createMockProviders(Math.max(10, input.targetWordCount / 4));
@@ -72,7 +79,10 @@ export const runGenerationWorkflow = async (
   projectRoot: string,
   providerSetting?: AiProviderSetting,
 ): Promise<WorkflowResult> => {
-  const providers = providersFor(input, providerSetting);
+  let debugPrompt: {system: string; user: string} | undefined;
+  const providers = providersFor(input, providerSetting, (prompt) => {
+    debugPrompt = prompt;
+  });
   const cacheRoot = path.join(projectRoot, 'cache');
   await mkdir(cacheRoot, {recursive: true});
 
@@ -170,5 +180,6 @@ export const runGenerationWorkflow = async (
     },
     cacheHit,
     provider: input.provider,
+    debugPrompt,
   };
 };

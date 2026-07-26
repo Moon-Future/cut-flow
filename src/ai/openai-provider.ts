@@ -17,6 +17,7 @@ export type OpenAIConfig = {
   transcriptionModel?: string;
   apiMode?: 'responses' | 'chat-completions';
   disableThinking?: boolean;
+  onPrompt?: (prompt: {system: string; user: string}) => void;
 };
 
 const request = async (url: string, apiKey: string, init: RequestInit): Promise<Response> => {
@@ -133,6 +134,12 @@ JSON 输出格式示例：
   ],
   "ending": "示例结尾"
 }`;
+      config.onPrompt?.({
+        system: useChatCompletions
+          ? jsonSystemPrompt
+          : '使用 Responses API 的 video_script 严格 JSON Schema 生成视频文案。',
+        user: prompt,
+      });
       const response = await request(`${config.baseUrl ?? 'https://api.openai.com/v1'}/${useChatCompletions ? 'chat/completions' : 'responses'}`, config.apiKey, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
