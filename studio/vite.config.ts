@@ -1470,6 +1470,32 @@ const localApi = (): Plugin => ({
             sendJson(response, 200, {shot});
             return;
           }
+          if (url === '/api/shots/clear-selection' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              shotId?: string;
+            };
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const shot = project.scenes
+              .find((scene) => scene.id === input.sceneId)
+              ?.shots?.find((item) => item.id === input.shotId);
+            if (!shot) {
+              sendJson(response, 404, {error: '找不到指定的分镜'});
+              return;
+            }
+            shot.selectedAsset = null;
+            shot.selectionCleared = true;
+            shot.sourceStart = 0;
+            shot.sourceEnd = undefined;
+            shot.status = 'missing-asset';
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 200, {shot});
+            return;
+          }
           if (url === '/api/render' && request.method === 'POST') {
             if (renderProcess) {
               sendJson(response, 409, {error: '已有导出任务正在运行'});

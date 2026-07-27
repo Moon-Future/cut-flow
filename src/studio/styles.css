@@ -5227,6 +5227,36 @@ select:focus {
   text-align: center;
   text-shadow: 0 2px 6px #000;
 }
+.storyboard-purpose-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px;
+  padding: 10px 12px;
+  border: 1px solid #2c3b4c;
+  border-radius: 8px;
+  background: #111a24;
+}
+.storyboard-purpose-note strong {
+  flex: 0 0 auto;
+  color: #bfaaf0;
+}
+.storyboard-purpose-note span,
+.board-preview-note {
+  color: #77879b;
+  line-height: 1.55;
+}
+.board-preview-note {
+  margin: 0;
+  padding: 0 12px 12px;
+}
+@media (max-width: 760px) {
+  .storyboard-purpose-note {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
 .board-stats dl,
 .asset-detail dl {
   display: grid;

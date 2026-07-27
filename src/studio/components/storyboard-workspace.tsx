@@ -344,14 +344,22 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
       updateScene(selected.id, {assetPath: candidate.path, assetType: 'video'});
     }
   };
-  const clearSelectedAsset = (shot: VisualShot) => {
-    updateShot(shot, {
-      selectedAsset: null,
-      selectionCleared: true,
-      sourceStart: 0,
-      sourceEnd: undefined,
-      status: 'missing-asset',
+  const clearSelectedAsset = async (shot: VisualShot) => {
+    setVideoGenerationError(null);
+    const response = await fetch('/api/shots/clear-selection', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sceneId: selected.id, shotId: shot.id}),
     });
+    const value = (await response.json()) as {shot?: VisualShot; error?: string};
+    if (!response.ok || !value.shot) {
+      setVideoGenerationError({
+        shotId: shot.id,
+        message: value.error ?? '移除已选素材失败',
+      });
+      return;
+    }
+    syncVisualShot(selected.id, shot.id, value.shot);
   };
 
   return (
@@ -403,6 +411,12 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
           </div>
           <button onClick={onAssets}>打开素材库</button>
         </header>
+        <div className="storyboard-purpose-note">
+          <strong>这里负责准备和初选分镜素材</strong>
+          <span>
+            定义画面、搜索或生成候选并选出镜头素材；素材页面负责集中管理和跨镜头复用，剪辑页面负责最终时间线。
+          </span>
+        </div>
         <div className="board-copy">
           <label>
             <span>旁白文案</span>
@@ -955,7 +969,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   <button
                     className="clear-shot-asset"
                     type="button"
-                    onClick={() => clearSelectedAsset(shot)}
+                    onClick={() => void clearSelectedAsset(shot)}
                     title="只解除当前镜头引用，不删除素材库文件"
                   >
                     移除已选素材
@@ -1028,7 +1042,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
       <aside className="board-preview">
         <section className="stage-panel">
           <header>
-            <strong>画面预览</strong>
+            <strong>段落兜底画面</strong>
             <span>{project.project.width < project.project.height ? '9:16' : '16:9'}</span>
           </header>
           <div className="board-media-preview">
@@ -1039,6 +1053,9 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
             )}
             <strong>{selected.caption}</strong>
           </div>
+          <p className="board-preview-note">
+            这里显示段落级兜底画面，不代表每个分镜都已选素材；分镜是否就绪请以中间镜头卡片为准。
+          </p>
         </section>
         <section className="stage-panel board-stats">
           <header>
