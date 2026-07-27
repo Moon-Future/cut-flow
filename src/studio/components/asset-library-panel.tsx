@@ -27,6 +27,7 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
   const [uploading, setUploading] = useState(false);
   const [targetDirectory, setTargetDirectory] = useState('imported');
   const [message, setMessage] = useState('');
+  const [previewAsset, setPreviewAsset] = useState<AssetMetadata | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -252,8 +253,10 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
         <div className="asset-grid">
           {visible.map((asset) => (
             <article key={asset.id} className="asset-card">
-              <div
+              <button
+                type="button"
                 className="asset-preview"
+                onClick={() => setPreviewAsset(asset)}
                 style={{
                   aspectRatio:
                     asset.width && asset.height ? `${asset.width} / ${asset.height}` : undefined,
@@ -265,7 +268,8 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
                   <video src={`/${asset.projectId ?? projectId}/${asset.path}`} muted />
                 )}
                 <span>{asset.type === 'image' ? 'IMG' : 'VIDEO'}</span>
-              </div>
+                <b>{asset.type === 'video' ? '▶ 点击播放' : '点击放大'}</b>
+              </button>
               <div className="asset-info">
                 <strong>{asset.name}</strong>
                 <p>{asset.keywords.slice(0, 3).join(' · ') || '暂无关键词'}</p>
@@ -300,6 +304,40 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
           ))}
         </div>
       </section>
+      {previewAsset ? (
+        <div
+          className="media-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={previewAsset.name}
+        >
+          <button
+            className="media-lightbox-backdrop"
+            onClick={() => setPreviewAsset(null)}
+            aria-label="关闭素材预览"
+          />
+          <section>
+            <header>
+              <strong>{previewAsset.name}</strong>
+              <button onClick={() => setPreviewAsset(null)} aria-label="关闭素材预览">
+                ×
+              </button>
+            </header>
+            {previewAsset.type === 'video' ? (
+              <video
+                src={`/${previewAsset.projectId ?? projectId}/${previewAsset.path}`}
+                controls
+                autoPlay
+              />
+            ) : (
+              <img
+                src={`/${previewAsset.projectId ?? projectId}/${previewAsset.path}`}
+                alt={previewAsset.name}
+              />
+            )}
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 };

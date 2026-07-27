@@ -104,11 +104,31 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
     shotId: string;
     message: string;
   } | null>(null);
+  const [selectedVideoCandidateId, setSelectedVideoCandidateId] = useState<string | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<{
+    kind: 'image' | 'video';
+    src: string;
+    title: string;
+  } | null>(null);
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
   const selectedIndex = project.scenes.findIndex((scene) => scene.id === selected.id);
   const updateShot = (shot: VisualShot, patch: Partial<VisualShot>) =>
     updateVisualShot(selected.id, shot.id, patch);
+  const applyCandidate = (shot: VisualShot, candidate: VisualShot['candidates'][number]) => {
+    updateShot(shot, {
+      selectedAsset: candidate.path,
+      status: 'ready',
+      generationTask:
+        shot.generationTask?.status === 'needs-selection'
+          ? {...shot.generationTask, status: 'succeeded', completedAt: candidate.createdAt}
+          : shot.generationTask,
+    });
+    updateScene(selected.id, {
+      assetPath: candidate.path,
+      assetType: candidate.kind,
+    });
+  };
   const aspectRatio = project.project.width < project.project.height ? '9:16' : '16:9';
   const chineseSceneDescription =
     selected.visualIntent || selected.caption || '围绕当前主题设计的具体可见场景';
@@ -381,9 +401,9 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
           <button onClick={() => onAssets()}>打开素材库</button>
         </header>
         <div className="storyboard-purpose-note">
-          <strong>这里负责设计分镜和准备候选素材</strong>
+          <strong>这里负责设计分镜、准备候选并确认镜头素材</strong>
           <span>
-            定义画面、搜索或生成候选；素材的选用、替换和移除统一在素材页面完成，剪辑页面负责最终时间线。
+            可以在当前页搜索、生成并选用镜头素材；需要批量整理、替换或移除时，再进入素材页面处理。
           </span>
         </div>
         <div className="board-copy">
@@ -559,7 +579,23 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
                       <div className="pixabay-grid">
                         {onlineSearch.results.map((result) => (
                           <article className="pixabay-card" key={`${result.kind}-${result.id}`}>
-                            <img src={result.previewUrl} alt={`${result.author} 的素材预览`} />
+                            <button
+                              type="button"
+                              className="online-preview-button"
+                              onClick={() =>
+                                setMediaPreview({
+                                  kind: result.kind,
+                                  src:
+                                    result.kind === 'video'
+                                      ? result.downloadUrl
+                                      : result.previewUrl,
+                                  title: `${result.author} 的素材`,
+                                })
+                              }
+                            >
+                              <img src={result.previewUrl} alt={`${result.author} 的素材预览`} />
+                              <span>{result.kind === 'video' ? '▶ 点击播放' : '点击放大'}</span>
+                            </button>
                             <div>
                               <strong>
                                 {result.kind === 'image' ? '图片' : '视频'} · {result.width}×
@@ -907,6 +943,96 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
                     </div>
                   </div>
                 ) : null}
+                <section className="generated-video-library">
+                  <header>
+                    <div>
+                      <strong>已生成视频</strong>
+                      <span>
+                        {shot.candidates.filter((candidate) => candidate.kind === 'video').length}{' '}
+                        个结果
+                      </span>
+                    </div>
+                    <small>点击结果查看生成时间、模型和任务状态</small>
+                  </header>
+                  <div className="generated-video-grid">
+                    {[...shot.candidates]
+                      .filter((candidate) => candidate.kind === 'video')
+                      .reverse()
+                      .map((candidate) => (
+                        <button
+                          type="button"
+                          key={candidate.id}
+                          className={selectedVideoCandidateId === candidate.id ? 'active' : ''}
+                          onClick={() => setSelectedVideoCandidateId(candidate.id)}
+                        >
+                          <video
+                            src={mediaUrl(projectId, candidate.path)}
+                            muted
+                            preload="metadata"
+                          />
+                          <span>
+                            <strong>{candidate.model}</strong>
+                            <small>{formatTaskTime(candidate.createdAt)}</small>
+                          </span>
+                          {candidate.path === shot.selectedAsset ? <b>已选用</b> : null}
+                        </button>
+                      ))}
+                  </div>
+                  {shot.candidates.some(
+                    (candidate) =>
+                      candidate.kind === 'video' && candidate.id === selectedVideoCandidateId,
+                  ) ? (
+                    <article className="generated-video-detail">
+                      {(() => {
+                        const candidate = shot.candidates.find(
+                          (item) => item.kind === 'video' && item.id === selectedVideoCandidateId,
+                        );
+                        if (!candidate) return null;
+                        return (
+                          <>
+                            <video src={mediaUrl(projectId, candidate.path)} controls autoPlay />
+                            <dl>
+                              <div>
+                                <dt>生成时间</dt>
+                                <dd>{formatTaskTime(candidate.createdAt)}</dd>
+                              </div>
+                              <div>
+                                <dt>任务状态</dt>
+                                <dd>
+                                  {candidate.path === shot.selectedAsset ? '已选用' : '生成完成'}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>服务 / 模型</dt>
+                                <dd>
+                                  {candidate.provider} / {candidate.model}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>视频时长</dt>
+                                <dd>{candidate.duration ? `${candidate.duration} 秒` : '—'}</dd>
+                              </div>
+                            </dl>
+                            <p>{candidate.prompt}</p>
+                            <button
+                              type="button"
+                              className="primary-button"
+                              onClick={() => applyCandidate(shot, candidate)}
+                            >
+                              {candidate.path === shot.selectedAsset
+                                ? '当前已选用'
+                                : '选用为当前镜头素材'}
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </article>
+                  ) : shot.candidates.some((candidate) => candidate.kind === 'video') ? (
+                    <p className="shot-generation-empty">请选择一个视频查看生成详情</p>
+                  ) : (
+                    <p className="shot-generation-empty">当前还没有 AI 视频生成结果</p>
+                  )}
+                </section>
               </details>
               {shot.generationTask?.provider === 'volcengine-pippit-video' ? (
                 <details
@@ -967,30 +1093,15 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
               ) : null}
               <div className="shot-assets">
                 <div className="shot-assets-heading">
-                  <strong>AI 视频生成结果</strong>
-                  <span>这里展示生成结果；素材的选用与移除统一到素材页面处理</span>
+                  <strong>镜头素材</strong>
+                  <span>
+                    {shot.selectedAsset
+                      ? '当前镜头已有选用素材，可继续更换'
+                      : '可以在上方选用生成结果，或前往素材页面查找更多素材'}
+                  </span>
                 </div>
-                {[...shot.candidates]
-                  .filter((candidate) => candidate.kind === 'video')
-                  .reverse()
-                  .slice(0, 3)
-                  .map((candidate) => (
-                    <article
-                      className={`shot-candidate ${candidate.path === shot.selectedAsset ? 'selected' : ''}`}
-                      key={candidate.id}
-                    >
-                      <video src={mediaUrl(projectId, candidate.path)} controls />
-                      <span>
-                        {candidate.provider}
-                        {candidate.duration ? ` · ${candidate.duration} 秒` : ''}
-                      </span>
-                    </article>
-                  ))}
-                {!shot.candidates.some((candidate) => candidate.kind === 'video') ? (
-                  <p className="shot-generation-empty">当前还没有 AI 视频生成结果</p>
-                ) : null}
                 <button className="add-shot-asset" onClick={() => onGoToAssets(shot.id)}>
-                  前往素材页面选择
+                  打开素材页面选择更多
                 </button>
               </div>
               {videoGenerationError?.shotId === shot.id ? (
@@ -1051,6 +1162,33 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
           </dl>
         </section>
       </aside>
+      {mediaPreview ? (
+        <div
+          className="media-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={mediaPreview.title}
+        >
+          <button
+            className="media-lightbox-backdrop"
+            onClick={() => setMediaPreview(null)}
+            aria-label="关闭素材预览"
+          />
+          <section>
+            <header>
+              <strong>{mediaPreview.title}</strong>
+              <button onClick={() => setMediaPreview(null)} aria-label="关闭素材预览">
+                ×
+              </button>
+            </header>
+            {mediaPreview.kind === 'video' ? (
+              <video src={mediaPreview.src} controls autoPlay />
+            ) : (
+              <img src={mediaPreview.src} alt={mediaPreview.title} />
+            )}
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 };
