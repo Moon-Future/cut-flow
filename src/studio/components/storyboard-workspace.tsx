@@ -537,11 +537,15 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                   <div className="online-material-search-actions">
                     <button
                       type="button"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
                         const panel = event.currentTarget.closest('details');
-                        if (panel) panel.open = true;
+                        if (panel && !panel.open) panel.open = true;
                         void searchOnline(shot, 'image');
                       }}
                     >
@@ -549,11 +553,15 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     </button>
                     <button
                       type="button"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
                         const panel = event.currentTarget.closest('details');
-                        if (panel) panel.open = true;
+                        if (panel && !panel.open) panel.open = true;
                         void searchOnline(shot, 'video');
                       }}
                     >
