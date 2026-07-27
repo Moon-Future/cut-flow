@@ -33,20 +33,6 @@ const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]>
   settings: ['设置', '配置本机 AI 服务与密钥'],
 };
 
-const previousSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
-  content: 'overview',
-  storyboard: 'content',
-  assets: 'storyboard',
-  voice: 'assets',
-  export: 'edit',
-};
-const nextSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
-  content: 'storyboard',
-  storyboard: 'assets',
-  assets: 'voice',
-  voice: 'edit',
-};
-
 export const ProjectStage = ({
   section,
   project,
@@ -69,27 +55,8 @@ export const ProjectStage = ({
       {section !== 'overview' && section !== 'settings' ? (
         <header className="stage-heading">
           <div>
-            <span className="eyebrow">CUT FLOW WORKSPACE</span>
             <h1>{title}</h1>
             <p>{description}</p>
-          </div>
-          <div className="stage-heading-actions">
-            {previousSection[section] ? (
-              <button
-                className="secondary-button"
-                onClick={() => onNavigate(previousSection[section]!)}
-              >
-                ← 上一步
-              </button>
-            ) : null}
-            {section !== 'export' ? (
-              <button
-                className="primary-button"
-                onClick={() => onNavigate(nextSection[section] ?? 'overview')}
-              >
-                下一步 →
-              </button>
-            ) : null}
           </div>
         </header>
       ) : null}

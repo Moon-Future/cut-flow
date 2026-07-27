@@ -2328,13 +2328,51 @@ select:focus {
   overflow: auto;
 }
 .workbench-mode .project-stage {
-  padding: 18px clamp(18px, 3vw, 42px) 32px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
 }
 .workbench-mode .stage-heading {
-  margin-bottom: 16px;
+  min-height: 38px;
+  margin: 0;
+  padding: 4px 10px 8px;
+  border-bottom: 1px solid #1e2533;
 }
 .workbench-mode .stage-heading h1 {
-  font-size: 24px;
+  display: inline;
+  margin: 0;
+  font-size: 13px;
+}
+.workbench-mode .stage-heading p {
+  display: inline;
+  margin-left: 9px;
+  font-size: 10px;
+}
+.workbench-mode :is(.content-studio, .storyboard-studio, .voice-studio, .assets-studio) {
+  height: 100%;
+  min-height: 0;
+  padding-top: 10px;
+}
+.workbench-mode
+  :is(
+    .copy-config,
+    .copy-editor,
+    .copy-analysis,
+    .board-scene-list,
+    .board-editor,
+    .board-preview,
+    .voice-config,
+    .voice-editor,
+    .voice-preview,
+    .asset-scene-map,
+    .asset-browser,
+    .asset-detail
+  ) {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .stage-heading {
   display: flex;
