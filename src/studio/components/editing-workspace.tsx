@@ -105,6 +105,8 @@ export const EditingWorkspace = ({
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [timelineZoom, setTimelineZoom] = useState(1);
   const [currentFrame, setCurrentFrame] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [trackMenuOpen, setTrackMenuOpen] = useState(false);
   const [lockedTracks, setLockedTracks] = useState<string[]>([]);
   const [mutedTracks, setMutedTracks] = useState<string[]>([]);
   const [trimPreview, setTrimPreview] = useState<Record<string, number>>({});
@@ -173,7 +175,7 @@ export const EditingWorkspace = ({
 
   useEffect(() => {
     const player = playerRef.current;
-    if (!player || section !== 'edit') return;
+    if (!player || !showWorkbench) return;
     const handleFrameUpdate = (event: {detail: {frame: number}}) => {
       setCurrentFrame(event.detail.frame);
       const activeItem = timeline.scenes.find(
@@ -184,10 +186,21 @@ export const EditingWorkspace = ({
         selectScene(activeItem.scene.id);
       }
     };
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
     player.addEventListener('frameupdate', handleFrameUpdate);
+    player.addEventListener('play', handlePlay);
+    player.addEventListener('pause', handlePause);
+    player.addEventListener('ended', handlePause);
     setCurrentFrame(player.getCurrentFrame());
-    return () => player.removeEventListener('frameupdate', handleFrameUpdate);
-  }, [section, selectScene, timeline.scenes]);
+    setIsPlaying(player.isPlaying());
+    return () => {
+      player.removeEventListener('frameupdate', handleFrameUpdate);
+      player.removeEventListener('play', handlePlay);
+      player.removeEventListener('pause', handlePause);
+      player.removeEventListener('ended', handlePause);
+    };
+  }, [section, selectScene, showWorkbench, timeline.scenes]);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -205,7 +218,7 @@ export const EditingWorkspace = ({
         event.preventDefault();
         if (!lockedTracks.includes('video')) deleteScene(scene.id);
       }
-      if (event.code === 'Space' && section === 'edit') {
+      if (event.code === 'Space' && showWorkbench) {
         event.preventDefault();
         playerRef.current?.toggle();
       }
@@ -227,6 +240,7 @@ export const EditingWorkspace = ({
     project.scenes.length,
     scene.id,
     section,
+    showWorkbench,
     splitAtSeconds,
     splitScene,
     timeline.durationInFrames,
@@ -760,6 +774,22 @@ export const EditingWorkspace = ({
               </div>
               <header className="timeline-toolbar">
                 <strong>时间线</strong>
+                <button
+                  className="timeline-play"
+                  onClick={() => playerRef.current?.toggle()}
+                  aria-label={isPlaying ? '暂停时间线' : '播放时间线'}
+                >
+                  {isPlaying ? 'Ⅱ 暂停' : '▶ 播放'}
+                </button>
+                <button
+                  onClick={() => {
+                    playerRef.current?.pause();
+                    seekTimeline(0);
+                  }}
+                  aria-label="回到时间线开头"
+                >
+                  ■ 回到开头
+                </button>
                 <button disabled>↶ 撤销</button>
                 <button disabled>↷ 重做</button>
                 <button
@@ -783,6 +813,46 @@ export const EditingWorkspace = ({
                 </button>
                 <button disabled>◖ 静音</button>
                 <button disabled>⌘ 添加转场</button>
+                <span className="add-track-control">
+                  <button
+                    className={trackMenuOpen ? 'active' : ''}
+                    onClick={() => setTrackMenuOpen((open) => !open)}
+                    aria-expanded={trackMenuOpen}
+                  >
+                    ＋ 添加轨道
+                  </button>
+                  {trackMenuOpen ? (
+                    <span className="add-track-menu">
+                      <button
+                        onClick={() => {
+                          setTrackMenuOpen(false);
+                          onNavigate('content');
+                        }}
+                      >
+                        字幕轨道
+                        <small>从文案段落生成字幕</small>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTrackMenuOpen(false);
+                          onNavigate('voice');
+                        }}
+                      >
+                        配音轨道
+                        <small>生成或导入旁白</small>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTrackMenuOpen(false);
+                          onAssets();
+                        }}
+                      >
+                        音乐/音效轨道
+                        <small>从素材库导入音频</small>
+                      </button>
+                    </span>
+                  ) : null}
+                </span>
                 <output className="timeline-time">
                   {(currentFrame / project.project.fps).toFixed(1)}s / {totalSeconds.toFixed(1)}s
                 </output>
@@ -827,7 +897,7 @@ export const EditingWorkspace = ({
               </div>
               <div className="track-row video-track" style={{width: timelineCanvasWidth}}>
                 <strong>
-                  <span>▣ 视频轨道</span>
+                  <span>视频轨道</span>
                   <button
                     className={lockedTracks.includes('video') ? 'active' : ''}
                     onClick={() => toggleTrackState('video', setLockedTracks)}
@@ -877,7 +947,7 @@ export const EditingWorkspace = ({
               </div>
               <div className="track-row caption-track" style={{width: timelineCanvasWidth}}>
                 <strong>
-                  <span>Ｔ 字幕轨道</span>
+                  <span>字幕轨道</span>
                   <button
                     className={lockedTracks.includes('caption') ? 'active' : ''}
                     onClick={() => toggleTrackState('caption', setLockedTracks)}
@@ -903,7 +973,7 @@ export const EditingWorkspace = ({
               </div>
               <div className="track-row audio-track" style={{width: timelineCanvasWidth}}>
                 <strong>
-                  <span>◉ 配音轨道</span>
+                  <span>配音轨道</span>
                   <button
                     className={mutedTracks.includes('audio') ? 'active' : ''}
                     onClick={() => toggleTrackState('audio', setMutedTracks)}
@@ -918,7 +988,7 @@ export const EditingWorkspace = ({
               </div>
               <div className="track-row music-track" style={{width: timelineCanvasWidth}}>
                 <strong>
-                  <span>♫ 背景音乐</span>
+                  <span>背景音乐</span>
                   <button
                     className={mutedTracks.includes('music') ? 'active' : ''}
                     onClick={() => toggleTrackState('music', setMutedTracks)}
@@ -962,6 +1032,25 @@ export const EditingWorkspace = ({
             audioAvailable={audioAvailable}
           />
         )}
+        {showWorkbench && section !== 'edit' ? (
+          <div className="playback-engine" aria-hidden="true">
+            <Player
+              ref={playerRef}
+              component={VideoComposition}
+              inputProps={{
+                project: playerProject,
+                narrationAvailable: audioAvailable && !mutedTracks.includes('audio'),
+                assetBasePath: projectId,
+              }}
+              durationInFrames={timeline.durationInFrames}
+              compositionWidth={project.project.width}
+              compositionHeight={project.project.height}
+              fps={project.project.fps}
+              controls={false}
+              style={{width: 1, height: 1}}
+            />
+          </div>
+        ) : null}
         <div className={`render-toast ${renderState.status}`}>{renderState.message}</div>
       </main>
     </div>

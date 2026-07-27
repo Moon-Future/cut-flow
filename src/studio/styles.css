@@ -2085,6 +2085,8 @@ select:focus {
   position: relative;
   min-height: 150px;
   overflow: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .timeline-resize-handle {
   position: absolute;
@@ -2120,6 +2122,7 @@ select:focus {
   align-items: center;
   padding: 0 12px;
   border-bottom: 1px solid #202737;
+  overflow: visible;
 }
 .timeline-toolbar > strong {
   margin-right: 6px;
@@ -2184,6 +2187,46 @@ select:focus {
   opacity: 0.35;
   cursor: not-allowed;
 }
+.timeline-toolbar .timeline-play {
+  border-radius: 5px;
+  background: #7851d6;
+  color: #fff;
+}
+.add-track-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+.add-track-control > button.active {
+  color: #cebaff;
+}
+.add-track-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  left: 0;
+  width: 210px;
+  display: grid;
+  padding: 6px;
+  border: 1px solid #303a4d;
+  border-radius: 8px;
+  background: #111720;
+  box-shadow: 0 14px 35px #0009;
+}
+.add-track-menu button {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  text-align: left;
+}
+.add-track-menu button:hover {
+  background: #211a35;
+  color: #d8c9f8;
+}
+.add-track-menu small {
+  color: #6f7a8d;
+  font-size: 9px;
+}
 .timeline-ruler,
 .track-row {
   min-width: 900px;
@@ -2217,6 +2260,13 @@ select:focus {
   font-size: clamp(12px, 0.78vw, 14px);
   font-weight: 600;
   white-space: nowrap;
+}
+.track-row > strong > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 .track-row > strong button {
   flex: 0 0 auto;
@@ -2352,6 +2402,16 @@ select:focus {
   bottom: 0;
   width: 1px;
   background: #ececf4;
+  pointer-events: none;
+}
+.playback-engine {
+  position: fixed;
+  top: -4px;
+  left: -4px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
   pointer-events: none;
 }
 .playhead:before {
