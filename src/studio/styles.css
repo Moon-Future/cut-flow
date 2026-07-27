@@ -2279,6 +2279,35 @@ select:focus {
   background: #080b11bb;
   font-size: 8px;
 }
+.video-track .trim-handle {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: transparent;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.video-track .trim-handle::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+}
+.video-track .trim-end {
+  right: 0;
+}
+.video-track .trim-end::after {
+  right: 2px;
+}
+.video-track button:hover .trim-handle::after,
+.video-track button.selected .trim-handle::after {
+  background: #d2c0ff;
+}
 .caption-track button {
   padding: 5px 8px;
   overflow: hidden;

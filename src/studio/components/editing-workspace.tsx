@@ -1,4 +1,12 @@
-import {useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction} from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type PointerEvent as ReactPointerEvent,
+  type SetStateAction,
+} from 'react';
 import {Player, type PlayerRef} from '@remotion/player';
 import type {AssetLibrary, AssetMetadata} from '../../media/asset-library';
 import type {ProjectFile, Scene} from '../../core/schema';
@@ -99,7 +107,14 @@ export const EditingWorkspace = ({
   const [currentFrame, setCurrentFrame] = useState(0);
   const [lockedTracks, setLockedTracks] = useState<string[]>([]);
   const [mutedTracks, setMutedTracks] = useState<string[]>([]);
+  const [trimPreview, setTrimPreview] = useState<Record<string, number>>({});
   const timelineResizeStart = useRef<{pointerY: number; height: number} | null>(null);
+  const trimResizeStart = useRef<{
+    sceneId: string;
+    pointerX: number;
+    duration: number;
+    pixelsPerSecond: number;
+  } | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const timeline = useMemo(() => buildTimeline(project), [project]);
   const selectedIndex = Math.max(
@@ -194,6 +209,11 @@ export const EditingWorkspace = ({
         event.preventDefault();
         playerRef.current?.toggle();
       }
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        const step = event.shiftKey ? project.project.fps : 1;
+        seekTimeline(currentFrame + (event.key === 'ArrowRight' ? step : -step));
+      }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
@@ -202,11 +222,14 @@ export const EditingWorkspace = ({
     deleteScene,
     duplicateScene,
     lockedTracks,
+    currentFrame,
+    project.project.fps,
     project.scenes.length,
     scene.id,
     section,
     splitAtSeconds,
     splitScene,
+    timeline.durationInFrames,
   ]);
 
   useEffect(() => {
@@ -256,6 +279,46 @@ export const EditingWorkspace = ({
       (entry) => nextFrame >= entry.from && nextFrame < entry.from + entry.durationInFrames,
     );
     if (item) selectScene(item.scene.id);
+  };
+  const beginTrim = (event: ReactPointerEvent<HTMLElement>, item: Scene) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    trimResizeStart.current = {
+      sceneId: item.id,
+      pointerX: event.clientX,
+      duration: item.duration,
+      pixelsPerSecond: Math.max(1, (timelineCanvasWidth - 124) / Math.max(0.1, totalSeconds)),
+    };
+  };
+  const previewTrim = (event: ReactPointerEvent<HTMLElement>) => {
+    const start = trimResizeStart.current;
+    if (!start) return;
+    const duration = Math.max(
+      0.1,
+      Math.min(300, start.duration + (event.clientX - start.pointerX) / start.pixelsPerSecond),
+    );
+    setTrimPreview((current) => ({...current, [start.sceneId]: duration}));
+  };
+  const finishTrim = (event: ReactPointerEvent<HTMLElement>) => {
+    const start = trimResizeStart.current;
+    if (!start) return;
+    const duration = Math.max(
+      0.1,
+      Math.min(300, start.duration + (event.clientX - start.pointerX) / start.pixelsPerSecond),
+    );
+    trimResizeStart.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setTrimPreview((current) => {
+      const next = {...current};
+      delete next[start.sceneId];
+      return next;
+    });
+    if (Math.abs(duration - start.duration) >= 0.01) {
+      updateScene(start.sceneId, {duration: Math.round(duration * 10) / 10});
+    }
   };
 
   const replace = () => {
@@ -774,11 +837,13 @@ export const EditingWorkspace = ({
                   </button>
                 </strong>
                 <div>
-                  {timeline.scenes.map(({scene: item, durationInFrames}, index) => (
+                  {timeline.scenes.map(({scene: item}, index) => (
                     <button
                       key={item.id}
                       className={item.id === scene.id ? 'selected' : ''}
-                      style={{flex: durationInFrames}}
+                      style={{
+                        flex: (trimPreview[item.id] ?? item.duration) * project.project.fps,
+                      }}
                       draggable={!lockedTracks.includes('video')}
                       onDragStart={(event) => event.dataTransfer.setData('sceneId', item.id)}
                       onDragOver={(event) => {
@@ -796,6 +861,16 @@ export const EditingWorkspace = ({
                         type={item.assetType}
                       />
                       <span>{String(index + 1).padStart(2, '0')}</span>
+                      {!lockedTracks.includes('video') ? (
+                        <i
+                          className="trim-handle trim-end"
+                          title="拖动调整片段时长"
+                          onPointerDown={(event) => beginTrim(event, item)}
+                          onPointerMove={previewTrim}
+                          onPointerUp={finishTrim}
+                          onPointerCancel={finishTrim}
+                        />
+                      ) : null}
                     </button>
                   ))}
                 </div>
@@ -812,11 +887,13 @@ export const EditingWorkspace = ({
                   </button>
                 </strong>
                 <div>
-                  {timeline.scenes.map(({scene: item, durationInFrames}, index) => (
+                  {timeline.scenes.map(({scene: item}, index) => (
                     <button
                       key={item.id}
                       className={item.id === scene.id ? 'selected' : ''}
-                      style={{flex: durationInFrames}}
+                      style={{
+                        flex: (trimPreview[item.id] ?? item.duration) * project.project.fps,
+                      }}
                       onClick={() => chooseScene(item.id, index)}
                     >
                       {item.caption}
