@@ -81,6 +81,7 @@ export const EditingWorkspace = ({
     replaceSceneAsset,
     reorderScenes,
     duplicateScene,
+    splitScene,
     deleteScene,
   } = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
@@ -109,6 +110,15 @@ export const EditingWorkspace = ({
   const totalSeconds = timeline.durationInFrames / project.project.fps;
   const timelineCanvasWidth =
     Math.max(900, (typeof window === 'undefined' ? 1280 : window.innerWidth) - 244) * timelineZoom;
+  const activeTimelineItem = timeline.scenes[selectedIndex];
+  const splitAtSeconds = activeTimelineItem
+    ? (currentFrame - activeTimelineItem.from) / project.project.fps
+    : 0;
+  const canSplit =
+    Boolean(activeTimelineItem) &&
+    splitAtSeconds >= 0.1 &&
+    splitAtSeconds <= scene.duration - 0.1 &&
+    !lockedTracks.includes('video');
   const showWorkbench = !['overview', 'settings'].includes(section);
   const clampTimelineHeight = (height: number) =>
     Math.round(Math.max(150, Math.min(Math.max(150, window.innerHeight - 320), height)));
@@ -168,6 +178,10 @@ export const EditingWorkspace = ({
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault();
+        if (canSplit) splitScene(scene.id, splitAtSeconds);
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
         event.preventDefault();
         if (!lockedTracks.includes('video')) duplicateScene(scene.id);
@@ -183,7 +197,17 @@ export const EditingWorkspace = ({
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [deleteScene, duplicateScene, lockedTracks, project.scenes.length, scene.id, section]);
+  }, [
+    canSplit,
+    deleteScene,
+    duplicateScene,
+    lockedTracks,
+    project.scenes.length,
+    scene.id,
+    section,
+    splitAtSeconds,
+    splitScene,
+  ]);
 
   useEffect(() => {
     const fitTimelineToWindow = () =>
@@ -223,6 +247,15 @@ export const EditingWorkspace = ({
     const frame = timeline.scenes[index]?.from ?? 0;
     setCurrentFrame(frame);
     playerRef.current?.seekTo(frame);
+  };
+  const seekTimeline = (frame: number) => {
+    const nextFrame = Math.max(0, Math.min(timeline.durationInFrames - 1, Math.round(frame)));
+    setCurrentFrame(nextFrame);
+    playerRef.current?.seekTo(nextFrame);
+    const item = timeline.scenes.find(
+      (entry) => nextFrame >= entry.from && nextFrame < entry.from + entry.durationInFrames,
+    );
+    if (item) selectScene(item.scene.id);
   };
 
   const replace = () => {
@@ -666,7 +699,13 @@ export const EditingWorkspace = ({
                 <strong>时间线</strong>
                 <button disabled>↶ 撤销</button>
                 <button disabled>↷ 重做</button>
-                <button disabled>✂ 分割</button>
+                <button
+                  disabled={!canSplit}
+                  onClick={() => splitScene(scene.id, splitAtSeconds)}
+                  title={canSplit ? '在播放头位置分割当前镜头' : '请将播放头移动到镜头内部'}
+                >
+                  ✂ 分割
+                </button>
                 <button
                   onClick={() => deleteScene(scene.id)}
                   disabled={project.scenes.length <= 1 || lockedTracks.includes('video')}
@@ -681,6 +720,9 @@ export const EditingWorkspace = ({
                 </button>
                 <button disabled>◖ 静音</button>
                 <button disabled>⌘ 添加转场</button>
+                <output className="timeline-time">
+                  {(currentFrame / project.project.fps).toFixed(1)}s / {totalSeconds.toFixed(1)}s
+                </output>
                 <span className="timeline-zoom-controls">
                   <button
                     onClick={() => setTimelineZoom((value) => Math.max(1, value - 0.25))}
@@ -705,7 +747,16 @@ export const EditingWorkspace = ({
                   {timelineCollapsed ? '展开时间线' : '收起时间线'}
                 </button>
               </header>
-              <div className="timeline-ruler" style={{width: timelineCanvasWidth}}>
+              <div
+                className="timeline-ruler"
+                style={{width: timelineCanvasWidth}}
+                onPointerDown={(event) => {
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  const position = Math.max(0, event.clientX - bounds.left - 124);
+                  const ratio = position / Math.max(1, bounds.width - 124);
+                  seekTimeline(ratio * timeline.durationInFrames);
+                }}
+              >
                 <span />
                 {Array.from({length: 7}, (_, index) => (
                   <i key={index}>{Math.round((totalSeconds / 6) * index)}s</i>
@@ -728,6 +779,15 @@ export const EditingWorkspace = ({
                       key={item.id}
                       className={item.id === scene.id ? 'selected' : ''}
                       style={{flex: durationInFrames}}
+                      draggable={!lockedTracks.includes('video')}
+                      onDragStart={(event) => event.dataTransfer.setData('sceneId', item.id)}
+                      onDragOver={(event) => {
+                        if (!lockedTracks.includes('video')) event.preventDefault();
+                      }}
+                      onDrop={(event) => {
+                        if (lockedTracks.includes('video')) return;
+                        reorderScenes(event.dataTransfer.getData('sceneId'), item.id);
+                      }}
                       onClick={() => chooseScene(item.id, index)}
                     >
                       <MediaThumb

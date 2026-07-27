@@ -18,6 +18,7 @@ type StudioState = {
   restoreCopyVersion: (versionId: string) => void;
   replaceSceneAsset: (id: string, assetPath: string, assetType: Scene['assetType']) => void;
   duplicateScene: (id: string) => void;
+  splitScene: (id: string, splitAt: number) => void;
   deleteScene: (id: string) => void;
   updateVisualShot: (sceneId: string, shotId: string, patch: Partial<VisualShot>) => void;
   syncVisualShot: (sceneId: string, shotId: string, shot: VisualShot) => void;
@@ -152,6 +153,53 @@ export const useStudioStore = create<StudioState>((set) => ({
       return {
         project: {...state.project, scenes},
         selectedSceneId: copy.id,
+        saveStatus: 'saving',
+      };
+    }),
+  splitScene: (id, splitAt) =>
+    set((state) => {
+      if (!state.project) return state;
+      const index = state.project.scenes.findIndex((scene) => scene.id === id);
+      const source = state.project.scenes[index];
+      if (!source || splitAt < 0.1 || source.duration - splitAt < 0.1) return state;
+      const now = Date.now();
+      const leftDuration = Math.round(splitAt * 1000) / 1000;
+      const rightDuration = Math.round((source.duration - splitAt) * 1000) / 1000;
+      const scaleShots = (duration: number, suffix: string) =>
+        source.shots?.map((shot) => ({
+          ...shot,
+          id: `${shot.id}-${suffix}-${now}`,
+          duration: Math.max(0.01, (shot.duration / source.duration) * duration),
+          candidates: [...shot.candidates],
+        }));
+      const left = {
+        ...source,
+        duration: leftDuration,
+        shots: scaleShots(leftDuration, 'split-left'),
+        words: source.words
+          ?.filter((word) => word.start < leftDuration)
+          .map((word) => ({...word, end: Math.min(word.end, leftDuration)}))
+          .filter((word) => word.end > word.start),
+      };
+      const right = {
+        ...source,
+        id: `${source.id}-split-${now}`,
+        duration: rightDuration,
+        shots: scaleShots(rightDuration, 'split-right'),
+        words: source.words
+          ?.filter((word) => word.end > leftDuration)
+          .map((word) => ({
+            ...word,
+            start: Math.max(0, word.start - leftDuration),
+            end: Math.min(rightDuration, word.end - leftDuration),
+          }))
+          .filter((word) => word.end > word.start),
+      };
+      const scenes = [...state.project.scenes];
+      scenes.splice(index, 1, left, right);
+      return {
+        project: {...state.project, scenes},
+        selectedSceneId: right.id,
         saveStatus: 'saving',
       };
     }),

@@ -64,6 +64,23 @@ describe('studio store', () => {
     expect(useStudioStore.getState().lockedSceneIds).toEqual(['b']);
   });
 
+  it('splits a scene at the requested position and selects the right half', () => {
+    useStudioStore.getState().setProject(project);
+    useStudioStore.getState().splitScene('b', 0.75);
+    const state = useStudioStore.getState();
+    expect(state.project?.scenes).toHaveLength(3);
+    expect(state.project?.scenes.map((scene) => scene.duration)).toEqual([1, 0.75, 1.25]);
+    expect(state.project?.scenes[2]?.id).toContain('b-split-');
+    expect(state.selectedSceneId).toBe(state.project?.scenes[2]?.id);
+    expect(state.saveStatus).toBe('saving');
+  });
+
+  it('does not split too close to a scene edge', () => {
+    useStudioStore.getState().setProject(project);
+    useStudioStore.getState().splitScene('b', 0.05);
+    expect(useStudioStore.getState().project?.scenes).toHaveLength(2);
+  });
+
   it('replaces an asset without changing timing or narration and keeps history', () => {
     useStudioStore.getState().setProject(project);
     useStudioStore.getState().replaceSceneAsset('a', 'replacement.mp4', 'video');

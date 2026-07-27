@@ -2158,6 +2158,16 @@ select:focus {
 .timeline-zoom-controls + .timeline-collapse {
   margin-left: 4px;
 }
+.timeline-time {
+  margin-left: auto;
+  color: #a5afc0;
+  font-variant-numeric: tabular-nums;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.timeline-time + .timeline-zoom-controls {
+  margin-left: 8px;
+}
 .timeline-panel.collapsed {
   min-height: 42px;
   overflow: hidden;
@@ -2185,6 +2195,7 @@ select:focus {
   align-items: end;
   border-bottom: 1px solid #1e2634;
   grid-template-columns: 124px repeat(7, 1fr);
+  cursor: pointer;
 }
 .timeline-ruler i {
   padding-bottom: 5px;
@@ -2249,6 +2260,12 @@ select:focus {
 }
 .video-track button {
   height: 30px;
+}
+.video-track button[draggable='true'] {
+  cursor: grab;
+}
+.video-track button[draggable='true']:active {
+  cursor: grabbing;
 }
 .video-track button.selected {
   border: 2px solid #9a6cff;
