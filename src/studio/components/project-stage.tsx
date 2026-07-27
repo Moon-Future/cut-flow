@@ -74,6 +74,11 @@ export const ProjectStage = ({
             <p>{description}</p>
           </div>
           <div className="stage-heading-actions">
+            {section === 'storyboard' ? (
+              <button className="secondary-button" onClick={() => onAssets()}>
+                打开素材库
+              </button>
+            ) : null}
             {previousSection[section] ? (
               <button
                 className="secondary-button"
@@ -109,7 +114,6 @@ export const ProjectStage = ({
         <StoryboardWorkspace
           project={project}
           projectId={currentProjectId}
-          onAssets={onAssets}
           onGoToAssets={(shotId) => {
             setAssetTargetShotId(shotId);
             onNavigate('assets');

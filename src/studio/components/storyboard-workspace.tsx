@@ -13,12 +13,10 @@ import {
   type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
 import {useStudioStore} from '../store';
-import type {AssetSelectionTarget} from '../asset-selection';
 
 type Props = {
   project: ProjectFile;
   projectId: string;
-  onAssets: (target?: AssetSelectionTarget) => void;
   onGoToAssets: (shotId: string) => void;
 };
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
@@ -77,7 +75,7 @@ const contentSearchLinks = (query: string) => {
   ] as const;
 };
 
-export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}: Props) => {
+export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) => {
   const {selectedSceneId, selectScene, updateScene, updateVisualShot, syncVisualShot} =
     useStudioStore();
   const [onlineSearch, setOnlineSearch] = useState<{
@@ -398,7 +396,6 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
             </strong>
             <span>编辑旁白、画面意图和镜头计划</span>
           </div>
-          <button onClick={() => onAssets()}>打开素材库</button>
         </header>
         <div className="storyboard-purpose-note">
           <strong>这里负责设计分镜、准备候选并确认镜头素材</strong>
@@ -531,12 +528,14 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
                   ))}
                 </div>
               </div>
-              <div className="online-material-search">
-                <div className="online-material-search-heading">
+              <details className="online-material-search">
+                <summary className="online-material-search-heading">
                   <div>
                     <strong>搜索可下载素材</strong>
                     <span>Pixabay 使用英文场景词，适合寻找可用素材，不用于搜索完整主题</span>
                   </div>
+                </summary>
+                <div className="online-material-search-actions">
                   <div>
                     <button type="button" onClick={() => void searchOnline(shot, 'image')}>
                       搜索图片
@@ -625,7 +624,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
                     ) : null}
                   </div>
                 ) : null}
-              </div>
+              </details>
               <details className="shot-motion-panel">
                 <summary>
                   <span>
@@ -1041,13 +1040,13 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
                 >
                   <summary>
                     <span>
-                      <strong>AI 视频生成任务</strong>
+                      <strong>最近一次 AI 视频生成任务</strong>
                       <small>
-                        第 {shot.generationTask.attempt} 次 ·{' '}
+                        这是提交给视频服务的异步处理记录 · 第 {shot.generationTask.attempt} 次 ·{' '}
                         {generationStatusLabel(shot.generationTask.status)}
                       </small>
                     </span>
-                    <b>查看任务状态</b>
+                    <b>任务状态</b>
                   </summary>
                   {activeGenerationStatuses.has(shot.generationTask.status) ? (
                     <>

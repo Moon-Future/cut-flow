@@ -5271,6 +5271,31 @@ select:focus {
   border-radius: 9px;
   background: linear-gradient(145deg, #10221e, #0c1818);
 }
+.online-material-search > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.online-material-search > summary::-webkit-details-marker {
+  display: none;
+}
+.online-material-search-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+}
+.online-material-search-actions > div {
+  display: flex;
+  gap: 7px;
+}
+.online-material-search-actions button {
+  padding: 7px 10px;
+  border: 1px solid #3c806e;
+  border-radius: 7px;
+  background: #174034;
+  color: #8ae8ca;
+  cursor: pointer;
+  white-space: nowrap;
+}
 .content-platform-search {
   display: flex;
   align-items: center;
@@ -5332,18 +5357,36 @@ select:focus {
   color: #76948a;
   font-size: 9px;
 }
-.online-material-search-heading > div:last-child {
-  display: flex;
-  gap: 7px;
+.shot-plan-card details > summary {
+  position: relative;
+  padding-right: 38px;
+  list-style: none;
 }
-.online-material-search-heading button {
-  padding: 7px 10px;
-  border: 1px solid #3c806e;
-  border-radius: 7px;
-  background: #174034;
-  color: #8ae8ca;
-  cursor: pointer;
-  white-space: nowrap;
+.shot-plan-card details > summary::-webkit-details-marker {
+  display: none;
+}
+.shot-plan-card details > summary::after {
+  content: '↓';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: #202837;
+  color: #aab5c6;
+  font-size: 11px;
+  transform: translateY(-50%);
+}
+.shot-plan-card details[open] > summary::after {
+  content: '↑';
+  background: #302650;
+  color: #d4c3fb;
+}
+.shot-plan-card details > summary > b {
+  margin-right: 22px;
 }
 .online-material-results {
   margin-top: 10px;

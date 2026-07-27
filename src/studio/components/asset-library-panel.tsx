@@ -310,6 +310,7 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
           role="dialog"
           aria-modal="true"
           aria-label={previewAsset.name}
+          onMouseDown={(event) => event.stopPropagation()}
         >
           <button
             className="media-lightbox-backdrop"
