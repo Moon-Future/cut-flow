@@ -13,6 +13,14 @@ export const motionSchema = z.enum([
   'ken-burns-right',
   'gentle-float',
 ]);
+export const shotMotionPlanSchema = z.object({
+  preset: motionSchema.default('slow-zoom-in'),
+  intensity: z.number().min(0).max(1).default(0.35),
+  focusStart: z.string().default('画面主体'),
+  focusEnd: z.string().default('核心细节'),
+  requiresLayering: z.boolean().default(false),
+  requiresAiVideo: z.boolean().default(false),
+});
 export const videoTypeSchema = z.enum([
   'science-explainer',
   'knowledge-narration',
@@ -80,6 +88,7 @@ export const visualShotSchema = z.object({
   videoPrompt: z.string().optional(),
   imagePromptZh: z.string().optional(),
   videoPromptZh: z.string().optional(),
+  motionPlan: shotMotionPlanSchema.optional(),
   selectedAsset: z.string().nullable().default(null),
   sourceStart: z.number().min(0).default(0),
   sourceEnd: z.number().positive().optional(),
@@ -188,3 +197,4 @@ export type GenerationCandidate = z.infer<typeof generationCandidateSchema>;
 export type GenerationTask = z.infer<typeof generationTaskSchema>;
 export type VideoType = z.infer<typeof videoTypeSchema>;
 export type CopyVersion = z.infer<typeof copyVersionSchema>;
+export type Motion = z.infer<typeof motionSchema>;

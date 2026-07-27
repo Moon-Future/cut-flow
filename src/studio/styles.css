@@ -4901,6 +4901,104 @@ select:focus {
   border-radius: 9px;
   background: #0d131d;
 }
+.shot-motion-panel {
+  overflow: hidden;
+  border: 1px solid #304052;
+  border-radius: 10px;
+  background: #101721;
+}
+.shot-motion-panel > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.shot-motion-panel > summary::-webkit-details-marker {
+  display: none;
+}
+.shot-motion-panel > summary span,
+.shot-motion-panel > summary strong,
+.shot-motion-panel > summary small {
+  display: block;
+}
+.shot-motion-panel > summary small {
+  margin-top: 4px;
+  color: #7f8da0;
+}
+.shot-motion-panel > summary b {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #17342e;
+  color: #72d8bb;
+  font-weight: 600;
+}
+.shot-motion-panel[open] > summary {
+  border-bottom: 1px solid #283647;
+}
+.shot-motion-content {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+.shot-motion-controls,
+.shot-motion-focus {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.shot-motion-controls label,
+.shot-motion-focus label {
+  min-width: 0;
+}
+.shot-motion-focus {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+}
+.shot-motion-focus > span {
+  padding-bottom: 10px;
+  color: #75649e;
+}
+.shot-motion-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.shot-motion-flags button {
+  padding: 7px 10px;
+  border: 1px solid #344354;
+  border-radius: 7px;
+  background: #151e29;
+  color: #8997a9;
+  cursor: pointer;
+}
+.shot-motion-flags button.active {
+  border-color: #5e4d91;
+  background: #28203c;
+  color: #c2adef;
+}
+.shot-motion-flags button.active.warning {
+  border-color: #755040;
+  background: #33241d;
+  color: #e8ae8d;
+}
+.shot-motion-content > p {
+  margin: 0;
+  color: #748296;
+  line-height: 1.6;
+}
+@media (max-width: 760px) {
+  .shot-motion-controls,
+  .shot-motion-focus {
+    grid-template-columns: 1fr;
+  }
+  .shot-motion-focus > span {
+    display: none;
+  }
+}
 .prompt-editor > summary,
 .video-generation-panel > summary {
   display: flex;

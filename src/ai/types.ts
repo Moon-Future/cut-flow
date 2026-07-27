@@ -51,6 +51,24 @@ export type GeneratedScene = {
     videoPrompt?: string;
     imagePromptZh?: string;
     videoPromptZh?: string;
+    motionPlan?: {
+      preset:
+        | 'none'
+        | 'slow-zoom-in'
+        | 'slow-zoom-out'
+        | 'pan-left'
+        | 'pan-right'
+        | 'pan-up'
+        | 'pan-down'
+        | 'ken-burns-left'
+        | 'ken-burns-right'
+        | 'gentle-float';
+      intensity: number;
+      focusStart: string;
+      focusEnd: string;
+      requiresLayering: boolean;
+      requiresAiVideo: boolean;
+    };
   }>;
 };
 

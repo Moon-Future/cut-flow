@@ -31,7 +31,8 @@ const providersFor = (
   providerSetting?: AiProviderSetting,
   onPrompt?: (prompt: {system: string; user: string}) => void,
 ): ProviderSet => {
-  if (input.provider === 'mock') return createMockProviders(Math.max(10, input.targetWordCount / 4));
+  if (input.provider === 'mock')
+    return createMockProviders(Math.max(10, input.targetWordCount / 4));
   const apiKey =
     providerSetting?.apiKey ||
     providerSetting?.secretKey ||
@@ -126,6 +127,17 @@ export const runGenerationWorkflow = async (
         searchQueries: shot.searchQueries,
         imagePrompt: shot.imagePrompt,
         videoPrompt: shot.videoPrompt,
+        imagePromptZh: shot.imagePromptZh,
+        videoPromptZh: shot.videoPromptZh,
+        searchQueriesZh: shot.searchQueriesZh,
+        motionPlan: shot.motionPlan ?? {
+          preset: 'slow-zoom-in' as const,
+          intensity: 0.35,
+          focusStart: shot.visualPurpose,
+          focusEnd: '核心细节',
+          requiresLayering: false,
+          requiresAiVideo: false,
+        },
         selectedAsset: shotIndex === 0 && matchedAsset ? matchedAsset.path : null,
         sourceStart: 0,
         sourceEnd: shotDuration,

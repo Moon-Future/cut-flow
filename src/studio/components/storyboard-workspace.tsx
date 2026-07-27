@@ -26,6 +26,18 @@ const generationStatusLabel = (status: GenerationTask['status']) =>
     failed: '生成失败',
     cancelled: '已取消',
   })[status];
+const motionPresetLabels: Record<NonNullable<VisualShot['motionPlan']>['preset'], string> = {
+  none: '静止画面',
+  'slow-zoom-in': '缓慢推近',
+  'slow-zoom-out': '缓慢拉远',
+  'pan-left': '向左平移',
+  'pan-right': '向右平移',
+  'pan-up': '向上平移',
+  'pan-down': '向下平移',
+  'ken-burns-left': '推近并左移',
+  'ken-burns-right': '推近并右移',
+  'gentle-float': '轻微漂浮',
+};
 const formatTaskTime = (value?: string) =>
   value
     ? new Intl.DateTimeFormat('zh-CN', {
@@ -103,6 +115,15 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     const duration = Math.max(3, Math.min(8, shot.duration || 5));
     return `${aspectRatio} 竖屏电影感视频，时长约 ${duration} 秒，围绕“${subject}”完成一个有起点、变化和结果的微型镜头叙事。以对应图片作为首帧：前景核心主体、中景人物、背景环境、服装、道具位置、光线方向和色彩完全保持一致。开始 0—1 秒，镜头稳定建立场景，让观众看清主体与人物关系；1—${Math.max(2, duration - 2)} 秒，人物依次完成与旁白直接相关的自然动作，清楚表现视线、手部动作、面部情绪和身体反应，关键物体同步产生符合真实物理规律的变化；最后 1—2 秒，动作停留在最能说明观点、差异或结果的状态。镜头先保持稳定，再缓慢推近核心主体或进行小幅平滑横移，必要时轻微跟随人物动作，不大幅旋转、不突然切换场景。节奏由观察到变化再到强调结果，环境中只加入轻微且合理的动态。保持人物外貌、手指数量、服装颜色、物体结构和空间布局稳定，动作自然连贯，不新增无关人物，不让物体凭空出现或消失。使用真实电影摄影质感、清晰光影和统一色调，不要抽象特效，不要生成无法辨认的界面内容，不要文字、字幕、标志、Logo 和水印。`;
   };
+  const motionPlanFor = (shot: VisualShot): NonNullable<VisualShot['motionPlan']> =>
+    shot.motionPlan ?? {
+      preset: 'slow-zoom-in',
+      intensity: 0.35,
+      focusStart: shot.visualPurpose,
+      focusEnd: '核心细节',
+      requiresLayering: false,
+      requiresAiVideo: false,
+    };
 
   useEffect(() => {
     fetch('/api/settings/ai')
@@ -577,6 +598,127 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                   </div>
                 ) : null}
               </div>
+              <details className="shot-motion-panel">
+                <summary>
+                  <span>
+                    <strong>图片动态化</strong>
+                    <small>
+                      {motionPresetLabels[motionPlanFor(shot).preset]} · 强度{' '}
+                      {Math.round(motionPlanFor(shot).intensity * 100)}%
+                    </small>
+                  </span>
+                  <b>
+                    {motionPlanFor(shot).requiresAiVideo
+                      ? '建议视频'
+                      : motionPlanFor(shot).requiresLayering
+                        ? '建议分层'
+                        : '图片可完成'}
+                  </b>
+                </summary>
+                <div className="shot-motion-content">
+                  <div className="shot-motion-controls">
+                    <label>
+                      <span>动画预设</span>
+                      <select
+                        value={motionPlanFor(shot).preset}
+                        onChange={(event) =>
+                          updateShot(shot, {
+                            motionPlan: {
+                              ...motionPlanFor(shot),
+                              preset: event.target.value as NonNullable<
+                                VisualShot['motionPlan']
+                              >['preset'],
+                            },
+                          })
+                        }
+                      >
+                        {Object.entries(motionPresetLabels).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>动画强度 · {Math.round(motionPlanFor(shot).intensity * 100)}%</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={motionPlanFor(shot).intensity}
+                        onChange={(event) =>
+                          updateShot(shot, {
+                            motionPlan: {
+                              ...motionPlanFor(shot),
+                              intensity: Number(event.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="shot-motion-focus">
+                    <label>
+                      <span>开始关注</span>
+                      <input
+                        value={motionPlanFor(shot).focusStart}
+                        onChange={(event) =>
+                          updateShot(shot, {
+                            motionPlan: {...motionPlanFor(shot), focusStart: event.target.value},
+                          })
+                        }
+                      />
+                    </label>
+                    <span>→</span>
+                    <label>
+                      <span>结束关注</span>
+                      <input
+                        value={motionPlanFor(shot).focusEnd}
+                        onChange={(event) =>
+                          updateShot(shot, {
+                            motionPlan: {...motionPlanFor(shot), focusEnd: event.target.value},
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="shot-motion-flags">
+                    <button
+                      type="button"
+                      className={motionPlanFor(shot).requiresLayering ? 'active' : ''}
+                      onClick={() =>
+                        updateShot(shot, {
+                          motionPlan: {
+                            ...motionPlanFor(shot),
+                            requiresLayering: !motionPlanFor(shot).requiresLayering,
+                          },
+                        })
+                      }
+                    >
+                      需要分层视差
+                    </button>
+                    <button
+                      type="button"
+                      className={motionPlanFor(shot).requiresAiVideo ? 'active warning' : ''}
+                      onClick={() =>
+                        updateShot(shot, {
+                          motionPlan: {
+                            ...motionPlanFor(shot),
+                            requiresAiVideo: !motionPlanFor(shot).requiresAiVideo,
+                          },
+                        })
+                      }
+                    >
+                      静态图片无法完成
+                    </button>
+                  </div>
+                  <p>
+                    普通推拉和平移不会消耗 AI
+                    Token；人物表情变化、转头或复杂操作需要多张图片、分层素材或视频。
+                  </p>
+                </div>
+              </details>
               <details className="prompt-editor">
                 <summary>
                   <span>图片生成提示词</span>

@@ -81,8 +81,7 @@ describe('generation workflow', () => {
       first.project.scenes
         .flatMap((scene) => scene.shots ?? [])
         .every(
-          (shot) =>
-            (shot.imagePrompt?.length ?? 0) >= 80 && (shot.videoPrompt?.length ?? 0) >= 100,
+          (shot) => (shot.imagePrompt?.length ?? 0) >= 80 && (shot.videoPrompt?.length ?? 0) >= 100,
         ),
     ).toBe(true);
     expect(
@@ -91,14 +90,22 @@ describe('generation workflow', () => {
         .every(
           (shot) =>
             /[A-Za-z]{3,}/.test(`${shot.imagePrompt ?? ''}${shot.videoPrompt ?? ''}`) &&
-            !/[A-Za-z]{3,}/.test(
-              `${shot.imagePromptZh ?? ''}${shot.videoPromptZh ?? ''}`,
-            ),
+            !/[A-Za-z]{3,}/.test(`${shot.imagePromptZh ?? ''}${shot.videoPromptZh ?? ''}`),
         ),
     ).toBe(true);
     expect(
       first.project.scenes.flatMap((scene) => scene.shots ?? [])[0]?.searchQueries.length,
     ).toBeGreaterThan(0);
+    expect(
+      first.project.scenes
+        .flatMap((scene) => scene.shots ?? [])
+        .every(
+          (shot) =>
+            Boolean(shot.motionPlan?.preset) &&
+            (shot.motionPlan?.intensity ?? -1) >= 0 &&
+            (shot.motionPlan?.intensity ?? 2) <= 1,
+        ),
+    ).toBe(true);
     expect(first.project.scenes.reduce((sum, scene) => sum + scene.duration, 0)).toBeGreaterThan(0);
     await expect(access(path.join(projectRoot, 'audio', 'narration.wav'))).rejects.toThrow();
     expect(first.project.narrationAudio).toBeNull();

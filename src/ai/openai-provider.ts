@@ -172,6 +172,35 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
           const rawVideoPrompt = String(shot.videoPrompt ?? '').trim();
           const rawImagePromptZh = String(shot.imagePromptZh ?? '').trim();
           const rawVideoPromptZh = String(shot.videoPromptZh ?? '').trim();
+          const rawMotionPlan =
+            shot.motionPlan && typeof shot.motionPlan === 'object'
+              ? (shot.motionPlan as Record<string, unknown>)
+              : {};
+          const motionPresets = [
+            'none',
+            'slow-zoom-in',
+            'slow-zoom-out',
+            'pan-left',
+            'pan-right',
+            'pan-up',
+            'pan-down',
+            'ken-burns-left',
+            'ken-burns-right',
+            'gentle-float',
+          ] as const;
+          const requestedMotionIntensity = Number(rawMotionPlan.intensity);
+          const motionPlan = {
+            preset: motionPresets.includes(rawMotionPlan.preset as (typeof motionPresets)[number])
+              ? (rawMotionPlan.preset as (typeof motionPresets)[number])
+              : ('slow-zoom-in' as const),
+            intensity: Number.isFinite(requestedMotionIntensity)
+              ? Math.max(0, Math.min(1, requestedMotionIntensity))
+              : 0.35,
+            focusStart: String(rawMotionPlan.focusStart ?? shot.visualPurpose ?? '画面主体'),
+            focusEnd: String(rawMotionPlan.focusEnd ?? '核心细节'),
+            requiresLayering: Boolean(rawMotionPlan.requiresLayering),
+            requiresAiVideo: Boolean(rawMotionPlan.requiresAiVideo),
+          };
           const sceneDescription = [
             shot.visualPurpose,
             scene.visualIntent,
@@ -216,6 +245,7 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
             videoPrompt,
             imagePromptZh,
             videoPromptZh,
+            motionPlan,
           };
         }),
       };
@@ -313,7 +343,7 @@ ${input.customPrompt?.trim() || '无'}
 11. 字数目标只针对所有 scenes[].narration 的汉字合计。生成后必须在内部逐段统计并补充或精简 narration，使总数达到 ${minimumNarrationChars}-${maximumNarrationChars} 个汉字；不要把其他 JSON 字段计入文案字数。
 ${digitalHumanDirection}
 
-只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须恰好有 ${requiredSceneCount} 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须恰好有 ${requiredSceneCount} 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh、motionPlan。
 输出 JSON 前再次检查：仅将 scenes 中每个 narration 的汉字数量相加，结果必须在 ${minimumNarrationChars}-${maximumNarrationChars} 之间。
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
 assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
@@ -323,6 +353,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
 - searchQueriesZh 用于 YouTube、B站、抖音等内容平台，必须保留视频主题和问题语义，写成用户真正会搜索的中文短语，例如“为什么有人觉得香菜像肥皂”“不爱吃香菜和基因有关吗”。不要把英文素材词逐字翻译成中文。
 同一镜头的多个搜索词要覆盖“主题解释、人物行为、具体场景或过程”，不能只是同义词替换。
 每个 shot 同时提供 imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。imagePrompt 和 videoPrompt 使用专业英文撰写，供图片和视频模型直接调用；imagePromptZh 和 videoPromptZh 是准确完整的中文翻译，供页面展示。
+每个 shot 的 motionPlan 必须给出可由 Remotion 执行的图片动态化方案：preset 只能是 none、slow-zoom-in、slow-zoom-out、pan-left、pan-right、pan-up、pan-down、ken-burns-left、ken-burns-right、gentle-float；intensity 为 0～1；focusStart 和 focusEnd 用中文描述运镜开始和结束关注的画面区域；requiresLayering 表示是否需要抠图分层；requiresAiVideo 仅在静态图片无法表达关键动作时为 true。优先让 requiresAiVideo 为 false，不得把人物表情变化、转头、抬手等静态图片无法实现的动作伪装成普通 Ken Burns。
 
 图片提示词必须达到可直接执行的视觉导演稿质量，中文不少于 280 个汉字，禁止使用一段“主体清晰、构图稳定、光线统一”式的通用镜头规范敷衍。按以下顺序具体设计：
 1. 先说明本镜头的主题、叙事重点，以及要让观众一眼理解的关系、变化、反差或情绪；没有冲突的主题则明确知识过程、因果关系或视觉发现。
@@ -440,6 +471,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                                       'videoPrompt',
                                       'imagePromptZh',
                                       'videoPromptZh',
+                                      'motionPlan',
                                     ],
                                     properties: {
                                       visualPurpose: {type: 'string'},
@@ -474,6 +506,40 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                                       videoPrompt: {type: 'string'},
                                       imagePromptZh: {type: 'string'},
                                       videoPromptZh: {type: 'string'},
+                                      motionPlan: {
+                                        type: 'object',
+                                        additionalProperties: false,
+                                        required: [
+                                          'preset',
+                                          'intensity',
+                                          'focusStart',
+                                          'focusEnd',
+                                          'requiresLayering',
+                                          'requiresAiVideo',
+                                        ],
+                                        properties: {
+                                          preset: {
+                                            type: 'string',
+                                            enum: [
+                                              'none',
+                                              'slow-zoom-in',
+                                              'slow-zoom-out',
+                                              'pan-left',
+                                              'pan-right',
+                                              'pan-up',
+                                              'pan-down',
+                                              'ken-burns-left',
+                                              'ken-burns-right',
+                                              'gentle-float',
+                                            ],
+                                          },
+                                          intensity: {type: 'number'},
+                                          focusStart: {type: 'string'},
+                                          focusEnd: {type: 'string'},
+                                          requiresLayering: {type: 'boolean'},
+                                          requiresAiVideo: {type: 'boolean'},
+                                        },
+                                      },
                                     },
                                   },
                                 },

@@ -45,6 +45,27 @@ export const videoScriptSchema = z.object({
               videoPrompt: z.string().optional(),
               imagePromptZh: z.string().optional(),
               videoPromptZh: z.string().optional(),
+              motionPlan: z
+                .object({
+                  preset: z.enum([
+                    'none',
+                    'slow-zoom-in',
+                    'slow-zoom-out',
+                    'pan-left',
+                    'pan-right',
+                    'pan-up',
+                    'pan-down',
+                    'ken-burns-left',
+                    'ken-burns-right',
+                    'gentle-float',
+                  ]),
+                  intensity: z.number().min(0).max(1),
+                  focusStart: z.string().min(1),
+                  focusEnd: z.string().min(1),
+                  requiresLayering: z.boolean(),
+                  requiresAiVideo: z.boolean(),
+                })
+                .optional(),
             }),
           )
           .min(1)

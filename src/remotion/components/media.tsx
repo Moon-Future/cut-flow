@@ -7,7 +7,7 @@ import {
   staticFile,
   useCurrentFrame,
 } from 'remotion';
-import type {Scene} from '../../core/schema';
+import type {Motion, Scene} from '../../core/schema';
 import {buildShotTimeline, secondsToFrames} from '../../core/timeline';
 import type {VideoTemplate} from '../../templates/types';
 import {ScienceAnimation} from './science-animation';
@@ -20,30 +20,39 @@ type Props = {
   fps: number;
 };
 
-const motionTransform = (scene: Scene, frame: number, duration: number): string => {
+const motionTransform = (
+  motion: Motion,
+  frame: number,
+  duration: number,
+  intensity = 0.35,
+): string => {
   const progress = interpolate(frame, [0, Math.max(1, duration - 1)], [0, 1], {
+    extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  switch (scene.motion) {
+  const strength = Math.max(0, Math.min(1, intensity));
+  const zoom = 0.02 + strength * 0.16;
+  const travel = 1 + strength * 6;
+  switch (motion) {
     case 'slow-zoom-in':
-      return `scale(${1 + progress * 0.08})`;
+      return `scale(${1 + progress * zoom})`;
     case 'slow-zoom-out':
-      return `scale(${1.08 - progress * 0.08})`;
+      return `scale(${1 + zoom - progress * zoom})`;
     case 'pan-left':
-      return `scale(1.08) translateX(${-3 * progress}%)`;
+      return `scale(${1 + zoom}) translateX(${-travel * progress}%)`;
     case 'pan-right':
-      return `scale(1.08) translateX(${3 * progress - 3}%)`;
+      return `scale(${1 + zoom}) translateX(${travel * progress - travel}%)`;
     case 'pan-up':
-      return `scale(1.08) translateY(${-3 * progress}%)`;
+      return `scale(${1 + zoom}) translateY(${-travel * progress}%)`;
     case 'pan-down':
-      return `scale(1.08) translateY(${3 * progress - 3}%)`;
+      return `scale(${1 + zoom}) translateY(${travel * progress - travel}%)`;
     case 'ken-burns-left':
-      return `scale(${1.03 + progress * 0.09}) translate(${2 - progress * 4}%, ${1 - progress * 1.5}%)`;
+      return `scale(${1.02 + progress * zoom}) translate(${travel / 2 - progress * travel}%, ${travel / 4 - progress * (travel / 2)}%)`;
     case 'ken-burns-right':
-      return `scale(${1.03 + progress * 0.09}) translate(${progress * 4 - 2}%, ${1 - progress * 1.5}%)`;
+      return `scale(${1.02 + progress * zoom}) translate(${progress * travel - travel / 2}%, ${travel / 4 - progress * (travel / 2)}%)`;
     case 'gentle-float': {
       const wave = Math.sin(progress * Math.PI * 2);
-      return `scale(1.06) translate(${wave * 0.8}%, ${Math.cos(progress * Math.PI * 2) * 0.6}%)`;
+      return `scale(${1 + zoom / 2}) translate(${wave * strength * 2}%, ${Math.cos(progress * Math.PI * 2) * strength * 1.5}%)`;
     }
     case 'none':
       return 'none';
@@ -72,7 +81,7 @@ export const Media = ({scene, durationInFrames, assetBasePath, template, fps}: P
   const sharedStyle: React.CSSProperties = {
     position: 'absolute',
     objectFit: 'cover',
-    transform: motionTransform(scene, frame, durationInFrames),
+    transform: motionTransform(scene.motion, frame, durationInFrames),
     ...layoutStyle(scene.layout, template),
   };
 
@@ -83,6 +92,18 @@ export const Media = ({scene, durationInFrames, assetBasePath, template, fps}: P
         {shotTimeline.map(({shot, from, durationInFrames: shotFrames}) => {
           const selected = shot.selectedAsset;
           const isVideo = selected ? /\.(mp4|mov|mkv|webm|avi|m4v)$/i.test(selected) : false;
+          const shotImageStyle: React.CSSProperties = {
+            ...sharedStyle,
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            transform: motionTransform(
+              shot.motionPlan?.preset ?? scene.motion,
+              frame - from,
+              shotFrames,
+              shot.motionPlan?.intensity,
+            ),
+          };
           return (
             <Sequence key={shot.id} from={from} durationInFrames={shotFrames} premountFor={15}>
               {shot.shotType === 'science-animation' && !selected ? (
@@ -97,10 +118,7 @@ export const Media = ({scene, durationInFrames, assetBasePath, template, fps}: P
                     muted
                   />
                 ) : (
-                  <Img
-                    src={staticFile(`${assetBasePath}/${selected}`)}
-                    style={{...sharedStyle, inset: 0, width: '100%', height: '100%'}}
-                  />
+                  <Img src={staticFile(`${assetBasePath}/${selected}`)} style={shotImageStyle} />
                 )
               ) : scene.assetType === 'video' ? (
                 <OffthreadVideo
@@ -109,7 +127,7 @@ export const Media = ({scene, durationInFrames, assetBasePath, template, fps}: P
                   muted
                 />
               ) : (
-                <Img src={src} style={{...sharedStyle, inset: 0, width: '100%', height: '100%'}} />
+                <Img src={src} style={shotImageStyle} />
               )}
             </Sequence>
           );
