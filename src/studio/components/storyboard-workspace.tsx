@@ -534,17 +534,29 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     <strong>搜索可下载素材</strong>
                     <span>Pixabay 使用英文场景词，适合寻找可用素材，不用于搜索完整主题</span>
                   </div>
-                </summary>
-                <div className="online-material-search-actions">
-                  <div>
-                    <button type="button" onClick={() => void searchOnline(shot, 'image')}>
+                  <div className="online-material-search-actions">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void searchOnline(shot, 'image');
+                      }}
+                    >
                       搜索图片
                     </button>
-                    <button type="button" onClick={() => void searchOnline(shot, 'video')}>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void searchOnline(shot, 'video');
+                      }}
+                    >
                       搜索视频
                     </button>
                   </div>
-                </div>
+                </summary>
                 {onlineSearch?.shotId === shot.id ? (
                   <div className="online-material-results">
                     <div className="pixabay-search-row">
@@ -987,18 +999,49 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           (item) => item.kind === 'video' && item.id === selectedVideoCandidateId,
                         );
                         if (!candidate) return null;
+                        const latestVideoCandidate = [...shot.candidates]
+                          .filter((item) => item.kind === 'video')
+                          .sort(
+                            (left, right) =>
+                              new Date(right.createdAt).getTime() -
+                              new Date(left.createdAt).getTime(),
+                          )[0];
+                        const fallbackTask =
+                          candidate.id === latestVideoCandidate?.id ? shot.generationTask : null;
+                        const taskStatus = candidate.taskStatus ?? fallbackTask?.status;
+                        const taskStartedAt = candidate.taskStartedAt ?? fallbackTask?.startedAt;
+                        const taskCompletedAt =
+                          candidate.taskCompletedAt ?? fallbackTask?.completedAt;
                         return (
                           <>
                             <video src={mediaUrl(projectId, candidate.path)} controls autoPlay />
                             <dl>
                               <div>
-                                <dt>生成时间</dt>
-                                <dd>{formatTaskTime(candidate.createdAt)}</dd>
+                                <dt>开始时间</dt>
+                                <dd>{formatTaskTime(taskStartedAt ?? candidate.createdAt)}</dd>
                               </div>
                               <div>
-                                <dt>任务状态</dt>
+                                <dt>完成时间</dt>
+                                <dd>{formatTaskTime(taskCompletedAt ?? candidate.createdAt)}</dd>
+                              </div>
+                              <div>
+                                <dt>生成用时</dt>
                                 <dd>
-                                  {candidate.path === shot.selectedAsset ? '已选用' : '生成完成'}
+                                  {formatTaskDuration(
+                                    taskStartedAt ?? candidate.createdAt,
+                                    taskCompletedAt ?? candidate.createdAt,
+                                    currentTime,
+                                  )}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>状态</dt>
+                                <dd>
+                                  {candidate.path === shot.selectedAsset
+                                    ? '已选用'
+                                    : taskStatus
+                                      ? generationStatusLabel(taskStatus)
+                                      : '生成完成'}
                                 </dd>
                               </div>
                               <div>
@@ -1033,63 +1076,6 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                   )}
                 </section>
               </details>
-              {shot.generationTask?.provider === 'volcengine-pippit-video' ? (
-                <details
-                  className={`video-generation-status ${activeGenerationStatuses.has(shot.generationTask.status) ? 'active' : ''}`}
-                  open={activeGenerationStatuses.has(shot.generationTask.status) ? true : undefined}
-                >
-                  <summary>
-                    <span>
-                      <strong>最近一次 AI 视频生成任务</strong>
-                      <small>
-                        这是提交给视频服务的异步处理记录 · 第 {shot.generationTask.attempt} 次 ·{' '}
-                        {generationStatusLabel(shot.generationTask.status)}
-                      </small>
-                    </span>
-                    <b>任务状态</b>
-                  </summary>
-                  {activeGenerationStatuses.has(shot.generationTask.status) ? (
-                    <>
-                      <i aria-label="视频生成处理中" />
-                      <small>生成服务暂不返回精确百分比，页面会每 5 秒自动更新状态。</small>
-                    </>
-                  ) : null}
-                  <dl>
-                    <div>
-                      <dt>开始时间</dt>
-                      <dd>{formatTaskTime(shot.generationTask.startedAt)}</dd>
-                    </div>
-                    <div>
-                      <dt>预计完成</dt>
-                      <dd>
-                        {formatTaskTime(shot.generationTask.estimatedCompletedAt)}
-                        {shot.generationTask.estimatedCompletedAt ? '（估算）' : ''}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>完成时间</dt>
-                      <dd>{formatTaskTime(shot.generationTask.completedAt)}</dd>
-                    </div>
-                    <div>
-                      <dt>
-                        {activeGenerationStatuses.has(shot.generationTask.status)
-                          ? '已用时间'
-                          : '总用时'}
-                      </dt>
-                      <dd>
-                        {formatTaskDuration(
-                          shot.generationTask.startedAt,
-                          shot.generationTask.completedAt,
-                          currentTime,
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
-                  {shot.generationTask.error ? (
-                    <p className="candidate-error">{shot.generationTask.error}</p>
-                  ) : null}
-                </details>
-              ) : null}
               <div className="shot-assets">
                 <div className="shot-assets-heading">
                   <strong>镜头素材</strong>

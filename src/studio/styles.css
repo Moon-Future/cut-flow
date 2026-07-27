@@ -5280,12 +5280,10 @@ select:focus {
 }
 .online-material-search-actions {
   display: flex;
-  justify-content: flex-end;
-  padding-top: 10px;
-}
-.online-material-search-actions > div {
-  display: flex;
   gap: 7px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  margin-right: 24px;
 }
 .online-material-search-actions button {
   padding: 7px 10px;
@@ -5357,15 +5355,15 @@ select:focus {
   color: #76948a;
   font-size: 9px;
 }
-.shot-plan-card details > summary {
+.shot-editor-list > article details > summary {
   position: relative;
   padding-right: 38px;
   list-style: none;
 }
-.shot-plan-card details > summary::-webkit-details-marker {
+.shot-editor-list > article details > summary::-webkit-details-marker {
   display: none;
 }
-.shot-plan-card details > summary::after {
+.shot-editor-list > article details > summary::after {
   content: '↓';
   position: absolute;
   top: 50%;
@@ -5380,12 +5378,12 @@ select:focus {
   font-size: 11px;
   transform: translateY(-50%);
 }
-.shot-plan-card details[open] > summary::after {
+.shot-editor-list > article details[open] > summary::after {
   content: '↑';
   background: #302650;
   color: #d4c3fb;
 }
-.shot-plan-card details > summary > b {
+.shot-editor-list > article details > summary > b {
   margin-right: 22px;
 }
 .online-material-results {
@@ -5727,18 +5725,20 @@ select:focus {
 }
 .generated-video-detail dt {
   color: #736d80;
-  font-size: 8px;
+  font-size: 10px;
 }
 .generated-video-detail dd {
-  margin: 3px 0 0;
+  margin: 5px 0 0;
   color: #c5cbd5;
-  font-size: 9px;
+  font-size: 12px;
+  line-height: 1.35;
 }
 .generated-video-detail > p {
   max-height: 72px;
   margin: 0;
   overflow: auto;
   color: #858090;
+  font-size: 11px;
   line-height: 1.5;
 }
 .generated-video-detail > button {

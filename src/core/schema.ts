@@ -44,6 +44,14 @@ export const generationCandidateSchema = z.object({
   prompt: z.string().min(1),
   createdAt: z.string().min(1),
   duration: z.number().positive().optional(),
+  taskId: z.string().min(1).optional(),
+  taskStatus: z
+    .enum(['queued', 'running', 'needs-selection', 'succeeded', 'failed', 'cancelled'])
+    .optional(),
+  taskAttempt: z.number().int().positive().optional(),
+  taskStartedAt: z.string().min(1).optional(),
+  taskEstimatedCompletedAt: z.string().min(1).optional(),
+  taskCompletedAt: z.string().min(1).optional(),
 });
 
 export const generationTaskSchema = z.object({

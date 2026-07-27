@@ -1364,9 +1364,16 @@ const localApi = (): Plugin => ({
                   ?.shots?.find((item) => item.id === input.shotId);
                 if (!latestShot) return;
                 const maximumDuration = videoTargetMaximumSeconds(targetDuration);
+                const completedAt = new Date().toISOString();
                 candidates = candidates.map((candidate) => ({
                   ...candidate,
                   duration: maximumDuration,
+                  taskId: task.id,
+                  taskStatus: 'needs-selection' as const,
+                  taskAttempt: task.attempt,
+                  taskStartedAt: task.startedAt,
+                  taskEstimatedCompletedAt: task.estimatedCompletedAt,
+                  taskCompletedAt: completedAt,
                 }));
                 latestShot.candidates = [...latestShot.candidates, ...candidates];
                 latestShot.sourceStart = 0;
@@ -1374,8 +1381,8 @@ const localApi = (): Plugin => ({
                 latestShot.generationTask = {
                   ...task,
                   status: 'needs-selection',
-                  completedAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
+                  completedAt,
+                  updatedAt: completedAt,
                 };
                 latestShot.status = 'needs-review';
                 const library = await readFile(assetLibraryFile, 'utf8')
