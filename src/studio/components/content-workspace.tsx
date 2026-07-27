@@ -21,6 +21,8 @@ const platformLabels: Record<string, string> = {
 export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) => {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const {
+    selectedSceneId,
+    selectScene,
     updateContent,
     updateProjectSettings,
     updateStyle,
@@ -42,8 +44,7 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
   const currentVersionIndex = copyVersions.findIndex(
     (item) => item.id === project.activeCopyVersionId,
   );
-  const currentVersion =
-    currentVersionIndex >= 0 ? copyVersions[currentVersionIndex] : undefined;
+  const currentVersion = currentVersionIndex >= 0 ? copyVersions[currentVersionIndex] : undefined;
   const providerNames: Record<string, string> = {
     mock: '本地演示',
     openai: 'OpenAI',
@@ -182,10 +183,8 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
                 `观众应理解并记住：${project.content?.topic || project.project.title}`,
               sourceMaterial: project.content?.sourceText?.trim() ?? '',
               visualStyle: project.content?.visualStyle?.trim() || '电影级写实',
-              aspectRatio:
-                project.project.width < project.project.height ? '9:16' : '16:9',
-              platformLabel:
-                platformLabels[project.project.platform ?? 'douyin'] ?? '自定义平台',
+              aspectRatio: project.project.width < project.project.height ? '9:16' : '16:9',
+              platformLabel: platformLabels[project.project.platform ?? 'douyin'] ?? '自定义平台',
             }}
             onGenerated={onGenerated}
             onAudioReady={onAudioReady}
@@ -262,20 +261,25 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
         </section>
         <div className="copy-segments">
           {project.scenes.map((scene, index) => (
-            <article key={scene.id}>
+            <article
+              key={scene.id}
+              data-scene-navigator={scene.id}
+              className={scene.id === selectedSceneId ? 'selected' : ''}
+              onClick={() => selectScene(scene.id)}
+            >
               <header>
                 <b>
                   {scene.copyRole === 'digital-human'
                     ? `数字人口播 ${index + 1}`
                     : scene.copyRole === 'voiceover'
                       ? `普通旁白 ${index + 1}`
-                    : scene.copyRole === 'visual-explanation'
-                      ? `画面讲解 ${index + 1}`
-                      : index === 0
-                        ? '开头 Hook'
-                        : index === project.scenes.length - 1
-                          ? '结尾 CTA'
-                          : `正文 ${String(index).padStart(2, '0')}`}
+                      : scene.copyRole === 'visual-explanation'
+                        ? `画面讲解 ${index + 1}`
+                        : index === 0
+                          ? '开头 Hook'
+                          : index === project.scenes.length - 1
+                            ? '结尾 CTA'
+                            : `正文 ${String(index).padStart(2, '0')}`}
                 </b>
                 <span>{scene.duration.toFixed(1)} 秒</span>
                 <div>
@@ -368,7 +372,11 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
             </div>
             <div>
               <span>生成目标</span>
-              <b>{currentVersion?.targetWordCount ? `${currentVersion.targetWordCount} 字` : '未记录'}</b>
+              <b>
+                {currentVersion?.targetWordCount
+                  ? `${currentVersion.targetWordCount} 字`
+                  : '未记录'}
+              </b>
             </div>
           </div>
           <div className="score-grid">
@@ -406,7 +414,11 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
             <strong>文案结构大纲</strong>
           </header>
           {project.scenes.map((scene, index) => (
-            <button key={scene.id}>
+            <button
+              key={scene.id}
+              className={scene.id === selectedSceneId ? 'active' : ''}
+              onClick={() => selectScene(scene.id)}
+            >
               <b>{index + 1}</b>
               <span>{scene.caption}</span>
               <small>{scene.duration.toFixed(0)}s</small>

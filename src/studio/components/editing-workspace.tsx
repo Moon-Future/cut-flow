@@ -128,6 +128,14 @@ export const EditingWorkspace = ({
   }, [selectedSceneId]);
 
   useEffect(() => {
+    if (!selectedSceneId) return;
+    const target = document.querySelector<HTMLElement>(
+      `[data-scene-navigator="${CSS.escape(selectedSceneId)}"]`,
+    );
+    target?.scrollIntoView({block: 'nearest', inline: 'nearest'});
+  }, [section, selectedSceneId]);
+
+  useEffect(() => {
     const fitTimelineToWindow = () =>
       setTimelineHeight((current) =>
         Math.round(Math.max(150, Math.min(Math.max(150, window.innerHeight - 320), current))),
@@ -273,6 +281,7 @@ export const EditingWorkspace = ({
                     {project.scenes.map((item, index) => (
                       <article
                         key={item.id}
+                        data-scene-navigator={item.id}
                         className={item.id === scene.id ? 'selected' : ''}
                         draggable
                         onDragStart={(event) => event.dataTransfer.setData('sceneId', item.id)}
@@ -639,11 +648,12 @@ export const EditingWorkspace = ({
               <div className="track-row caption-track">
                 <strong>Ｔ 字幕轨道</strong>
                 <div>
-                  {timeline.scenes.map(({scene: item, durationInFrames}) => (
+                  {timeline.scenes.map(({scene: item, durationInFrames}, index) => (
                     <button
                       key={item.id}
+                      className={item.id === scene.id ? 'selected' : ''}
                       style={{flex: durationInFrames}}
-                      onClick={() => selectScene(item.id)}
+                      onClick={() => chooseScene(item.id, index)}
                     >
                       {item.caption}
                     </button>

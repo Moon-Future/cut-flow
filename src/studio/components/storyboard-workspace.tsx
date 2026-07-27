@@ -346,6 +346,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
           {project.scenes.map((scene, index) => (
             <button
               key={scene.id}
+              data-scene-navigator={scene.id}
               className={scene.id === selected.id ? 'active' : ''}
               onClick={() => selectScene(scene.id)}
             >

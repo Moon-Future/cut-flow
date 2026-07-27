@@ -118,6 +118,7 @@ export const AssetsWorkspace = ({project, projectId, initialShotId, onOpenLibrar
           {project.scenes.map((scene, index) => (
             <button
               key={scene.id}
+              data-scene-navigator={scene.id}
               className={scene.id === selected.id ? 'active' : ''}
               onClick={() => {
                 selectScene(scene.id);

@@ -17,7 +17,7 @@ export const VoiceWorkspace = ({
   onGenerated,
   onAudioReady,
 }: Props) => {
-  const {updateScene} = useStudioStore();
+  const {selectedSceneId, selectScene, updateScene} = useStudioStore();
   const duration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
   return (
     <section className="voice-studio">
@@ -87,7 +87,12 @@ export const VoiceWorkspace = ({
         </header>
         <div className="voice-segments">
           {project.scenes.map((scene, index) => (
-            <article key={scene.id}>
+            <article
+              key={scene.id}
+              data-scene-navigator={scene.id}
+              className={scene.id === selectedSceneId ? 'selected' : ''}
+              onClick={() => selectScene(scene.id)}
+            >
               <header>
                 <b>{String(index + 1).padStart(2, '0')}</b>
                 <strong>{scene.caption}</strong>
