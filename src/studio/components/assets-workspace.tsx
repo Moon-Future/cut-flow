@@ -3,15 +3,22 @@ import type {AssetLibrary, AssetMetadata} from '../../media/asset-library';
 import type {ProjectFile} from '../../core/schema';
 import {useStudioStore} from '../store';
 
-type Props = {project: ProjectFile; projectId: string; onOpenLibrary: () => void};
+type Props = {
+  project: ProjectFile;
+  projectId: string;
+  initialShotId?: string | null;
+  onOpenLibrary: () => void;
+};
 const sourceLabels: Record<AssetMetadata['source'], string> = {
   local: '本地导入',
   generated: 'AI 生成',
   online: '在线素材',
 };
-export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
-  const {selectedSceneId, selectScene, replaceSceneAsset} = useStudioStore();
+export const AssetsWorkspace = ({project, projectId, initialShotId, onOpenLibrary}: Props) => {
+  const {selectedSceneId, selectScene, updateVisualShot, syncVisualShot} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
+  const [selectedShotId, setSelectedShotId] = useState<string | null>(initialShotId ?? null);
+  const [message, setMessage] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
   const [projectFilter, setProjectFilter] = useState('all');
@@ -44,7 +51,22 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
   );
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
+  const selectedShot =
+    selected.shots?.find((shot) => shot.id === selectedShotId) ?? selected.shots?.[0] ?? null;
+  useEffect(() => {
+    const targetShot = selected.shots?.find((shot) => shot.id === initialShotId);
+    setSelectedShotId(targetShot?.id ?? selected.shots?.[0]?.id ?? null);
+  }, [initialShotId, selected.id, selected.shots]);
+  const selectedAssetMetadata = selectedShot?.selectedAsset
+    ? (assets.find(
+        (asset) => asset.projectId === projectId && asset.path === selectedShot.selectedAsset,
+      ) ?? assets.find((asset) => asset.path === selectedShot.selectedAsset))
+    : undefined;
   const applyAsset = async (asset: AssetMetadata) => {
+    if (!selectedShot) {
+      setMessage('请先选择一个分镜');
+      return;
+    }
     let selectedAsset = asset;
     if (asset.projectId && asset.projectId !== projectId) {
       const response = await fetch('/api/assets/import-from-project', {
@@ -56,11 +78,32 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
       if (!response.ok || !value.asset) throw new Error(value.error ?? '跨项目复制素材失败');
       selectedAsset = value.asset;
     }
-    replaceSceneAsset(
-      selected.id,
-      selectedAsset.path,
-      selectedAsset.type === 'video' ? 'video' : 'image',
-    );
+    updateVisualShot(selected.id, selectedShot.id, {
+      selectedAsset: selectedAsset.path,
+      selectionCleared: false,
+      sourceStart: 0,
+      sourceEnd: selectedAsset.duration,
+      status: 'ready',
+    });
+    setMessage(`已将“${selectedAsset.name}”应用到当前分镜`);
+  };
+  const clearShotAsset = async () => {
+    if (!selectedShot) return;
+    const response = await fetch('/api/shots/clear-selection', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sceneId: selected.id, shotId: selectedShot.id}),
+    });
+    const value = (await response.json()) as {
+      shot?: NonNullable<ProjectFile['scenes'][number]['shots']>[number];
+      error?: string;
+    };
+    if (!response.ok || !value.shot) {
+      setMessage(value.error ?? '取消素材选用失败');
+      return;
+    }
+    syncVisualShot(selected.id, selectedShot.id, value.shot);
+    setMessage('已取消当前分镜的素材选用，素材库文件仍然保留');
   };
   return (
     <section className="assets-studio">
@@ -76,7 +119,10 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
             <button
               key={scene.id}
               className={scene.id === selected.id ? 'active' : ''}
-              onClick={() => selectScene(scene.id)}
+              onClick={() => {
+                selectScene(scene.id);
+                setSelectedShotId(scene.shots?.[0]?.id ?? null);
+              }}
             >
               <b>{String(index + 1).padStart(2, '0')}</b>
               <span>
@@ -87,6 +133,27 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
             </button>
           ))}
         </div>
+        <section className="asset-shot-targets">
+          <header>
+            <strong>当前段落分镜</strong>
+            <span>选择要分配素材的具体分镜</span>
+          </header>
+          <div>
+            {(selected.shots ?? []).map((shot, index) => (
+              <button
+                key={shot.id}
+                className={shot.id === selectedShot?.id ? 'active' : ''}
+                onClick={() => setSelectedShotId(shot.id)}
+              >
+                <b>{index + 1}</b>
+                <span>
+                  <strong>{shot.visualPurpose}</strong>
+                  <small>{shot.selectedAsset ? '已选素材' : '缺少素材'}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       </aside>
       <main className="asset-browser stage-panel">
         <header>
@@ -122,6 +189,7 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
             ))}
           </div>
         </div>
+        {message ? <p className="asset-workspace-message">{message}</p> : null}
         <div className="embedded-assets-grid">
           {visible.map((asset) => (
             <article key={asset.id}>
@@ -144,7 +212,9 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
                 {sourceLabels[asset.source]} · 来源项目：
                 {asset.originProjectTitle ?? asset.projectTitle ?? project.project.title}
               </small>
-              <button onClick={() => void applyAsset(asset)}>应用到当前镜头</button>
+              <button disabled={!selectedShot} onClick={() => void applyAsset(asset)}>
+                {selectedShot ? '应用到当前分镜' : '请先选择分镜'}
+              </button>
             </article>
           ))}
         </div>
@@ -160,28 +230,38 @@ export const AssetsWorkspace = ({project, projectId, onOpenLibrary}: Props) => {
       <aside className="asset-detail">
         <section className="stage-panel">
           <header>
-            <strong>当前镜头</strong>
-            <span>{selected.assetType === 'video' ? '视频' : '图片'}</span>
+            <strong>当前分镜素材</strong>
+            <span>{selectedShot?.selectedAsset ? '已选择' : '未选择'}</span>
           </header>
           <div className="current-asset-preview">
-            {selected.assetType === 'video' ? (
-              <video src={`/${projectId}/${selected.assetPath}`} controls />
+            {selectedShot?.selectedAsset ? (
+              selectedAssetMetadata?.type === 'video' ||
+              /\.(mp4|mov|webm|mkv)$/i.test(selectedShot.selectedAsset) ? (
+                <video src={`/${projectId}/${selectedShot.selectedAsset}`} controls />
+              ) : (
+                <img src={`/${projectId}/${selectedShot.selectedAsset}`} alt="" />
+              )
             ) : (
-              <img src={`/${projectId}/${selected.assetPath}`} alt="" />
+              <div className="asset-empty-preview">尚未给这个分镜选择素材</div>
             )}
           </div>
-          <h3>{selected.caption}</h3>
+          <h3>{selectedShot?.visualPurpose ?? selected.caption}</h3>
           <p>{selected.visualIntent || '待完善画面意图'}</p>
           <dl>
             <div>
               <dt>时长</dt>
-              <dd>{selected.duration.toFixed(1)} 秒</dd>
+              <dd>{selectedShot?.duration.toFixed(1) ?? '—'} 秒</dd>
             </div>
             <div>
-              <dt>历史版本</dt>
-              <dd>{selected.assetHistory?.length ?? 0}</dd>
+              <dt>素材状态</dt>
+              <dd>{selectedShot?.selectedAsset ? '已就绪' : '待选择'}</dd>
             </div>
           </dl>
+          {selectedShot?.selectedAsset ? (
+            <button className="remove-shot-asset-button" onClick={() => void clearShotAsset()}>
+              取消当前分镜选用
+            </button>
+          ) : null}
         </section>
       </aside>
     </section>

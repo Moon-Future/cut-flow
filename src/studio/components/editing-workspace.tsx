@@ -217,8 +217,8 @@ export const EditingWorkspace = ({
             <div>
               {section === 'edit' ? (
                 <>
-                  <button className="header-step" onClick={() => onNavigate('assets')}>
-                    ← 上一步：素材
+                  <button className="header-step" onClick={() => onNavigate('voice')}>
+                    ← 上一步：配音
                   </button>
                   <button className="header-next" onClick={() => onNavigate('export')}>
                     下一步：导出 →

@@ -7,8 +7,8 @@ const navItems: Array<[WorkspaceSection, string, string]> = [
   ['overview', '项目概览', '⌂'],
   ['content', '文案', '▤'],
   ['storyboard', '脚本与分镜', '▦'],
-  ['voice', '配音', '◉'],
   ['assets', '素材', '□'],
+  ['voice', '配音', '◉'],
   ['edit', '剪辑', '✂'],
   ['export', '导出', '⇧'],
 ];
@@ -36,16 +36,16 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
       {navItems
         .filter(([value]) => !['overview', 'settings'].includes(section) || value === 'overview')
         .map(([value, label, icon]) => (
-        <button
-          key={value}
-          className={section === value ? 'active' : ''}
-          disabled={!project && !['overview', 'settings'].includes(value)}
-          onClick={() => onNavigate(value)}
-        >
-          <i>{icon}</i>
-          <span>{label}</span>
-          {project && ['content', 'storyboard'].includes(value) ? <em>✓</em> : null}
-        </button>
+          <button
+            key={value}
+            className={section === value ? 'active' : ''}
+            disabled={!project && !['overview', 'settings'].includes(value)}
+            onClick={() => onNavigate(value)}
+          >
+            <i>{icon}</i>
+            <span>{label}</span>
+            {project && ['content', 'storyboard'].includes(value) ? <em>✓</em> : null}
+          </button>
         ))}
       {section === 'overview' && project ? (
         <p className="nav-entry-hint">双击最近项目，进入文案、脚本与剪辑工作区</p>

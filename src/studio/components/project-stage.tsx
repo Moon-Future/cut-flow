@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import type {ProjectFile} from '../../core/schema';
 import {AssetsWorkspace} from './assets-workspace';
 import {ContentWorkspace} from './content-workspace';
@@ -25,9 +26,9 @@ type Props = {
 const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]> = {
   overview: ['项目概览', '从这里查看项目状态并继续下一阶段'],
   content: ['视频文案', '确认完整口播内容和开场、结尾'],
-  storyboard: ['脚本与分镜', '逐段确认旁白、画面意图和素材策略'],
+  storyboard: ['脚本与分镜', '逐段确认旁白、画面意图并准备候选素材'],
   voice: ['配音', '生成或导入旁白，并检查时间对齐'],
-  assets: ['素材', '集中管理本地素材和 AI 生成结果'],
+  assets: ['素材', '按分镜统一选用、替换和移除项目素材'],
   export: ['导出', '完成最终检查并渲染成片'],
   settings: ['设置', '配置本机 AI 服务与密钥'],
 };
@@ -35,9 +36,15 @@ const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]>
 const previousSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
   content: 'overview',
   storyboard: 'content',
-  voice: 'storyboard',
-  assets: 'voice',
+  assets: 'storyboard',
+  voice: 'assets',
   export: 'edit',
+};
+const nextSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
+  content: 'storyboard',
+  storyboard: 'assets',
+  assets: 'voice',
+  voice: 'edit',
 };
 
 export const ProjectStage = ({
@@ -53,6 +60,7 @@ export const ProjectStage = ({
   onOpenProject,
   audioAvailable,
 }: Props) => {
+  const [assetTargetShotId, setAssetTargetShotId] = useState<string | null>(null);
   const totalDuration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
   const [title, description] = sectionTitles[section];
 
@@ -77,17 +85,7 @@ export const ProjectStage = ({
             {section !== 'export' ? (
               <button
                 className="primary-button"
-                onClick={() =>
-                  onNavigate(
-                    section === 'assets'
-                      ? 'edit'
-                      : section === 'storyboard'
-                        ? 'voice'
-                        : section === 'content'
-                          ? 'storyboard'
-                          : 'assets',
-                  )
-                }
+                onClick={() => onNavigate(nextSection[section] ?? 'overview')}
               >
                 下一步 →
               </button>
@@ -111,7 +109,15 @@ export const ProjectStage = ({
         <ContentWorkspace project={project} onGenerated={onGenerated} onAudioReady={onAudioReady} />
       ) : null}
       {section === 'storyboard' ? (
-        <StoryboardWorkspace project={project} projectId={currentProjectId} onAssets={onAssets} />
+        <StoryboardWorkspace
+          project={project}
+          projectId={currentProjectId}
+          onAssets={onAssets}
+          onGoToAssets={(shotId) => {
+            setAssetTargetShotId(shotId);
+            onNavigate('assets');
+          }}
+        />
       ) : null}
       {section === 'voice' ? (
         <VoiceWorkspace
@@ -126,6 +132,7 @@ export const ProjectStage = ({
         <AssetsWorkspace
           project={project}
           projectId={currentProjectId}
+          initialShotId={assetTargetShotId}
           onOpenLibrary={() => onAssets()}
         />
       ) : null}

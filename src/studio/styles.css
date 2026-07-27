@@ -4879,7 +4879,8 @@ select:focus {
   color: #738196;
   text-align: right;
 }
-.shot-assets button {
+.shot-assets button,
+.shot-assets .shot-candidate {
   position: relative;
   height: 72px;
   overflow: hidden;
@@ -4889,10 +4890,12 @@ select:focus {
   color: #8792a5;
   cursor: pointer;
 }
-.shot-assets button.selected {
+.shot-assets button.selected,
+.shot-assets .shot-candidate.selected {
   border: 2px solid #8b5cf6;
 }
-.shot-assets button span {
+.shot-assets button span,
+.shot-assets .shot-candidate > span {
   position: absolute;
   right: 3px;
   bottom: 3px;
@@ -4909,6 +4912,9 @@ select:focus {
 .shot-assets .clear-shot-asset {
   grid-column: span 2;
   height: 38px;
+}
+.shot-assets .add-shot-asset {
+  grid-column: 1 / -1;
 }
 .shot-assets .clear-shot-asset,
 .clear-shot-selection {
@@ -5416,6 +5422,86 @@ select:focus {
   display: grid;
   gap: 6px;
   padding: 9px;
+}
+.asset-shot-targets {
+  margin: 0 9px 9px;
+  overflow: hidden;
+  border: 1px solid #293345;
+  border-radius: 8px;
+  background: #0d131c;
+}
+.asset-shot-targets > header {
+  display: block;
+  padding: 9px 10px;
+  border-bottom: 1px solid #293345;
+}
+.asset-shot-targets > header strong,
+.asset-shot-targets > header span {
+  display: block;
+}
+.asset-shot-targets > header span {
+  margin-top: 3px;
+  color: #6f7c90;
+}
+.asset-shot-targets > div {
+  display: grid;
+  gap: 5px;
+  max-height: 260px;
+  padding: 7px;
+  overflow: auto;
+}
+.asset-shot-targets button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #141b25;
+  color: #8e9aad;
+  text-align: left;
+  cursor: pointer;
+}
+.asset-shot-targets button.active {
+  border-color: #7455bd;
+  background: #201833;
+}
+.asset-shot-targets button strong,
+.asset-shot-targets button small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asset-shot-targets button small {
+  margin-top: 3px;
+  color: #6f7b8f;
+}
+.asset-workspace-message {
+  margin: 0;
+  padding: 8px 11px;
+  border-bottom: 1px solid #263143;
+  background: #121b25;
+  color: #85cbb7;
+}
+.asset-empty-preview {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #657287;
+  text-align: center;
+}
+.remove-shot-asset-button {
+  width: calc(100% - 24px);
+  margin: 0 12px 12px;
+  padding: 9px 10px;
+  border: 1px solid #653f49;
+  border-radius: 7px;
+  background: #2d1c22;
+  color: #dfa1af;
+  cursor: pointer;
 }
 .asset-scene-map > div button {
   display: grid;

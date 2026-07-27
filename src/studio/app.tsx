@@ -191,7 +191,7 @@ export const App = () => {
       <AssetLibraryPanel
         open={assetLibraryOpen}
         projectId={projectId}
-        canApply={section !== 'overview'}
+        canApply={Boolean(assetSelectionTarget)}
         selectionTarget={assetSelectionTarget}
         onClose={() => {
           setAssetLibraryOpen(false);

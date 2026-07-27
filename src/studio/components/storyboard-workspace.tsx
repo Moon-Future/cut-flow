@@ -19,6 +19,7 @@ type Props = {
   project: ProjectFile;
   projectId: string;
   onAssets: (target?: AssetSelectionTarget) => void;
+  onGoToAssets: (shotId: string) => void;
 };
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 const activeGenerationStatuses = new Set<GenerationTask['status']>(['queued', 'running']);
@@ -76,7 +77,7 @@ const contentSearchLinks = (query: string) => {
   ] as const;
 };
 
-export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
+export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}: Props) => {
   const {selectedSceneId, selectScene, updateScene, updateVisualShot, syncVisualShot} =
     useStudioStore();
   const [onlineSearch, setOnlineSearch] = useState<{
@@ -329,44 +330,6 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
     }
   };
 
-  const selectCandidate = async (shot: VisualShot, candidateId: string) => {
-    const response = await fetch('/api/shots/select', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({sceneId: selected.id, shotId: shot.id, candidateId}),
-    });
-    const value = (await response.json()) as {shot?: VisualShot; error?: string};
-    if (!response.ok || !value.shot) {
-      setVideoGenerationError({
-        shotId: shot.id,
-        message: value.error ?? '选择生成视频失败',
-      });
-      return;
-    }
-    syncVisualShot(selected.id, shot.id, value.shot);
-    const candidate = value.shot.candidates.find((item) => item.id === candidateId);
-    if (candidate?.kind === 'video') {
-      updateScene(selected.id, {assetPath: candidate.path, assetType: 'video'});
-    }
-  };
-  const clearSelectedAsset = async (shot: VisualShot) => {
-    setVideoGenerationError(null);
-    const response = await fetch('/api/shots/clear-selection', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({sceneId: selected.id, shotId: shot.id}),
-    });
-    const value = (await response.json()) as {shot?: VisualShot; error?: string};
-    if (!response.ok || !value.shot) {
-      setVideoGenerationError({
-        shotId: shot.id,
-        message: value.error ?? '移除已选素材失败',
-      });
-      return;
-    }
-    syncVisualShot(selected.id, shot.id, value.shot);
-  };
-
   return (
     <section className="storyboard-studio">
       <aside className="board-scene-list stage-panel">
@@ -417,9 +380,9 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
           <button onClick={() => onAssets()}>打开素材库</button>
         </header>
         <div className="storyboard-purpose-note">
-          <strong>这里负责准备和初选分镜素材</strong>
+          <strong>这里负责设计分镜和准备候选素材</strong>
           <span>
-            定义画面、搜索或生成候选并选出镜头素材；素材页面负责集中管理和跨镜头复用，剪辑页面负责最终时间线。
+            定义画面、搜索或生成候选；素材的选用、替换和移除统一在素材页面完成，剪辑页面负责最终时间线。
           </span>
         </div>
         <div className="board-copy">
@@ -947,16 +910,15 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
               <div className="shot-assets">
                 <div className="shot-assets-heading">
                   <strong>候选素材</strong>
-                  <span>点击候选卡片可选为当前镜头素材</span>
+                  <span>这里只准备候选，统一到素材页面选用</span>
                 </div>
                 {[...shot.candidates]
                   .reverse()
                   .slice(0, 3)
                   .map((candidate) => (
-                    <button
+                    <article
+                      className={`shot-candidate ${candidate.path === shot.selectedAsset ? 'selected' : ''}`}
                       key={candidate.id}
-                      className={candidate.path === shot.selectedAsset ? 'selected' : ''}
-                      onClick={() => void selectCandidate(shot, candidate.id)}
                     >
                       {candidate.kind === 'video' ? (
                         <video src={mediaUrl(projectId, candidate.path)} muted />
@@ -969,24 +931,11 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                           ? ` · ${candidate.duration} 秒`
                           : ''}
                       </span>
-                    </button>
+                    </article>
                   ))}
-                <button
-                  className="add-shot-asset"
-                  onClick={() => onAssets({sceneId: selected.id, shotId: shot.id})}
-                >
-                  ＋ 从素材库选择
+                <button className="add-shot-asset" onClick={() => onGoToAssets(shot.id)}>
+                  前往素材页面选择
                 </button>
-                {shot.selectedAsset ? (
-                  <button
-                    className="clear-shot-asset"
-                    type="button"
-                    onClick={() => void clearSelectedAsset(shot)}
-                    title="只解除当前镜头引用，不删除素材库文件"
-                  >
-                    取消本镜头选用
-                  </button>
-                ) : null}
               </div>
               {shot.generationTask?.provider === 'volcengine-pippit-video' ? (
                 <div
