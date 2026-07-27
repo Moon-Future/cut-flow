@@ -40,6 +40,7 @@ type Props = {
 };
 
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
+const timelineLabelWidth = 112;
 
 const workspaceTabs: Array<{
   section: Extract<WorkspaceSection, 'content' | 'storyboard' | 'assets' | 'voice' | 'edit'>;
@@ -313,7 +314,10 @@ export const EditingWorkspace = ({
       sceneId: item.id,
       pointerX: event.clientX,
       duration: item.duration,
-      pixelsPerSecond: Math.max(1, (timelineCanvasWidth - 124) / Math.max(0.1, totalSeconds)),
+      pixelsPerSecond: Math.max(
+        1,
+        (timelineCanvasWidth - timelineLabelWidth) / Math.max(0.1, totalSeconds),
+      ),
     };
   };
   const previewTrim = (event: ReactPointerEvent<HTMLElement>) => {
@@ -918,8 +922,8 @@ export const EditingWorkspace = ({
                 style={{width: timelineCanvasWidth}}
                 onPointerDown={(event) => {
                   const bounds = event.currentTarget.getBoundingClientRect();
-                  const position = Math.max(0, event.clientX - bounds.left - 124);
-                  const ratio = position / Math.max(1, bounds.width - 124);
+                  const position = Math.max(0, event.clientX - bounds.left - timelineLabelWidth);
+                  const ratio = position / Math.max(1, bounds.width - timelineLabelWidth);
                   seekTimeline(ratio * timeline.durationInFrames);
                 }}
               >
@@ -1041,10 +1045,10 @@ export const EditingWorkspace = ({
                   className="playhead"
                   style={{
                     left:
-                      124 +
+                      timelineLabelWidth +
                       (Math.min(currentFrame, timeline.durationInFrames) /
                         timeline.durationInFrames) *
-                        (timelineCanvasWidth - 124),
+                        (timelineCanvasWidth - timelineLabelWidth),
                   }}
                 />
               ) : null}

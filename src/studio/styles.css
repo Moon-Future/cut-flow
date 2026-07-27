@@ -2231,13 +2231,13 @@ select:focus {
 .track-row {
   min-width: 900px;
   display: grid;
-  grid-template-columns: 124px 1fr;
+  grid-template-columns: 112px 1fr;
 }
 .timeline-ruler {
   height: 24px;
   align-items: end;
   border-bottom: 1px solid #1e2634;
-  grid-template-columns: 124px repeat(7, 1fr);
+  grid-template-columns: 112px repeat(7, 1fr);
   cursor: pointer;
 }
 .timeline-ruler i {
@@ -2254,29 +2254,35 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 0 12px;
+  gap: 4px;
+  padding: 0 7px;
   color: #b5bfce;
   font-size: clamp(12px, 0.78vw, 14px);
   font-weight: 600;
   white-space: nowrap;
 }
 .track-row > strong > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
   word-break: keep-all;
+  font-size: 11px !important;
 }
 .track-row > strong button {
   flex: 0 0 auto;
-  width: 24px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
   padding: 0;
   border: 1px solid #2c3546;
   border-radius: 5px;
   background: #141a24;
   color: #778297;
+  font-size: 10px !important;
+  line-height: 1;
+  text-align: center;
   cursor: pointer;
 }
 .track-row > strong button.active {
