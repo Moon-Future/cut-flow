@@ -540,6 +540,8 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        const panel = event.currentTarget.closest('details');
+                        if (panel) panel.open = true;
                         void searchOnline(shot, 'image');
                       }}
                     >
@@ -550,6 +552,8 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        const panel = event.currentTarget.closest('details');
+                        if (panel) panel.open = true;
                         void searchOnline(shot, 'video');
                       }}
                     >
