@@ -281,19 +281,14 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
                   </span>
                   <span>{asset.license}</span>
                 </div>
-                <button
-                  disabled={
-                    !asset.commercialUse || !canApply || (!selectedSceneId && !selectionTarget)
-                  }
-                  title={!canApply ? '首页素材库仅用于浏览和管理' : undefined}
-                  onClick={() => void apply(asset)}
-                >
-                  {canApply
-                    ? selectionTarget
-                      ? '应用到当前分镜'
-                      : '应用到当前段落'
-                    : '请先进入具体镜头'}
-                </button>
+                {canApply ? (
+                  <button
+                    disabled={!asset.commercialUse || (!selectedSceneId && !selectionTarget)}
+                    onClick={() => void apply(asset)}
+                  >
+                    {selectionTarget ? '应用到当前分镜' : '应用到当前段落'}
+                  </button>
+                ) : null}
                 <div className="asset-management-actions">
                   <button onClick={() => void openLocation(asset)}>打开目录</button>
                   <button className="danger" onClick={() => void remove(asset)}>

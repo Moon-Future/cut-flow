@@ -907,46 +907,21 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
                   </div>
                 ) : null}
               </details>
-              <div className="shot-assets">
-                <div className="shot-assets-heading">
-                  <strong>候选素材</strong>
-                  <span>这里只准备候选，统一到素材页面选用</span>
-                </div>
-                {[...shot.candidates]
-                  .reverse()
-                  .slice(0, 3)
-                  .map((candidate) => (
-                    <article
-                      className={`shot-candidate ${candidate.path === shot.selectedAsset ? 'selected' : ''}`}
-                      key={candidate.id}
-                    >
-                      {candidate.kind === 'video' ? (
-                        <video src={mediaUrl(projectId, candidate.path)} muted />
-                      ) : (
-                        <img src={mediaUrl(projectId, candidate.path)} alt="" />
-                      )}
-                      <span>
-                        {candidate.provider}
-                        {candidate.kind === 'video' && candidate.duration
-                          ? ` · ${candidate.duration} 秒`
-                          : ''}
-                      </span>
-                    </article>
-                  ))}
-                <button className="add-shot-asset" onClick={() => onGoToAssets(shot.id)}>
-                  前往素材页面选择
-                </button>
-              </div>
               {shot.generationTask?.provider === 'volcengine-pippit-video' ? (
-                <div
+                <details
                   className={`video-generation-status ${activeGenerationStatuses.has(shot.generationTask.status) ? 'active' : ''}`}
+                  open={activeGenerationStatuses.has(shot.generationTask.status) ? true : undefined}
                 >
-                  <span>
-                    任务状态：{generationStatusLabel(shot.generationTask.status)}
-                    {shot.generationTask.status === 'needs-selection'
-                      ? '，请在上方候选素材中选择生成结果'
-                      : ''}
-                  </span>
+                  <summary>
+                    <span>
+                      <strong>AI 视频生成任务</strong>
+                      <small>
+                        第 {shot.generationTask.attempt} 次 ·{' '}
+                        {generationStatusLabel(shot.generationTask.status)}
+                      </small>
+                    </span>
+                    <b>查看任务状态</b>
+                  </summary>
                   {activeGenerationStatuses.has(shot.generationTask.status) ? (
                     <>
                       <i aria-label="视频生成处理中" />
@@ -984,8 +959,39 @@ export const StoryboardWorkspace = ({project, projectId, onAssets, onGoToAssets}
                       </dd>
                     </div>
                   </dl>
-                </div>
+                  {shot.generationTask.error ? (
+                    <p className="candidate-error">{shot.generationTask.error}</p>
+                  ) : null}
+                </details>
               ) : null}
+              <div className="shot-assets">
+                <div className="shot-assets-heading">
+                  <strong>AI 视频生成结果</strong>
+                  <span>这里展示生成结果；素材的选用与移除统一到素材页面处理</span>
+                </div>
+                {[...shot.candidates]
+                  .filter((candidate) => candidate.kind === 'video')
+                  .reverse()
+                  .slice(0, 3)
+                  .map((candidate) => (
+                    <article
+                      className={`shot-candidate ${candidate.path === shot.selectedAsset ? 'selected' : ''}`}
+                      key={candidate.id}
+                    >
+                      <video src={mediaUrl(projectId, candidate.path)} controls />
+                      <span>
+                        {candidate.provider}
+                        {candidate.duration ? ` · ${candidate.duration} 秒` : ''}
+                      </span>
+                    </article>
+                  ))}
+                {!shot.candidates.some((candidate) => candidate.kind === 'video') ? (
+                  <p className="shot-generation-empty">当前还没有 AI 视频生成结果</p>
+                ) : null}
+                <button className="add-shot-asset" onClick={() => onGoToAssets(shot.id)}>
+                  前往素材页面选择
+                </button>
+              </div>
               {videoGenerationError?.shotId === shot.id ? (
                 <p className="candidate-error">{videoGenerationError.message}</p>
               ) : null}
