@@ -2267,7 +2267,7 @@ select:focus {
   text-overflow: clip;
   white-space: nowrap;
   word-break: keep-all;
-  font-size: 11px !important;
+  font-size: 14px !important;
 }
 .track-row > strong button {
   flex: 0 0 auto;
@@ -2284,6 +2284,7 @@ select:focus {
   line-height: 1;
   text-align: center;
   cursor: pointer;
+  min-width: auto;
 }
 .track-row > strong button.active {
   border-color: #805be0;
