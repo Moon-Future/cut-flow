@@ -21,6 +21,7 @@ type RenderState = {
   status: 'idle' | 'running' | 'success' | 'error';
   progress: number;
   message: string;
+  output?: string;
 };
 
 type Props = {
@@ -107,6 +108,9 @@ export const EditingWorkspace = ({
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [trackMenuOpen, setTrackMenuOpen] = useState(false);
+  const [exportDrawerOpen, setExportDrawerOpen] = useState(false);
+  const [workspaceInspectorOpen, setWorkspaceInspectorOpen] = useState(false);
+  const [operationNotice, setOperationNotice] = useState('');
   const [lockedTracks, setLockedTracks] = useState<string[]>([]);
   const [mutedTracks, setMutedTracks] = useState<string[]>([]);
   const [trimPreview, setTrimPreview] = useState<Record<string, number>>({});
@@ -144,6 +148,7 @@ export const EditingWorkspace = ({
     setTimelineHeight(next);
     window.localStorage.setItem('cut-flow-timeline-height', String(next));
   };
+  const notify = (message: string) => setOperationNotice(message);
 
   useEffect(() => {
     fetch('/api/assets/library')
@@ -158,6 +163,12 @@ export const EditingWorkspace = ({
     setCandidatePath(null);
     setPreviewPath(null);
   }, [selectedSceneId]);
+
+  useEffect(() => {
+    if (!operationNotice) return;
+    const timer = window.setTimeout(() => setOperationNotice(''), 1800);
+    return () => window.clearTimeout(timer);
+  }, [operationNotice]);
 
   useEffect(() => {
     if (!selectedSceneId) return;
@@ -332,6 +343,7 @@ export const EditingWorkspace = ({
     });
     if (Math.abs(duration - start.duration) >= 0.01) {
       updateScene(start.sceneId, {duration: Math.round(duration * 10) / 10});
+      notify(`片段时长已调整为 ${duration.toFixed(1)} 秒`);
     }
   };
 
@@ -341,6 +353,7 @@ export const EditingWorkspace = ({
     replaceSceneAsset(scene.id, candidate.path, candidate.type);
     setCandidatePath(null);
     setPreviewPath(null);
+    notify('已替换当前镜头素材');
   };
 
   const insert = () => {
@@ -351,6 +364,7 @@ export const EditingWorkspace = ({
     if (newSceneId) replaceSceneAsset(newSceneId, candidate.path, candidate.type);
     setCandidatePath(null);
     setPreviewPath(null);
+    notify('已插入新镜头');
   };
 
   const previewCandidate = candidates.find((item) => item.path === previewPath);
@@ -371,9 +385,11 @@ export const EditingWorkspace = ({
       }
     : previewProject;
   const toggleTrackState = (track: string, setter: Dispatch<SetStateAction<string[]>>) =>
-    setter((current) =>
-      current.includes(track) ? current.filter((item) => item !== track) : [...current, track],
-    );
+    setter((current) => {
+      const active = current.includes(track);
+      notify(active ? '轨道控制已关闭' : '轨道控制已开启');
+      return active ? current.filter((item) => item !== track) : [...current, track];
+    });
 
   return (
     <div className="edit-app">
@@ -414,9 +430,17 @@ export const EditingWorkspace = ({
             </span>
             <div>
               {showWorkbench ? (
-                <button className="header-next" onClick={() => onNavigate('export')}>
-                  导出视频
-                </button>
+                <>
+                  <button
+                    className="header-step"
+                    onClick={() => setWorkspaceInspectorOpen((open) => !open)}
+                  >
+                    属性
+                  </button>
+                  <button className="header-next" onClick={() => setExportDrawerOpen(true)}>
+                    导出视频
+                  </button>
+                </>
               ) : null}
             </div>
           </header>
@@ -794,19 +818,28 @@ export const EditingWorkspace = ({
                 <button disabled>↷ 重做</button>
                 <button
                   disabled={!canSplit}
-                  onClick={() => splitScene(scene.id, splitAtSeconds)}
+                  onClick={() => {
+                    splitScene(scene.id, splitAtSeconds);
+                    notify('已在播放头位置分割镜头');
+                  }}
                   title={canSplit ? '在播放头位置分割当前镜头' : '请将播放头移动到镜头内部'}
                 >
                   ✂ 分割
                 </button>
                 <button
-                  onClick={() => deleteScene(scene.id)}
+                  onClick={() => {
+                    deleteScene(scene.id);
+                    notify('已删除当前镜头');
+                  }}
                   disabled={project.scenes.length <= 1 || lockedTracks.includes('video')}
                 >
                   ♜ 删除
                 </button>
                 <button
-                  onClick={() => duplicateScene(scene.id)}
+                  onClick={() => {
+                    duplicateScene(scene.id);
+                    notify('已复制当前镜头');
+                  }}
                   disabled={lockedTracks.includes('video')}
                 >
                   ▣ 复制
@@ -1049,6 +1082,172 @@ export const EditingWorkspace = ({
               controls={false}
               style={{width: 1, height: 1}}
             />
+          </div>
+        ) : null}
+        {exportDrawerOpen || workspaceInspectorOpen ? (
+          <button
+            className="workspace-drawer-backdrop"
+            aria-label="关闭侧边抽屉"
+            onClick={() => {
+              setExportDrawerOpen(false);
+              setWorkspaceInspectorOpen(false);
+            }}
+          />
+        ) : null}
+        <aside className={`workspace-drawer ${exportDrawerOpen ? 'open' : ''}`}>
+          <header>
+            <div>
+              <strong>导出视频</strong>
+              <span>检查项目参数并渲染成片</span>
+            </div>
+            <button onClick={() => setExportDrawerOpen(false)} aria-label="关闭导出抽屉">
+              ×
+            </button>
+          </header>
+          <div className="drawer-content">
+            <section className="export-summary">
+              <div>
+                <span>画面尺寸</span>
+                <strong>
+                  {project.project.width} × {project.project.height}
+                </strong>
+              </div>
+              <div>
+                <span>帧率</span>
+                <strong>{project.project.fps} FPS</strong>
+              </div>
+              <div>
+                <span>预计时长</span>
+                <strong>{totalSeconds.toFixed(1)} 秒</strong>
+              </div>
+              <div>
+                <span>镜头数量</span>
+                <strong>{project.scenes.length} 个</strong>
+              </div>
+            </section>
+            <section className="drawer-section">
+              <h3>输出设置</h3>
+              <label>
+                <span>格式</span>
+                <select disabled>
+                  <option>MP4 · H.264</option>
+                </select>
+              </label>
+              <label>
+                <span>质量</span>
+                <select disabled>
+                  <option>高质量</option>
+                </select>
+              </label>
+            </section>
+            {renderState.status === 'idle' ? (
+              <div className="drawer-empty-state">
+                <b>↗</b>
+                <strong>准备导出</strong>
+                <span>导出期间可以继续查看项目，完成后会显示输出位置。</span>
+              </div>
+            ) : (
+              <section className={`export-progress ${renderState.status}`}>
+                <div>
+                  <strong>{renderState.message}</strong>
+                  <span>{Math.round(renderState.progress)}%</span>
+                </div>
+                <progress max={100} value={renderState.progress} />
+                {renderState.output ? <small>{renderState.output}</small> : null}
+              </section>
+            )}
+          </div>
+          <footer>
+            <button className="secondary-button" onClick={() => setExportDrawerOpen(false)}>
+              取消
+            </button>
+            <button
+              className="primary-button"
+              disabled={renderState.status === 'running'}
+              onClick={() => {
+                onRender();
+                notify('已开始导出视频');
+              }}
+            >
+              {renderState.status === 'running' ? '正在导出…' : '开始导出'}
+            </button>
+          </footer>
+        </aside>
+        <aside
+          className={`workspace-drawer inspector-drawer ${workspaceInspectorOpen ? 'open' : ''}`}
+        >
+          <header>
+            <div>
+              <strong>镜头属性</strong>
+              <span>
+                镜头 {selectedIndex + 1} / {project.scenes.length}
+              </span>
+            </div>
+            <button onClick={() => setWorkspaceInspectorOpen(false)} aria-label="关闭属性抽屉">
+              ×
+            </button>
+          </header>
+          <div className="drawer-content property-form">
+            <label>
+              <span>镜头标题</span>
+              <input
+                value={scene.caption}
+                onChange={(event) => updateScene(scene.id, {caption: event.target.value})}
+              />
+            </label>
+            <label>
+              <span>持续时长</span>
+              <input
+                type="number"
+                min="0.1"
+                max="300"
+                step="0.1"
+                value={scene.duration}
+                onChange={(event) => updateScene(scene.id, {duration: Number(event.target.value)})}
+              />
+            </label>
+            <label>
+              <span>画面布局</span>
+              <select
+                value={scene.layout}
+                onChange={(event) =>
+                  updateScene(scene.id, {layout: event.target.value as Scene['layout']})
+                }
+              >
+                <option value="full-screen">全屏填充</option>
+                <option value="center-card">居中卡片</option>
+                <option value="split-top-bottom">上下分屏</option>
+              </select>
+            </label>
+            <label>
+              <span>画面动效</span>
+              <select
+                value={scene.motion}
+                onChange={(event) =>
+                  updateScene(scene.id, {motion: event.target.value as Scene['motion']})
+                }
+              >
+                <option value="none">无</option>
+                <option value="slow-zoom-in">缓慢推近</option>
+                <option value="slow-zoom-out">缓慢拉远</option>
+                <option value="pan-left">向左平移</option>
+                <option value="pan-right">向右平移</option>
+                <option value="gentle-float">轻微漂浮</option>
+              </select>
+            </label>
+            <label>
+              <span>画面意图</span>
+              <textarea
+                rows={5}
+                value={scene.visualIntent ?? ''}
+                onChange={(event) => updateScene(scene.id, {visualIntent: event.target.value})}
+              />
+            </label>
+          </div>
+        </aside>
+        {operationNotice ? (
+          <div className="operation-toast" role="status">
+            ✓ {operationNotice}
           </div>
         ) : null}
         <div className={`render-toast ${renderState.status}`}>{renderState.message}</div>
