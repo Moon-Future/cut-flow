@@ -4890,9 +4890,23 @@ select:focus {
   white-space: nowrap;
 }
 .shot-assets .add-shot-asset,
-.shot-assets .generate-shot-video {
+.shot-assets .generate-shot-video,
+.shot-assets .clear-shot-asset {
   grid-column: span 2;
   height: 38px;
+}
+.shot-assets .clear-shot-asset,
+.clear-shot-selection {
+  border-color: #60404a;
+  background: #2a1c22;
+  color: #dfa0ae;
+}
+.clear-shot-selection {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #60404a;
+  border-radius: 7px;
+  cursor: pointer;
 }
 .prompt-editor,
 .video-generation-panel {

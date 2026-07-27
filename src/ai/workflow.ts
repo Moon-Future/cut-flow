@@ -139,6 +139,7 @@ export const runGenerationWorkflow = async (
           requiresAiVideo: false,
         },
         selectedAsset: shotIndex === 0 && matchedAsset ? matchedAsset.path : null,
+        selectionCleared: false,
         sourceStart: 0,
         sourceEnd: shotDuration,
         status: shotIndex === 0 && matchedAsset ? ('ready' as const) : ('missing-asset' as const),

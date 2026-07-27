@@ -395,11 +395,29 @@ export const SceneEditor = ({projectId}: Props) => {
                     onChange={(event) =>
                       updateVisualShot(scene.id, shot.id, {
                         selectedAsset: event.target.value || null,
+                        selectionCleared: !event.target.value,
                         status: event.target.value ? 'needs-review' : 'missing-asset',
                       })
                     }
                   />
                 </label>
+                {shot.selectedAsset ? (
+                  <button
+                    type="button"
+                    className="clear-shot-selection"
+                    onClick={() =>
+                      updateVisualShot(scene.id, shot.id, {
+                        selectedAsset: null,
+                        selectionCleared: true,
+                        sourceStart: 0,
+                        sourceEnd: undefined,
+                        status: 'missing-asset',
+                      })
+                    }
+                  >
+                    移除已选素材（保留素材文件）
+                  </button>
+                ) : null}
                 <div className="field-row">
                   <label>
                     <span>源片段开始</span>

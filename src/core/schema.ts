@@ -90,6 +90,7 @@ export const visualShotSchema = z.object({
   videoPromptZh: z.string().optional(),
   motionPlan: shotMotionPlanSchema.optional(),
   selectedAsset: z.string().nullable().default(null),
+  selectionCleared: z.boolean().optional(),
   sourceStart: z.number().min(0).default(0),
   sourceEnd: z.number().positive().optional(),
   status: z.enum(['ready', 'missing-asset', 'needs-review']).default('missing-asset'),

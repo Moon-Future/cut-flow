@@ -344,6 +344,15 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
       updateScene(selected.id, {assetPath: candidate.path, assetType: 'video'});
     }
   };
+  const clearSelectedAsset = (shot: VisualShot) => {
+    updateShot(shot, {
+      selectedAsset: null,
+      selectionCleared: true,
+      sourceStart: 0,
+      sourceEnd: undefined,
+      status: 'missing-asset',
+    });
+  };
 
   return (
     <section className="storyboard-studio">
@@ -942,6 +951,16 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 <button className="add-shot-asset" onClick={onAssets}>
                   ＋ 选择素材
                 </button>
+                {shot.selectedAsset ? (
+                  <button
+                    className="clear-shot-asset"
+                    type="button"
+                    onClick={() => clearSelectedAsset(shot)}
+                    title="只解除当前镜头引用，不删除素材库文件"
+                  >
+                    移除已选素材
+                  </button>
+                ) : null}
               </div>
               {shot.generationTask?.provider === 'volcengine-pippit-video' ? (
                 <div

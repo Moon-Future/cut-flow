@@ -108,6 +108,8 @@ export const Media = ({scene, durationInFrames, assetBasePath, template, fps}: P
             <Sequence key={shot.id} from={from} durationInFrames={shotFrames} premountFor={15}>
               {shot.shotType === 'science-animation' && !selected ? (
                 <ScienceAnimation purpose={shot.visualPurpose} />
+              ) : shot.selectionCleared && !selected ? (
+                <AbsoluteFill style={{background: template.backgroundColor}} />
               ) : selected ? (
                 isVideo ? (
                   <OffthreadVideo

@@ -1436,6 +1436,7 @@ const localApi = (): Plugin => ({
               return;
             }
             shot.selectedAsset = candidate.path;
+            shot.selectionCleared = false;
             if (candidate.kind === 'video') {
               const candidateDuration =
                 candidate.duration ??
