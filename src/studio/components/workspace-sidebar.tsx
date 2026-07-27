@@ -3,15 +3,7 @@ import type {ProjectFile} from '../../core/schema';
 export type WorkspaceSection =
   'overview' | 'content' | 'storyboard' | 'voice' | 'assets' | 'edit' | 'export' | 'settings';
 
-const navItems: Array<[WorkspaceSection, string, string]> = [
-  ['overview', '项目概览', '⌂'],
-  ['content', '文案', '▤'],
-  ['storyboard', '脚本与分镜', '▦'],
-  ['assets', '素材', '□'],
-  ['voice', '配音', '◉'],
-  ['edit', '剪辑', '✂'],
-  ['export', '导出', '⇧'],
-];
+const navItems: Array<[WorkspaceSection, string, string]> = [['overview', '项目与概览', '⌂']];
 
 type Props = {
   section: WorkspaceSection;
@@ -33,20 +25,17 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
       ＋ 新建项目
     </button>
     <nav>
-      {navItems
-        .filter(([value]) => !['overview', 'settings'].includes(section) || value === 'overview')
-        .map(([value, label, icon]) => (
-          <button
-            key={value}
-            className={section === value ? 'active' : ''}
-            disabled={!project && !['overview', 'settings'].includes(value)}
-            onClick={() => onNavigate(value)}
-          >
-            <i>{icon}</i>
-            <span>{label}</span>
-            {project && ['content', 'storyboard'].includes(value) ? <em>✓</em> : null}
-          </button>
-        ))}
+      {navItems.map(([value, label, icon]) => (
+        <button
+          key={value}
+          className={section === value ? 'active' : ''}
+          disabled={!project && !['overview', 'settings'].includes(value)}
+          onClick={() => onNavigate(value)}
+        >
+          <i>{icon}</i>
+          <span>{label}</span>
+        </button>
+      ))}
       {section === 'overview' && project ? (
         <p className="nav-entry-hint">双击最近项目，进入文案、脚本与剪辑工作区</p>
       ) : null}

@@ -44,7 +44,7 @@ export const App = () => {
       setProjectId(id);
       window.localStorage.setItem('cutflow.activeProjectId', id);
       setShowProjects(false);
-      setSection('overview');
+      setSection('content');
       setAudioAvailable(false);
       void fetch(`/${id}/audio/narration.wav`, {method: 'HEAD'})
         .then((audio) => setAudioAvailable(audio.ok))

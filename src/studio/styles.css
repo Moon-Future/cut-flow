@@ -1649,6 +1649,52 @@ select:focus {
 .edit-main.stage-mode.overview-mode {
   grid-template-rows: minmax(0, 1fr);
 }
+.edit-main.workbench-mode {
+  overflow: hidden;
+}
+.workspace-tabs {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 5px 6px;
+  overflow-x: auto;
+  border: 1px solid #202737;
+  border-radius: 9px;
+  background: #0d1119;
+}
+.workspace-tabs button {
+  min-width: 118px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #8993a6;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.workspace-tabs button:hover {
+  background: #151b26;
+  color: #d9deea;
+}
+.workspace-tabs button.active {
+  border-color: #7653d1;
+  background: linear-gradient(135deg, #322551, #211a38);
+  color: #d8c8ff;
+}
+.workspace-tabs button strong {
+  font-size: 12px;
+}
+.workspace-tabs button span {
+  color: #6f798d;
+  font-size: 9px;
+}
+.workspace-tabs button.active span {
+  color: #a996da;
+}
 .edit-header {
   position: sticky;
   top: 0;
@@ -2075,6 +2121,11 @@ select:focus {
   padding: 0 12px;
   border-bottom: 1px solid #202737;
 }
+.timeline-toolbar > strong {
+  margin-right: 6px;
+  color: #dce1eb;
+  font-size: 11px;
+}
 .timeline-toolbar button {
   padding: 5px 8px;
   border: 0;
@@ -2082,6 +2133,22 @@ select:focus {
   color: #8b96a9;
   font-size: 9px;
   cursor: pointer;
+}
+.timeline-toolbar .timeline-collapse {
+  margin-left: auto;
+  color: #bda9f0;
+}
+.timeline-panel.collapsed {
+  min-height: 42px;
+  overflow: hidden;
+}
+.timeline-panel.collapsed .timeline-resize-handle,
+.timeline-panel.collapsed > :not(.timeline-toolbar) {
+  display: none;
+}
+.timeline-panel.collapsed .timeline-toolbar {
+  height: 40px;
+  border-bottom: 0;
 }
 .timeline-toolbar button:disabled {
   opacity: 0.35;
@@ -2259,6 +2326,15 @@ select:focus {
   height: 100%;
   padding: 28px clamp(24px, 4vw, 58px) 56px;
   overflow: auto;
+}
+.workbench-mode .project-stage {
+  padding: 18px clamp(18px, 3vw, 42px) 32px;
+}
+.workbench-mode .stage-heading {
+  margin-bottom: 16px;
+}
+.workbench-mode .stage-heading h1 {
+  font-size: 24px;
 }
 .stage-heading {
   display: flex;
