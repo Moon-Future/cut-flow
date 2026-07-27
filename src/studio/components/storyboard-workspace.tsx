@@ -13,8 +13,13 @@ import {
   type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
 import {useStudioStore} from '../store';
+import type {AssetSelectionTarget} from '../asset-selection';
 
-type Props = {project: ProjectFile; projectId: string; onAssets: () => void};
+type Props = {
+  project: ProjectFile;
+  projectId: string;
+  onAssets: (target?: AssetSelectionTarget) => void;
+};
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 const activeGenerationStatuses = new Set<GenerationTask['status']>(['queued', 'running']);
 const generationStatusLabel = (status: GenerationTask['status']) =>
@@ -409,7 +414,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
             </strong>
             <span>编辑旁白、画面意图和镜头计划</span>
           </div>
-          <button onClick={onAssets}>打开素材库</button>
+          <button onClick={() => onAssets()}>打开素材库</button>
         </header>
         <div className="storyboard-purpose-note">
           <strong>这里负责准备和初选分镜素材</strong>
@@ -940,6 +945,10 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                 ) : null}
               </details>
               <div className="shot-assets">
+                <div className="shot-assets-heading">
+                  <strong>候选素材</strong>
+                  <span>点击候选卡片可选为当前镜头素材</span>
+                </div>
                 {[...shot.candidates]
                   .reverse()
                   .slice(0, 3)
@@ -962,8 +971,11 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                       </span>
                     </button>
                   ))}
-                <button className="add-shot-asset" onClick={onAssets}>
-                  ＋ 选择素材
+                <button
+                  className="add-shot-asset"
+                  onClick={() => onAssets({sceneId: selected.id, shotId: shot.id})}
+                >
+                  ＋ 从素材库选择
                 </button>
                 {shot.selectedAsset ? (
                   <button
@@ -972,7 +984,7 @@ export const StoryboardWorkspace = ({project, projectId, onAssets}: Props) => {
                     onClick={() => void clearSelectedAsset(shot)}
                     title="只解除当前镜头引用，不删除素材库文件"
                   >
-                    移除已选素材
+                    取消本镜头选用
                   </button>
                 ) : null}
               </div>

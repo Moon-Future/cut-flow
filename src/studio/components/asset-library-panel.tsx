@@ -2,8 +2,15 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import type {InputHTMLAttributes} from 'react';
 import type {AssetLibrary, AssetMetadata} from '../../media/asset-library';
 import {useStudioStore} from '../store';
+import type {AssetSelectionTarget} from '../asset-selection';
 
-type Props = {open: boolean; projectId: string; canApply: boolean; onClose: () => void};
+type Props = {
+  open: boolean;
+  projectId: string;
+  canApply: boolean;
+  selectionTarget: AssetSelectionTarget | null;
+  onClose: () => void;
+};
 
 const sourceLabels: Record<AssetMetadata['source'], string> = {
   local: '本地素材',
@@ -11,8 +18,8 @@ const sourceLabels: Record<AssetMetadata['source'], string> = {
   online: '外部素材',
 };
 
-export const AssetLibraryPanel = ({open, projectId, canApply, onClose}: Props) => {
-  const {selectedSceneId, replaceSceneAsset} = useStudioStore();
+export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, onClose}: Props) => {
+  const {selectedSceneId, replaceSceneAsset, updateVisualShot} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
@@ -50,7 +57,7 @@ export const AssetLibraryPanel = ({open, projectId, canApply, onClose}: Props) =
   );
 
   const apply = async (asset: AssetMetadata) => {
-    if (!canApply || !selectedSceneId || asset.type === 'audio') return;
+    if (!canApply || (!selectedSceneId && !selectionTarget) || asset.type === 'audio') return;
     let selectedAsset = asset;
     if (asset.projectId && asset.projectId !== projectId) {
       const response = await fetch('/api/assets/import-from-project', {
@@ -63,7 +70,17 @@ export const AssetLibraryPanel = ({open, projectId, canApply, onClose}: Props) =
       selectedAsset = value.asset;
     }
     if (selectedAsset.type === 'audio') return;
-    replaceSceneAsset(selectedSceneId, selectedAsset.path, selectedAsset.type);
+    if (selectionTarget) {
+      updateVisualShot(selectionTarget.sceneId, selectionTarget.shotId, {
+        selectedAsset: selectedAsset.path,
+        selectionCleared: false,
+        sourceStart: 0,
+        sourceEnd: selectedAsset.duration,
+        status: 'ready',
+      });
+    } else if (selectedSceneId) {
+      replaceSceneAsset(selectedSceneId, selectedAsset.path, selectedAsset.type);
+    }
     onClose();
   };
 
@@ -226,6 +243,10 @@ export const AssetLibraryPanel = ({open, projectId, canApply, onClose}: Props) =
           <p className="asset-library-mode-tip">
             当前为素材管理模式；请进入脚本与分镜或素材页面后，再将素材应用到具体镜头。
           </p>
+        ) : selectionTarget ? (
+          <p className="asset-library-mode-tip">
+            当前选择的素材将应用到指定分镜，不会替换整个段落的兜底画面。
+          </p>
         ) : null}
         {message ? <p className="asset-management-message">{message}</p> : null}
         <div className="asset-grid">
@@ -261,11 +282,17 @@ export const AssetLibraryPanel = ({open, projectId, canApply, onClose}: Props) =
                   <span>{asset.license}</span>
                 </div>
                 <button
-                  disabled={!asset.commercialUse || !canApply || !selectedSceneId}
+                  disabled={
+                    !asset.commercialUse || !canApply || (!selectedSceneId && !selectionTarget)
+                  }
                   title={!canApply ? '首页素材库仅用于浏览和管理' : undefined}
                   onClick={() => void apply(asset)}
                 >
-                  {canApply ? '应用到当前镜头' : '请先进入具体镜头'}
+                  {canApply
+                    ? selectionTarget
+                      ? '应用到当前分镜'
+                      : '应用到当前段落'
+                    : '请先进入具体镜头'}
                 </button>
                 <div className="asset-management-actions">
                   <button onClick={() => void openLocation(asset)}>打开目录</button>

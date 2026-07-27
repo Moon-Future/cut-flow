@@ -4864,6 +4864,21 @@ select:focus {
   grid-template-columns: repeat(4, 1fr);
   gap: 7px;
 }
+.shot-assets-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 1px;
+}
+.shot-assets-heading strong {
+  color: #cbd3df;
+}
+.shot-assets-heading span {
+  color: #738196;
+  text-align: right;
+}
 .shot-assets button {
   position: relative;
   height: 72px;

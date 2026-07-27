@@ -4,6 +4,7 @@ import {EditingWorkspace} from './components/editing-workspace';
 import {ProjectWorkspace} from './components/project-workspace';
 import type {WorkspaceSection} from './components/workspace-sidebar';
 import {useStudioStore} from './store';
+import type {AssetSelectionTarget} from './asset-selection';
 
 type RenderState = {
   status: 'idle' | 'running' | 'success' | 'error';
@@ -21,6 +22,9 @@ export const App = () => {
   });
   const [audioAvailable, setAudioAvailable] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [assetSelectionTarget, setAssetSelectionTarget] = useState<AssetSelectionTarget | null>(
+    null,
+  );
   const [projectId, setProjectId] = useState('');
   const [showProjects, setShowProjects] = useState(false);
   const [booting, setBooting] = useState(true);
@@ -172,7 +176,10 @@ export const App = () => {
         section={section}
         onNavigate={setSection}
         onNewProject={() => setShowProjects(true)}
-        onAssets={() => setAssetLibraryOpen(true)}
+        onAssets={(target) => {
+          setAssetSelectionTarget(target ?? null);
+          setAssetLibraryOpen(true);
+        }}
         onRender={() => void startRender()}
         onGenerated={(generatedProject) => {
           setProject(generatedProject);
@@ -185,7 +192,11 @@ export const App = () => {
         open={assetLibraryOpen}
         projectId={projectId}
         canApply={section !== 'overview'}
-        onClose={() => setAssetLibraryOpen(false)}
+        selectionTarget={assetSelectionTarget}
+        onClose={() => {
+          setAssetLibraryOpen(false);
+          setAssetSelectionTarget(null);
+        }}
       />
     </>
   );

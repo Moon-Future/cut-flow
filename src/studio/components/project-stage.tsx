@@ -6,6 +6,7 @@ import {StoryboardWorkspace} from './storyboard-workspace';
 import {VoiceWorkspace} from './voice-workspace';
 import type {WorkspaceSection} from './workspace-sidebar';
 import {SettingsWorkspace} from './settings-workspace';
+import type {AssetSelectionTarget} from '../asset-selection';
 
 type Props = {
   section: Exclude<WorkspaceSection, 'edit'>;
@@ -13,7 +14,7 @@ type Props = {
   onNavigate: (section: WorkspaceSection) => void;
   onGenerated: (project: ProjectFile) => void;
   onAudioReady: () => void;
-  onAssets: () => void;
+  onAssets: (target?: AssetSelectionTarget) => void;
   onRender: () => void;
   currentProjectId: string;
   onNewProject: () => void;
@@ -122,7 +123,11 @@ export const ProjectStage = ({
         />
       ) : null}
       {section === 'assets' ? (
-        <AssetsWorkspace project={project} projectId={currentProjectId} onOpenLibrary={onAssets} />
+        <AssetsWorkspace
+          project={project}
+          projectId={currentProjectId}
+          onOpenLibrary={() => onAssets()}
+        />
       ) : null}
       {section === 'export' ? (
         <div className="stage-empty">

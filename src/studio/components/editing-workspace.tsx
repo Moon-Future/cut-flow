@@ -7,6 +7,7 @@ import {VideoComposition} from '../../remotion/video-composition';
 import {useStudioStore} from '../store';
 import {ProjectStage} from './project-stage';
 import {WorkspaceSidebar, type WorkspaceSection} from './workspace-sidebar';
+import type {AssetSelectionTarget} from '../asset-selection';
 
 type RenderState = {
   status: 'idle' | 'running' | 'success' | 'error';
@@ -22,7 +23,7 @@ type Props = {
   section: WorkspaceSection;
   onNavigate: (section: WorkspaceSection) => void;
   onNewProject: () => void;
-  onAssets: () => void;
+  onAssets: (target?: AssetSelectionTarget) => void;
   onRender: () => void;
   onGenerated: (project: ProjectFile) => void;
   onAudioReady: () => void;
@@ -281,7 +282,7 @@ export const EditingWorkspace = ({
                     </strong>
                     <span>{scene.visualIntent || '为当前旁白选择匹配画面'}</span>
                   </div>
-                  <button onClick={onAssets}>素材库</button>
+                  <button onClick={() => onAssets()}>素材库</button>
                 </header>
                 <div className="shot-copy">
                   <label>
@@ -310,7 +311,7 @@ export const EditingWorkspace = ({
                   >
                     本地素材
                   </button>
-                  <button onClick={onAssets}>素材库</button>
+                  <button onClick={() => onAssets()}>素材库</button>
                   <button
                     className={assetTab === 'generated' ? 'active' : ''}
                     onClick={() => setAssetTab('generated')}
