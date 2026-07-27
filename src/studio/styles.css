@@ -2349,6 +2349,19 @@ select:focus {
   margin-left: 9px;
   font-size: 10px;
 }
+.workbench-mode .stage-heading-actions {
+  gap: 6px;
+  margin-left: 12px;
+}
+.workbench-mode .stage-heading-actions .secondary-button,
+.workbench-mode .stage-heading-actions .primary-button {
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
 .workbench-mode :is(.content-studio, .storyboard-studio, .voice-studio, .assets-studio) {
   height: 100%;
   min-height: 0;
