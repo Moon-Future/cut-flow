@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction} from 'react';
 import {Player, type PlayerRef} from '@remotion/player';
 import type {AssetLibrary, AssetMetadata} from '../../media/asset-library';
 import type {ProjectFile, Scene} from '../../core/schema';
@@ -94,6 +94,10 @@ export const EditingWorkspace = ({
     return Number.isFinite(saved) && saved >= 150 ? saved : 218;
   });
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  const [timelineZoom, setTimelineZoom] = useState(1);
+  const [currentFrame, setCurrentFrame] = useState(0);
+  const [lockedTracks, setLockedTracks] = useState<string[]>([]);
+  const [mutedTracks, setMutedTracks] = useState<string[]>([]);
   const timelineResizeStart = useRef<{pointerY: number; height: number} | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const timeline = useMemo(() => buildTimeline(project), [project]);
@@ -102,8 +106,9 @@ export const EditingWorkspace = ({
     project.scenes.findIndex((scene) => scene.id === selectedSceneId),
   );
   const scene = project.scenes[selectedIndex] ?? project.scenes[0]!;
-  const selectedTimelineItem = timeline.scenes[selectedIndex];
   const totalSeconds = timeline.durationInFrames / project.project.fps;
+  const timelineCanvasWidth =
+    Math.max(900, (typeof window === 'undefined' ? 1280 : window.innerWidth) - 244) * timelineZoom;
   const showWorkbench = !['overview', 'settings'].includes(section);
   const clampTimelineHeight = (height: number) =>
     Math.round(Math.max(150, Math.min(Math.max(150, window.innerHeight - 320), height)));
@@ -133,7 +138,52 @@ export const EditingWorkspace = ({
       `[data-scene-navigator="${CSS.escape(selectedSceneId)}"]`,
     );
     target?.scrollIntoView({block: 'nearest', inline: 'nearest'});
-  }, [section, selectedSceneId]);
+    const item = timeline.scenes.find((entry) => entry.scene.id === selectedSceneId);
+    if (!item) return;
+    if (section !== 'edit' || !playerRef.current?.isPlaying()) {
+      setCurrentFrame(item.from);
+      playerRef.current?.seekTo(item.from);
+    }
+  }, [section, selectedSceneId, timeline.scenes]);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || section !== 'edit') return;
+    const handleFrameUpdate = (event: {detail: {frame: number}}) => {
+      setCurrentFrame(event.detail.frame);
+      const activeItem = timeline.scenes.find(
+        (item) =>
+          event.detail.frame >= item.from && event.detail.frame < item.from + item.durationInFrames,
+      );
+      if (activeItem && useStudioStore.getState().selectedSceneId !== activeItem.scene.id) {
+        selectScene(activeItem.scene.id);
+      }
+    };
+    player.addEventListener('frameupdate', handleFrameUpdate);
+    setCurrentFrame(player.getCurrentFrame());
+    return () => player.removeEventListener('frameupdate', handleFrameUpdate);
+  }, [section, selectScene, timeline.scenes]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        if (!lockedTracks.includes('video')) duplicateScene(scene.id);
+      }
+      if ((event.key === 'Delete' || event.key === 'Backspace') && project.scenes.length > 1) {
+        event.preventDefault();
+        if (!lockedTracks.includes('video')) deleteScene(scene.id);
+      }
+      if (event.code === 'Space' && section === 'edit') {
+        event.preventDefault();
+        playerRef.current?.toggle();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [deleteScene, duplicateScene, lockedTracks, project.scenes.length, scene.id, section]);
 
   useEffect(() => {
     const fitTimelineToWindow = () =>
@@ -170,7 +220,9 @@ export const EditingWorkspace = ({
 
   const chooseScene = (id: string, index: number) => {
     selectScene(id);
-    playerRef.current?.seekTo(timeline.scenes[index]?.from ?? 0);
+    const frame = timeline.scenes[index]?.from ?? 0;
+    setCurrentFrame(frame);
+    playerRef.current?.seekTo(frame);
   };
 
   const replace = () => {
@@ -202,6 +254,16 @@ export const EditingWorkspace = ({
         ),
       }
     : project;
+  const playerProject = mutedTracks.includes('music')
+    ? {
+        ...previewProject,
+        style: {...previewProject.style, backgroundMusicVolume: 0},
+      }
+    : previewProject;
+  const toggleTrackState = (track: string, setter: Dispatch<SetStateAction<string[]>>) =>
+    setter((current) =>
+      current.includes(track) ? current.filter((item) => item !== track) : [...current, track],
+    );
 
   return (
     <div className="edit-app">
@@ -421,8 +483,8 @@ export const EditingWorkspace = ({
                       ref={playerRef}
                       component={VideoComposition}
                       inputProps={{
-                        project: previewProject,
-                        narrationAvailable: audioAvailable,
+                        project: playerProject,
+                        narrationAvailable: audioAvailable && !mutedTracks.includes('audio'),
                         assetBasePath: projectId,
                       }}
                       durationInFrames={timeline.durationInFrames}
@@ -605,12 +667,36 @@ export const EditingWorkspace = ({
                 <button disabled>↶ 撤销</button>
                 <button disabled>↷ 重做</button>
                 <button disabled>✂ 分割</button>
-                <button onClick={() => deleteScene(scene.id)} disabled={project.scenes.length <= 1}>
+                <button
+                  onClick={() => deleteScene(scene.id)}
+                  disabled={project.scenes.length <= 1 || lockedTracks.includes('video')}
+                >
                   ♜ 删除
                 </button>
-                <button onClick={() => duplicateScene(scene.id)}>▣ 复制</button>
+                <button
+                  onClick={() => duplicateScene(scene.id)}
+                  disabled={lockedTracks.includes('video')}
+                >
+                  ▣ 复制
+                </button>
                 <button disabled>◖ 静音</button>
                 <button disabled>⌘ 添加转场</button>
+                <span className="timeline-zoom-controls">
+                  <button
+                    onClick={() => setTimelineZoom((value) => Math.max(1, value - 0.25))}
+                    aria-label="缩小时间线"
+                  >
+                    −
+                  </button>
+                  <button onClick={() => setTimelineZoom(1)}>适应全部</button>
+                  <button
+                    onClick={() => setTimelineZoom((value) => Math.min(4, value + 0.25))}
+                    aria-label="放大时间线"
+                  >
+                    ＋
+                  </button>
+                  <output>{Math.round(timelineZoom * 100)}%</output>
+                </span>
                 <button
                   className="timeline-collapse"
                   onClick={() => setTimelineCollapsed((current) => !current)}
@@ -619,14 +705,23 @@ export const EditingWorkspace = ({
                   {timelineCollapsed ? '展开时间线' : '收起时间线'}
                 </button>
               </header>
-              <div className="timeline-ruler">
+              <div className="timeline-ruler" style={{width: timelineCanvasWidth}}>
                 <span />
                 {Array.from({length: 7}, (_, index) => (
                   <i key={index}>{Math.round((totalSeconds / 6) * index)}s</i>
                 ))}
               </div>
-              <div className="track-row video-track">
-                <strong>▣ 视频轨道</strong>
+              <div className="track-row video-track" style={{width: timelineCanvasWidth}}>
+                <strong>
+                  <span>▣ 视频轨道</span>
+                  <button
+                    className={lockedTracks.includes('video') ? 'active' : ''}
+                    onClick={() => toggleTrackState('video', setLockedTracks)}
+                    title="锁定视频轨道"
+                  >
+                    {lockedTracks.includes('video') ? '锁' : '开'}
+                  </button>
+                </strong>
                 <div>
                   {timeline.scenes.map(({scene: item, durationInFrames}, index) => (
                     <button
@@ -645,8 +740,17 @@ export const EditingWorkspace = ({
                   ))}
                 </div>
               </div>
-              <div className="track-row caption-track">
-                <strong>Ｔ 字幕轨道</strong>
+              <div className="track-row caption-track" style={{width: timelineCanvasWidth}}>
+                <strong>
+                  <span>Ｔ 字幕轨道</span>
+                  <button
+                    className={lockedTracks.includes('caption') ? 'active' : ''}
+                    onClick={() => toggleTrackState('caption', setLockedTracks)}
+                    title="锁定字幕轨道"
+                  >
+                    {lockedTracks.includes('caption') ? '锁' : '开'}
+                  </button>
+                </strong>
                 <div>
                   {timeline.scenes.map(({scene: item, durationInFrames}, index) => (
                     <button
@@ -660,25 +764,47 @@ export const EditingWorkspace = ({
                   ))}
                 </div>
               </div>
-              <div className="track-row audio-track">
-                <strong>◉ 配音轨道</strong>
+              <div className="track-row audio-track" style={{width: timelineCanvasWidth}}>
+                <strong>
+                  <span>◉ 配音轨道</span>
+                  <button
+                    className={mutedTracks.includes('audio') ? 'active' : ''}
+                    onClick={() => toggleTrackState('audio', setMutedTracks)}
+                    title="静音配音轨道"
+                  >
+                    {mutedTracks.includes('audio') ? '静' : '声'}
+                  </button>
+                </strong>
                 <div className="waveform">
                   <span>narration.wav</span>
                 </div>
               </div>
-              <div className="track-row music-track">
-                <strong>♫ 背景音乐</strong>
+              <div className="track-row music-track" style={{width: timelineCanvasWidth}}>
+                <strong>
+                  <span>♫ 背景音乐</span>
+                  <button
+                    className={mutedTracks.includes('music') ? 'active' : ''}
+                    onClick={() => toggleTrackState('music', setMutedTracks)}
+                    title="静音背景音乐轨道"
+                  >
+                    {mutedTracks.includes('music') ? '静' : '声'}
+                  </button>
+                </strong>
                 <div className="waveform">
                   <span>
                     {project.style.backgroundMusicVolume ? '背景音乐' : '尚未添加背景音乐'}
                   </span>
                 </div>
               </div>
-              {selectedTimelineItem ? (
+              {timeline.durationInFrames > 0 ? (
                 <i
                   className="playhead"
                   style={{
-                    left: `calc(124px + ${(selectedTimelineItem.from / timeline.durationInFrames) * 100}% * .88)`,
+                    left:
+                      124 +
+                      (Math.min(currentFrame, timeline.durationInFrames) /
+                        timeline.durationInFrames) *
+                        (timelineCanvasWidth - 124),
                   }}
                 />
               ) : null}

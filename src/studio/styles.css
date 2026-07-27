@@ -2138,6 +2138,26 @@ select:focus {
   margin-left: auto;
   color: #bda9f0;
 }
+.timeline-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding-left: 8px;
+  border-left: 1px solid #2a3242;
+}
+.timeline-zoom-controls button {
+  min-width: 24px;
+}
+.timeline-zoom-controls output {
+  min-width: 38px;
+  color: #758096;
+  font-size: 9px;
+  text-align: right;
+}
+.timeline-zoom-controls + .timeline-collapse {
+  margin-left: 4px;
+}
 .timeline-panel.collapsed {
   min-height: 42px;
   overflow: hidden;
@@ -2179,11 +2199,29 @@ select:focus {
 .track-row > strong {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   padding: 0 12px;
   color: #b5bfce;
   font-size: clamp(12px, 0.78vw, 14px);
   font-weight: 600;
   white-space: nowrap;
+}
+.track-row > strong button {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #2c3546;
+  border-radius: 5px;
+  background: #141a24;
+  color: #778297;
+  cursor: pointer;
+}
+.track-row > strong button.active {
+  border-color: #805be0;
+  background: #30234f;
+  color: #cfbbff;
 }
 .track-row > div {
   min-width: 0;
