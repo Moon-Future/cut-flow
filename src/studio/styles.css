@@ -6066,7 +6066,7 @@ select:focus {
   color: #748095;
   font-size: 10px;
 }
-.video-reference-images > label {
+.video-reference-images > label:not(.reference-image-upload) {
   display: grid;
   grid-template-columns: auto 46px minmax(0, 1fr);
   gap: 8px;
@@ -6076,7 +6076,7 @@ select:focus {
   border-radius: 7px;
   background: #111823;
 }
-.video-reference-images > label small {
+.video-reference-images > label:not(.reference-image-upload) small {
   grid-column: 3;
   overflow: hidden;
   color: #6f7d91;
@@ -6096,6 +6096,45 @@ select:focus {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.video-reference-images .reference-image-upload {
+  display: inline-flex;
+  width: fit-content;
+  padding: 8px 12px;
+  border: 1px solid #7452cc;
+  border-radius: 7px;
+  background: #6842c5;
+  cursor: pointer;
+}
+.video-reference-images .reference-image-upload input {
+  display: none;
+}
+.video-reference-images .reference-image-upload span {
+  color: #fff;
+  font-weight: 600;
+}
+.reference-image-result {
+  display: grid;
+  grid-template-columns: minmax(100px, auto) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid #273143;
+  border-radius: 7px;
+  background: #111823;
+}
+.reference-image-result small {
+  overflow: hidden;
+  color: #6f7d91;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reference-image-result button {
+  border: 0;
+  background: transparent;
+  color: #a997d7;
+  cursor: pointer;
 }
 .video-generation-footer p {
   margin: 0;

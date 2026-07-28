@@ -16,8 +16,13 @@ const base64Url = (value: string | Buffer) =>
     .replace(/\+/gu, '-')
     .replace(/\//gu, '_');
 
-export const uploadFileToQiniu = async (filePath: string, config: QiniuConfig) => {
-  const extension = path.extname(filePath).toLowerCase();
+const uploadToQiniu = async (
+  content: Buffer,
+  fileName: string,
+  contentType: string,
+  config: QiniuConfig,
+) => {
+  const extension = path.extname(fileName).toLowerCase();
   const key = `cut-flow/reference/${Date.now()}-${randomUUID()}${extension}`;
   const policy = base64Url(
     JSON.stringify({
@@ -32,8 +37,8 @@ export const uploadFileToQiniu = async (filePath: string, config: QiniuConfig) =
   form.append('key', key);
   form.append(
     'file',
-    new Blob([await readFile(filePath)], {type: extension === '.png' ? 'image/png' : 'image/jpeg'}),
-    path.basename(filePath),
+    new Blob([new Uint8Array(content)], {type: contentType}),
+    path.basename(fileName),
   );
   const response = await fetch(config.uploadHost || 'https://upload.qiniup.com', {
     method: 'POST',
@@ -47,3 +52,18 @@ export const uploadFileToQiniu = async (filePath: string, config: QiniuConfig) =
   const normalizedDomain = /^https?:\/\//u.test(domain) ? domain : `https://${domain}`;
   return `${normalizedDomain}/${key.split('/').map(encodeURIComponent).join('/')}`;
 };
+
+export const uploadFileToQiniu = async (filePath: string, config: QiniuConfig) =>
+  uploadToQiniu(
+    await readFile(filePath),
+    path.basename(filePath),
+    path.extname(filePath).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg',
+    config,
+  );
+
+export const uploadBufferToQiniu = (
+  content: Buffer,
+  fileName: string,
+  contentType: string,
+  config: QiniuConfig,
+) => uploadToQiniu(content, fileName, contentType, config);

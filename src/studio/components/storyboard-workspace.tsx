@@ -459,11 +459,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
               shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
               videoDefaultDuration,
             ),
-            referenceImagePaths: [...new Set(
-              [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
-                .filter((path): path is string => Boolean(path))
-                .filter((path) => !videoFilePattern.test(path)),
-            )],
+            referenceImagePaths: [],
             referenceImageUrls: {} as Record<string, string>,
           };
     setGeneratingVideoShotId(shot.id);
@@ -1266,11 +1262,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           : fallbackVideoPromptZh(shot),
                         videoDefaultDuration,
                       ),
-                      referenceImagePaths: [...new Set(
-                        [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
-                          .filter((path): path is string => Boolean(path))
-                          .filter((path) => !videoFilePattern.test(path)),
-                      )],
+                      referenceImagePaths: [],
                       referenceImageUrls: {} as Record<string, string>,
                     });
                   }}
@@ -1335,40 +1327,34 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       <section className="video-reference-images">
                         <header>
                           <span>参考图片</span>
-                          <small>勾选后会先上传七牛云，再将 CDN URL 传给小云雀</small>
+                          <small>从电脑选择图片，上传七牛云后将 CDN URL 传给小云雀</small>
                         </header>
-                        {[...new Set(
-                          [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
-                            .filter((path): path is string => Boolean(path))
-                            .filter((path) => !videoFilePattern.test(path)),
-                        )].map((referencePath) => (
-                          <label key={referencePath}>
-                            <input
-                              type="checkbox"
-                              checked={videoDraft.referenceImagePaths.includes(referencePath)}
-                              onChange={(event) => {
-                                if (!event.target.checked) {
-                                  const nextUrls = {...videoDraft.referenceImageUrls};
-                                  delete nextUrls[referencePath];
-                                  setVideoDraft({
-                                    ...videoDraft,
-                                    referenceImagePaths: videoDraft.referenceImagePaths.filter(
-                                      (path) => path !== referencePath,
-                                    ),
-                                    referenceImageUrls: nextUrls,
-                                  });
-                                  return;
-                                }
-                                setVideoDraft({
-                                  ...videoDraft,
-                                  referenceImagePaths: [
-                                    ...new Set([...videoDraft.referenceImagePaths, referencePath]),
-                                  ],
-                                });
+                        <label className="reference-image-upload">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(event) => {
+                              const files = Array.from(event.target.files ?? []);
+                              for (const file of files) {
+                                const referenceId = `${file.name}-${file.size}-${file.lastModified}`;
+                                setVideoDraft((current) =>
+                                  current?.shotId === shot.id
+                                    ? {
+                                        ...current,
+                                        referenceImagePaths: [
+                                          ...new Set([...current.referenceImagePaths, referenceId]),
+                                        ],
+                                      }
+                                    : current,
+                                );
                                 void fetch('/api/assets/qiniu-reference', {
                                   method: 'POST',
-                                  headers: {'Content-Type': 'application/json'},
-                                  body: JSON.stringify({assetPath: referencePath}),
+                                  headers: {
+                                    'Content-Type': file.type,
+                                    'X-File-Name': encodeURIComponent(file.name),
+                                  },
+                                  body: file,
                                 })
                                   .then(async (response) => {
                                     const value = (await response.json()) as {
@@ -1384,41 +1370,62 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                             ...current,
                                             referenceImageUrls: {
                                               ...current.referenceImageUrls,
-                                              [referencePath]: value.url!,
+                                              [referenceId]: value.url!,
                                             },
                                           }
                                         : current,
                                     );
                                   })
-                                  .catch((error: unknown) =>
+                                  .catch((error: unknown) => {
+                                    setVideoDraft((current) =>
+                                      current?.shotId === shot.id
+                                        ? {
+                                            ...current,
+                                            referenceImagePaths:
+                                              current.referenceImagePaths.filter(
+                                                (item) => item !== referenceId,
+                                              ),
+                                          }
+                                        : current,
+                                    );
                                     setVideoGenerationError({
                                       shotId: shot.id,
                                       message:
                                         error instanceof Error ? error.message : String(error),
-                                    }),
-                                  );
-                              }}
-                            />
-                            <img src={mediaUrl(projectId, referencePath)} alt="" />
-                            <span>{referencePath.split('/').at(-1)}</span>
+                                    });
+                                  });
+                              }
+                              event.target.value = '';
+                            }}
+                          />
+                          <span>选择并上传图片</span>
+                        </label>
+                        {videoDraft.referenceImagePaths.map((referenceId) => (
+                          <div className="reference-image-result" key={referenceId}>
+                            <span>{referenceId.split('-').slice(0, -2).join('-')}</span>
                             <small>
-                              {videoDraft.referenceImageUrls[referencePath]
-                                ? `已上传 · ${videoDraft.referenceImageUrls[referencePath]}`
-                                : videoDraft.referenceImagePaths.includes(referencePath)
-                                  ? '正在上传七牛云…'
-                                  : '勾选后立即上传'}
+                              {videoDraft.referenceImageUrls[referenceId]
+                                ? `已上传 · ${videoDraft.referenceImageUrls[referenceId]}`
+                                : '正在上传七牛云…'}
                             </small>
-                          </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextUrls = {...videoDraft.referenceImageUrls};
+                                delete nextUrls[referenceId];
+                                setVideoDraft({
+                                  ...videoDraft,
+                                  referenceImagePaths: videoDraft.referenceImagePaths.filter(
+                                    (item) => item !== referenceId,
+                                  ),
+                                  referenceImageUrls: nextUrls,
+                                });
+                              }}
+                            >
+                              移除
+                            </button>
+                          </div>
                         ))}
-                        {![
-                          ...new Set(
-                            [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
-                              .filter((path): path is string => Boolean(path))
-                              .filter((path) => !videoFilePattern.test(path)),
-                          ),
-                        ].length ? (
-                          <p>当前镜头没有已选图片，请先从素材库、搜索结果或 AI 图片中添加。</p>
-                        ) : null}
                       </section>
                       <label className="final-video-prompt">
                         <span>

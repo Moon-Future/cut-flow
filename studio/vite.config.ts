@@ -45,7 +45,7 @@ import type {
 } from '../src/media/pixabay';
 import {loadAiSettings, publicAiSettings, saveAiSettings} from '../src/ai/settings';
 import {createEditingPackage} from '../src/export/production-package';
-import {uploadFileToQiniu} from '../src/ai/qiniu-storage';
+import {uploadBufferToQiniu} from '../src/ai/qiniu-storage';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
   ? path.resolve(process.env.CUT_FLOW_APP_ROOT)
@@ -956,11 +956,12 @@ const localApi = (): Plugin => ({
             return;
           }
           if (url === '/api/assets/qiniu-reference' && request.method === 'POST') {
-            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
-              assetPath?: string;
-            };
-            if (!input.assetPath) {
-              sendJson(response, 400, {error: '缺少参考图片路径'});
+            const rawName = request.headers['x-file-name'];
+            const encodedFileName = Array.isArray(rawName) ? (rawName[0] ?? '') : (rawName ?? '');
+            const fileName = decodeURIComponent(encodedFileName);
+            const contentType = request.headers['content-type'] ?? '';
+            if (!fileName || !contentType.startsWith('image/')) {
+              sendJson(response, 400, {error: '请选择有效的参考图片'});
               return;
             }
             const aiSettings = await loadAiSettings();
@@ -973,17 +974,17 @@ const localApi = (): Plugin => ({
               sendJson(response, 400, {error: '请先在设置中配置七牛云 AK、SK、Bucket 和 CDN 域名'});
               return;
             }
-            const localFile = path.resolve(projectRoot, input.assetPath);
-            if (!localFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
-              sendJson(response, 400, {error: '参考图片路径无效'});
-              return;
-            }
-            const fileInfo = await stat(localFile);
-            if (fileInfo.size > 20 * 1024 * 1024) {
+            const content = await readBody(request);
+            if (content.length > 20 * 1024 * 1024) {
               sendJson(response, 400, {error: '单张参考图片不能超过 20MB'});
               return;
             }
-            const publicUrl = await uploadFileToQiniu(localFile, aiSettings.qiniu);
+            const publicUrl = await uploadBufferToQiniu(
+              content,
+              path.basename(fileName),
+              contentType,
+              aiSettings.qiniu,
+            );
             sendJson(response, 200, {url: publicUrl});
             return;
           }
