@@ -117,6 +117,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     Array<{originalUrl: string; path: string}>
   >([]);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
+  const [videoRequestStartedAt, setVideoRequestStartedAt] = useState<Record<string, string>>({});
   const [generatingImageShotId, setGeneratingImageShotId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const generationRequestLock = useRef(new Set<string>());
@@ -305,7 +306,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         )
         .map((shot) => ({sceneId: scene.id, shotId: shot.id})),
     );
-    if (!activeShots.length) return;
+    if (!activeShots.length && !generatingVideoShotId) return;
     const clock = window.setInterval(() => setCurrentTime(Date.now()), 1_000);
     const refresh = async () => {
       try {
@@ -327,7 +328,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       window.clearInterval(interval);
       window.clearInterval(clock);
     };
-  }, [project.scenes, syncVisualShot]);
+  }, [generatingVideoShotId, project.scenes, syncVisualShot]);
 
   const searchOnline = async (
     shot: VisualShot,
@@ -457,6 +458,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       return;
     }
     generationRequestLock.current.add(shot.id);
+    setVideoRequestStartedAt((current) => ({
+      ...current,
+      [shot.id]: new Date().toISOString(),
+    }));
     const draft =
       videoDraft?.shotId === shot.id
         ? videoDraft
@@ -1477,6 +1482,57 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           字数必须不超过 2000；提示词过长可能导致接口异常或部分指令不生效。
                         </small>
                       </label>
+                      {generatingVideoShotId === shot.id || shot.generationTask ? (
+                        <section
+                          className={`current-video-task ${
+                            shot.generationTask &&
+                            activeGenerationStatuses.has(shot.generationTask.status)
+                              ? 'active'
+                              : ''
+                          }`}
+                        >
+                          <header>
+                            <strong>当前任务</strong>
+                            <span>
+                              {generatingVideoShotId === shot.id && !shot.generationTask
+                                ? '正在提交'
+                                : shot.generationTask
+                                  ? generationStatusLabel(shot.generationTask.status)
+                                  : '等待任务状态'}
+                            </span>
+                          </header>
+                          <dl>
+                            <div>
+                              <dt>开始时间</dt>
+                              <dd>
+                                {formatTaskTime(
+                                  shot.generationTask?.startedAt ??
+                                    videoRequestStartedAt[shot.id],
+                                )}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>已经用时</dt>
+                              <dd>
+                                {formatTaskDuration(
+                                  shot.generationTask?.startedAt ??
+                                    videoRequestStartedAt[shot.id],
+                                  shot.generationTask?.completedAt,
+                                  currentTime,
+                                )}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>任务编号</dt>
+                              <dd>{shot.generationTask?.id ?? '提交后生成'}</dd>
+                            </div>
+                            <div>
+                              <dt>模型</dt>
+                              <dd>{shot.generationTask?.model ?? 'pippit_iv2v_cvtob'}</dd>
+                            </div>
+                          </dl>
+                        </section>
+                      ) : null}
                       <div className="video-generation-footer">
                         <p>
                           {videoWatermark ? '已开启平台明水印' : '未开启平台明水印'}；目标时长仅供

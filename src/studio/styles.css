@@ -6166,6 +6166,52 @@ select:focus {
   color: #887da0;
   font-size: 9px;
 }
+.current-video-task {
+  display: grid;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid #344158;
+  border-radius: 8px;
+  background: #101722;
+}
+.current-video-task.active {
+  border-color: #7155b5;
+  box-shadow: inset 3px 0 #7957d5;
+}
+.current-video-task > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.current-video-task > header span {
+  color: #bba7f4;
+  font-size: 11px;
+}
+.current-video-task dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.current-video-task dl > div {
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: #171f2c;
+}
+.current-video-task dt {
+  margin-bottom: 4px;
+  color: #748095;
+  font-size: 9px;
+}
+.current-video-task dd {
+  overflow: hidden;
+  margin: 0;
+  color: #c7cfdb;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .video-generation-footer button {
   flex: 0 0 auto;
   padding: 8px 12px;
