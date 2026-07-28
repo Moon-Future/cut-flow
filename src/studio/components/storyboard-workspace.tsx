@@ -82,16 +82,22 @@ const contentSearchLinks = (query: string) => {
 
 const getShotProgress = (shot: VisualShot) => {
   if (shot.composition === 'versus') {
-    const total = Math.max(3, shot.layers?.length ?? 0);
-    const ready = shot.layers?.filter((layer) => Boolean(layer.assetPath)).length ?? 0;
+    const layers = shot.layers ?? [];
+    const total = Math.max(3, layers.length);
+    const ready = layers.filter((layer) => Boolean(layer.assetPath)).length;
+    const missing = layers
+      .filter((layer) => !layer.assetPath)
+      .map((layer) =>
+        layer.role === 'background' ? '背景' : layer.position.x < 0.5 ? '左侧人物' : '右侧人物',
+      );
     return {
       ready,
       total,
       complete: ready >= total,
-      label: ready >= total ? '素材完整' : `缺少 ${total - ready} 个图层`,
+      label: ready >= total ? '素材完整' : `待补：${missing.join('、') || '图层素材'}`,
     };
   }
-  const complete = Boolean(shot.selectedAsset);
+  const complete = Boolean(shot.selectedAsset || shot.selectedAssets?.length);
   return {
     ready: complete ? 1 : 0,
     total: 1,
@@ -155,6 +161,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         ...(previewShot.selectedAsset
           ? [{path: previewShot.selectedAsset, role: '主素材'}]
           : []),
+        ...(previewShot.selectedAssets ?? []).map((path) => ({path, role: '候选素材'})),
         ...(previewShot.layers ?? [])
           .filter((layer) => Boolean(layer.assetPath))
           .map((layer) => ({
@@ -206,6 +213,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   const applyCandidate = (shot: VisualShot, candidate: VisualShot['candidates'][number]) => {
     updateShot(shot, {
       selectedAsset: candidate.path,
+      selectedAssets: [...new Set([...(shot.selectedAssets ?? []), candidate.path])],
       layers:
         shot.composition === 'versus'
           ? (shot.layers ?? []).map((layer) =>
@@ -221,6 +229,20 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     updateScene(selected.id, {
       assetPath: candidate.path,
       assetType: candidate.kind,
+    });
+  };
+  const removePreviewAsset = (path: string) => {
+    if (!previewShot) return;
+    const selectedAssets = (previewShot.selectedAssets ?? []).filter((item) => item !== path);
+    const selectedAsset =
+      previewShot.selectedAsset === path ? (selectedAssets[0] ?? null) : previewShot.selectedAsset;
+    updateShot(previewShot, {
+      selectedAssets,
+      selectedAsset,
+      layers: (previewShot.layers ?? []).map((layer) =>
+        layer.assetPath === path ? {...layer, assetPath: null} : layer,
+      ),
+      status: selectedAsset || selectedAssets.length ? 'ready' : 'missing-asset',
     });
   };
   const aspectRatio = project.project.width < project.project.height ? '9:16' : '16:9';
@@ -359,7 +381,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       if (!response.ok || !value.assetPath || !value.shot) {
         throw new Error(value.error ?? '素材下载失败');
       }
-      updateVisualShot(selected.id, shot.id, value.shot);
+      updateVisualShot(selected.id, shot.id, {
+        ...value.shot,
+        selectedAssets: [...new Set([...(shot.selectedAssets ?? []), value.assetPath])],
+      });
       updateScene(selected.id, {assetPath: value.assetPath, assetType: result.kind});
       setOnlineSearch({...onlineSearch, downloadingId: undefined});
     } catch (error) {
@@ -611,9 +636,13 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                 <header>
                   <b>镜头 {index + 1}</b>
                   <span className={progress.complete ? 'ready' : 'missing'}>{progress.label}</span>
-                  <button type="button" onClick={() => setPreviewShotId(shot.id)}>
-                    {previewShot?.id === shot.id ? '正在预览' : '预览此镜头'}
-                  </button>
+                  {previewShot?.id === shot.id ? (
+                    <span className="current-shot-indicator">● 当前镜头</span>
+                  ) : (
+                    <button type="button" onClick={() => setPreviewShotId(shot.id)}>
+                      切换到此镜头
+                    </button>
+                  )}
                 </header>
                 <div className="shot-primary-actions">
                   <span>
@@ -934,7 +963,27 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                         <div className="pixabay-empty">没有找到素材，请更换英文搜索词</div>
                       ) : null}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="pixabay-empty">
+                      选择“搜索图片”或“搜索视频”，结果会显示在这里。
+                    </div>
+                  )}
+                </details>
+                <details className="acquisition-download acquisition-advanced-prompt">
+                  <summary>高级：英文素材搜索词</summary>
+                  <textarea
+                    rows={3}
+                    value={shot.searchQueries.join('\n')}
+                    onChange={(event) =>
+                      updateShot(shot, {
+                        searchQueries: event.target.value
+                          .split('\n')
+                          .map((item) => item.trim())
+                          .filter(Boolean)
+                          .slice(0, 8),
+                      })
+                    }
+                  />
                 </details>
                 <details className="shot-motion-panel">
                   <summary>
@@ -1109,8 +1158,16 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       <p>还没有图片候选，确认提示词后开始生成。</p>
                     ) : null}
                   </div>
+                  <details className="acquisition-advanced-prompt">
+                    <summary>高级：英文图片提示词</summary>
+                    <textarea
+                      rows={5}
+                      value={shot.imagePrompt ?? ''}
+                      onChange={(event) => updateShot(shot, {imagePrompt: event.target.value})}
+                    />
+                  </details>
                 </details>
-                <details className="prompt-editor acquisition-ai-video">
+                <details className="prompt-editor acquisition-ai-video video-prompt-editor">
                   <summary>
                     <span>视频生成提示词</span>
                     <small>展开查看或编辑</small>
@@ -1457,52 +1514,60 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           </header>
           <div className="current-shot-assets">
             {previewAssets.map((asset, index) => (
-              <button
-                type="button"
-                key={`${asset.path}-${asset.role}`}
-                onClick={() =>
-                  setMediaPreview({
-                    kind: videoFilePattern.test(asset.path) ? 'video' : 'image',
-                    src: mediaUrl(projectId, asset.path),
-                    title: `${asset.role} · ${asset.path.split('/').at(-1)}`,
-                  })
-                }
-              >
-                <i>
-                  {videoFilePattern.test(asset.path) ? (
-                    <video src={mediaUrl(projectId, asset.path)} muted preload="metadata" />
-                  ) : (
-                    <img src={mediaUrl(projectId, asset.path)} alt="" />
-                  )}
-                </i>
-                <span>
-                  <strong>{asset.role}</strong>
-                  <small>{asset.path.split('/').at(-1)}</small>
-                </span>
-                <em>{index + 1}</em>
-              </button>
+              <article key={`${asset.path}-${asset.role}`}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMediaPreview({
+                      kind: videoFilePattern.test(asset.path) ? 'video' : 'image',
+                      src: mediaUrl(projectId, asset.path),
+                      title: `${asset.role} · ${asset.path.split('/').at(-1)}`,
+                    })
+                  }
+                >
+                  <i>
+                    {videoFilePattern.test(asset.path) ? (
+                      <video src={mediaUrl(projectId, asset.path)} muted preload="metadata" />
+                    ) : (
+                      <img src={mediaUrl(projectId, asset.path)} alt="" />
+                    )}
+                  </i>
+                  <span>
+                    <strong>{asset.role}</strong>
+                    <small>{asset.path.split('/').at(-1)}</small>
+                  </span>
+                  <em>{index + 1}</em>
+                </button>
+                <button type="button" onClick={() => removePreviewAsset(asset.path)}>
+                  移除
+                </button>
+              </article>
             ))}
             {!previewAssets.length ? (
               <div className="current-shot-assets-empty">
                 <strong>当前镜头还没有素材</strong>
                 <span>从中间的搜索或生成结果中选择素材</span>
-                {previewShot ? (
-                  <button type="button" onClick={() => onGoToAssets(previewShot.id)}>
-                    打开项目素材库
-                  </button>
-                ) : null}
               </div>
+            ) : null}
+            {previewShot ? (
+              <button
+                type="button"
+                className="add-current-shot-asset"
+                onClick={() => onGoToAssets(previewShot.id)}
+              >
+                ＋ 从项目素材库添加
+              </button>
             ) : null}
           </div>
         </section>
         {previewShot ? (
-          <section className="stage-panel shot-effect-panel">
-            <header>
+          <details className="stage-panel shot-effect-panel">
+            <summary>
               <div>
-                <strong>画面效果</strong>
-                <span>由 Remotion 在预览和导出时实时渲染</span>
+                <strong>Remotion 预览效果（可选）</strong>
+                <span>用于快速预览或直接渲染；后续在 Premiere Pro 剪辑可忽略</span>
               </div>
-            </header>
+            </summary>
             <label>
               <span>镜头运动</span>
               <select
@@ -1546,7 +1611,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
             <button type="button" onClick={() => setShotPreviewOpen(true)}>
               查看 Remotion 效果
             </button>
-          </section>
+          </details>
         ) : null}
         <section className="stage-panel board-stats">
           <header>

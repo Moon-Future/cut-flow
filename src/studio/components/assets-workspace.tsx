@@ -80,12 +80,13 @@ export const AssetsWorkspace = ({project, projectId, initialShotId, onOpenLibrar
     }
     updateVisualShot(selected.id, selectedShot.id, {
       selectedAsset: selectedAsset.path,
+      selectedAssets: [...new Set([...(selectedShot.selectedAssets ?? []), selectedAsset.path])],
       selectionCleared: false,
       sourceStart: 0,
       sourceEnd: selectedAsset.duration,
       status: 'ready',
     });
-    setMessage(`已将“${selectedAsset.name}”应用到当前分镜`);
+    setMessage(`已将“${selectedAsset.name}”添加到当前分镜，可继续选择更多素材`);
   };
   const clearShotAsset = async () => {
     if (!selectedShot) return;

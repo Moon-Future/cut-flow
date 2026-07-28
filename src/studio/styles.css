@@ -5292,6 +5292,14 @@ select:focus {
   background: #17362e;
   color: #65d5ae;
 }
+.shot-editor-list article > header .current-shot-indicator {
+  margin-left: auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #172532;
+  color: #70e4c3;
+  font-size: 9px;
+}
 .shot-primary-actions {
   display: flex;
   align-items: center;
@@ -5351,6 +5359,7 @@ select:focus {
   color: #d8c8ff;
 }
 .shot-settings-panel {
+  display: none;
   padding: 9px 10px;
   border: 1px solid #293244;
   border-radius: 8px;
@@ -5468,6 +5477,26 @@ select:focus {
   color: #697589;
   text-align: center;
 }
+.video-prompt-editor,
+.original-prompts {
+  display: none !important;
+}
+.acquisition-advanced-prompt {
+  margin-top: 8px;
+  padding: 9px 10px;
+  border: 1px solid #2f3848;
+  border-radius: 7px;
+  background: #0d131c;
+}
+.acquisition-advanced-prompt > summary {
+  color: #778397;
+  font-size: 9px;
+  cursor: pointer;
+}
+.acquisition-advanced-prompt textarea {
+  width: 100%;
+  margin-top: 8px;
+}
 .shot-editor-list > article
   :is(
     .acquisition-reference,
@@ -5544,6 +5573,7 @@ select:focus {
   display: flex;
   gap: 7px;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 .content-platform-search a {
   padding: 7px 10px;
@@ -6153,11 +6183,11 @@ select:focus {
   gap: 7px;
   padding: 10px;
 }
-.current-shot-assets > button {
+.current-shot-assets > article {
   min-width: 0;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
-  gap: 9px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
   align-items: center;
   padding: 7px;
   border: 1px solid #2b3445;
@@ -6165,11 +6195,32 @@ select:focus {
   background: #111720;
   color: #c4cbd7;
   text-align: left;
-  cursor: pointer;
 }
-.current-shot-assets > button:hover {
+.current-shot-assets > article:hover {
   border-color: #7656c6;
   background: #181329;
+}
+.current-shot-assets > article > button:first-child {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c4cbd7;
+  text-align: left;
+  cursor: pointer;
+}
+.current-shot-assets > article > button:last-child {
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: #2d1c22;
+  color: #d99aaa;
+  font-size: 8px;
+  cursor: pointer;
 }
 .current-shot-assets i {
   width: 56px;
@@ -6229,8 +6280,46 @@ select:focus {
   color: #d2c0fa;
   cursor: pointer;
 }
+.current-shot-assets > .add-current-shot-asset {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px dashed #59447f;
+  border-radius: 7px;
+  background: #151220;
+  color: #bba6e7;
+  text-align: center;
+  cursor: pointer;
+}
 .shot-effect-panel {
   padding-bottom: 11px;
+}
+.shot-effect-panel > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.shot-effect-panel > summary::-webkit-details-marker {
+  display: none;
+}
+.shot-effect-panel > summary::after {
+  color: #74628f;
+  content: '↓';
+}
+.shot-effect-panel[open] > summary::after {
+  content: '↑';
+}
+.shot-effect-panel > summary strong,
+.shot-effect-panel > summary span {
+  display: block;
+}
+.shot-effect-panel > summary span {
+  margin-top: 3px;
+  color: #778397;
+  font-size: 9px;
 }
 .shot-effect-panel > label {
   display: grid;

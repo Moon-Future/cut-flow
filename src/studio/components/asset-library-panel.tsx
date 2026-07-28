@@ -19,7 +19,7 @@ const sourceLabels: Record<AssetMetadata['source'], string> = {
 };
 
 export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, onClose}: Props) => {
-  const {selectedSceneId, replaceSceneAsset, updateVisualShot} = useStudioStore();
+  const {project, selectedSceneId, replaceSceneAsset, updateVisualShot} = useStudioStore();
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
@@ -72,17 +72,22 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
     }
     if (selectedAsset.type === 'audio') return;
     if (selectionTarget) {
+      const targetShot = project?.scenes
+        .find((scene) => scene.id === selectionTarget.sceneId)
+        ?.shots?.find((shot) => shot.id === selectionTarget.shotId);
       updateVisualShot(selectionTarget.sceneId, selectionTarget.shotId, {
         selectedAsset: selectedAsset.path,
+        selectedAssets: [...new Set([...(targetShot?.selectedAssets ?? []), selectedAsset.path])],
         selectionCleared: false,
         sourceStart: 0,
         sourceEnd: selectedAsset.duration,
         status: 'ready',
       });
+      setMessage(`已添加“${selectedAsset.name}”，可继续选择更多素材`);
     } else if (selectedSceneId) {
       replaceSceneAsset(selectedSceneId, selectedAsset.path, selectedAsset.type);
+      onClose();
     }
-    onClose();
   };
 
   const upload = async (file: File, reload = true) => {

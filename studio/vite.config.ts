@@ -1461,6 +1461,7 @@ const localApi = (): Plugin => ({
               return;
             }
             shot.selectedAsset = candidate.path;
+            shot.selectedAssets = [...new Set([...(shot.selectedAssets ?? []), candidate.path])];
             shot.selectionCleared = false;
             if (candidate.kind === 'video') {
               const candidateDuration =
@@ -1511,6 +1512,7 @@ const localApi = (): Plugin => ({
               return;
             }
             shot.selectedAsset = null;
+            shot.selectedAssets = [];
             shot.selectionCleared = true;
             shot.sourceStart = 0;
             shot.sourceEnd = undefined;

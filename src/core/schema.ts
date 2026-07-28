@@ -149,6 +149,7 @@ export const visualShotSchema = z.object({
     .optional(),
   layers: z.array(visualLayerSchema).optional(),
   selectedAsset: z.string().nullable().default(null),
+  selectedAssets: z.array(z.string().min(1)).optional(),
   selectionCleared: z.boolean().optional(),
   sourceStart: z.number().min(0).default(0),
   sourceEnd: z.number().positive().optional(),
