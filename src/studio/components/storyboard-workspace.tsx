@@ -1417,10 +1417,23 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                         {videoDraft.referenceImagePaths.map((referenceId) => (
                           <div className="reference-image-result" key={referenceId}>
                             {videoDraft.referenceImageUrls[referenceId] ? (
-                              <img
-                                src={videoDraft.referenceImageUrls[referenceId]}
-                                alt={referenceId.split('-').slice(0, -2).join('-')}
-                              />
+                              <button
+                                type="button"
+                                className="reference-image-preview"
+                                title="查看大图"
+                                onClick={() =>
+                                  setMediaPreview({
+                                    kind: 'image',
+                                    src: videoDraft.referenceImageUrls[referenceId]!,
+                                    title: referenceId.split('-').slice(0, -2).join('-'),
+                                  })
+                                }
+                              >
+                                <img
+                                  src={videoDraft.referenceImageUrls[referenceId]}
+                                  alt={referenceId.split('-').slice(0, -2).join('-')}
+                                />
+                              </button>
                             ) : (
                               <span className="reference-image-loading">上传中</span>
                             )}

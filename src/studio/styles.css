@@ -6123,13 +6123,23 @@ select:focus {
   border-radius: 7px;
   background: #111823;
 }
-.reference-image-result > img,
+.reference-image-preview,
 .reference-image-loading {
   width: 48px;
   height: 48px;
   border-radius: 5px;
 }
-.reference-image-result > img {
+.reference-image-preview {
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.reference-image-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 .reference-image-loading {
