@@ -133,6 +133,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     shotId: string;
     message: string;
   } | null>(null);
+  const [referenceUploadError, setReferenceUploadError] = useState<{
+    shotId: string;
+    message: string;
+  } | null>(null);
   const [selectedVideoCandidateId, setSelectedVideoCandidateId] = useState<string | null>(null);
   const [mediaPreview, setMediaPreview] = useState<{
     kind: 'image' | 'video';
@@ -1336,6 +1340,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                             multiple
                             onChange={(event) => {
                               const files = Array.from(event.target.files ?? []);
+                              setReferenceUploadError(null);
                               for (const file of files) {
                                 const referenceId = `${file.name}-${file.size}-${file.lastModified}`;
                                 setVideoDraft((current) =>
@@ -1388,7 +1393,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                           }
                                         : current,
                                     );
-                                    setVideoGenerationError({
+                                    setReferenceUploadError({
                                       shotId: shot.id,
                                       message:
                                         error instanceof Error ? error.message : String(error),
@@ -1426,6 +1431,11 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                             </button>
                           </div>
                         ))}
+                        {referenceUploadError?.shotId === shot.id ? (
+                          <p className="reference-upload-error">
+                            {referenceUploadError.message}
+                          </p>
+                        ) : null}
                       </section>
                       <label className="final-video-prompt">
                         <span>

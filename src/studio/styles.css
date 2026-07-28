@@ -6136,6 +6136,15 @@ select:focus {
   color: #a997d7;
   cursor: pointer;
 }
+.video-reference-images .reference-upload-error {
+  padding: 8px 10px;
+  border: 1px solid #753f4b;
+  border-radius: 6px;
+  background: #26151b;
+  color: #ff9eab;
+  font-size: 11px;
+  line-height: 1.5;
+}
 .video-generation-footer p {
   margin: 0;
   color: #887da0;
