@@ -675,15 +675,32 @@ const localApi = (): Plugin => ({
               text?: string;
               controlInstruction?: string;
               referenceAudioPath?: string;
+              voicePreset?: 'tim';
+              promptText?: string;
             };
             const text = input.text?.trim();
-            if (!input.sceneId || !text || !input.referenceAudioPath) {
-              sendJson(response, 400, {error: '声音克隆需要参考音频和段落文案'});
+            const presetPromptText =
+              '你有没有发现香菜这东西爱的人爱的要死，恨的人恨得咬牙切齿，甚至有人给他起了个外号叫臭菜。';
+            const promptText =
+              input.voicePreset === 'tim' ? presetPromptText : input.promptText?.trim();
+            if (
+              !input.sceneId ||
+              !text ||
+              (!input.referenceAudioPath && input.voicePreset !== 'tim') ||
+              !promptText
+            ) {
+              sendJson(response, 400, {error: '极致克隆需要参考音频、参考音频原文和段落文案'});
               return;
             }
             const demoBase = 'https://openbmb-voxcpm-demo.hf.space';
-            const referenceFile = path.resolve(projectRoot, input.referenceAudioPath);
-            if (!referenceFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
+            const referenceFile =
+              input.voicePreset === 'tim'
+                ? path.join(repositoryRoot, 'studio', 'assets', 'voice-presets', 'tim-001.mp3')
+                : path.resolve(projectRoot, input.referenceAudioPath!);
+            if (
+              input.voicePreset !== 'tim' &&
+              !referenceFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)
+            ) {
               sendJson(response, 400, {error: '参考音频路径无效'});
               return;
             }
@@ -721,8 +738,8 @@ const localApi = (): Plugin => ({
                     orig_name: path.basename(referenceFile),
                     meta: {_type: 'gradio.FileData'},
                   },
-                  false,
-                  '',
+                  true,
+                  promptText,
                   2,
                   true,
                   true,

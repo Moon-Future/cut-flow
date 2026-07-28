@@ -6641,6 +6641,25 @@ select:focus {
   display: grid;
   gap: 2px;
 }
+.voice-preset-ready {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #31584f;
+  border-radius: 8px;
+  background: #10201e;
+  color: #76cdb8;
+  font-size: 11px;
+}
+.voice-preset-ready b {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: #24433d;
+}
 .voice-reference-picker strong,
 .voice-reference-picker small {
   overflow: hidden;

@@ -23,8 +23,12 @@ export const VoiceWorkspace = ({
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [controlInstruction, setControlInstruction] = useState('');
+  const [voicePreset, setVoicePreset] = useState<'tim' | 'custom'>('tim');
   const [referenceAudioPath, setReferenceAudioPath] = useState('');
   const [referenceAudioName, setReferenceAudioName] = useState('');
+  const [promptText, setPromptText] = useState(
+    '你有没有发现香菜这东西爱的人爱的要死，恨的人恨得咬牙切齿，甚至有人给他起了个外号叫臭菜。',
+  );
   const fullAudioInput = useRef<HTMLInputElement>(null);
   const referenceAudioInput = useRef<HTMLInputElement>(null);
   const selectedScene = project.scenes.find((scene) => scene.id === selectedSceneId);
@@ -81,8 +85,8 @@ export const VoiceWorkspace = ({
 
   const generateVoxCpm = async () => {
     if (!selectedScene) return;
-    if (!referenceAudioPath) {
-      setMessage('请先上传参考音频。');
+    if (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) {
+      setMessage('请上传参考音频并填写参考音频原文。');
       return;
     }
     setBusy(`voxcpm-${selectedScene.id}`);
@@ -95,7 +99,9 @@ export const VoiceWorkspace = ({
           sceneId: selectedScene.id,
           text: selectedScene.narration,
           controlInstruction,
-          referenceAudioPath,
+          referenceAudioPath: voicePreset === 'custom' ? referenceAudioPath : undefined,
+          voicePreset: voicePreset === 'tim' ? 'tim' : undefined,
+          promptText,
         }),
       });
       const value = (await response.json()) as {audioPath?: string; error?: string};
@@ -154,6 +160,26 @@ export const VoiceWorkspace = ({
               <span>实验性</span>
             </div>
             <p>使用参考音频克隆音色，并生成当前选中段落的配音。</p>
+            <label>
+              <span>参考声音</span>
+              <select
+                value={voicePreset}
+                onChange={(event) => {
+                  const value = event.target.value as 'tim' | 'custom';
+                  setVoicePreset(value);
+                  if (value === 'tim') {
+                    setPromptText(
+                      '你有没有发现香菜这东西爱的人爱的要死，恨的人恨得咬牙切齿，甚至有人给他起了个外号叫臭菜。',
+                    );
+                  } else {
+                    setPromptText('');
+                  }
+                }}
+              >
+                <option value="tim">影视飓风-Tim</option>
+                <option value="custom">上传自定义参考音频</option>
+              </select>
+            </label>
             <input
               ref={referenceAudioInput}
               hidden
@@ -176,17 +202,31 @@ export const VoiceWorkspace = ({
                 event.target.value = '';
               }}
             />
-            <button
-              className="voice-reference-picker"
-              disabled={Boolean(busy)}
-              onClick={() => referenceAudioInput.current?.click()}
-            >
-              <b>♪</b>
-              <span>
-                <strong>{referenceAudioName || '上传参考音频'}</strong>
-                <small>{referenceAudioName ? '点击可替换' : '建议使用清晰、无背景音乐的人声片段'}</small>
-              </span>
-            </button>
+            {voicePreset === 'custom' ? (
+              <button
+                className="voice-reference-picker"
+                disabled={Boolean(busy)}
+                onClick={() => referenceAudioInput.current?.click()}
+              >
+                <b>♪</b>
+                <span>
+                  <strong>{referenceAudioName || '上传参考音频'}</strong>
+                  <small>{referenceAudioName ? '点击可替换' : '建议使用清晰、无背景音乐的人声片段'}</small>
+                </span>
+              </button>
+            ) : (
+              <div className="voice-preset-ready"><b>♪</b><span>已内置参考音频 tim-001.mp3</span></div>
+            )}
+            <label>
+              <span>参考音频原文</span>
+              <textarea
+                rows={4}
+                value={promptText}
+                readOnly={voicePreset === 'tim'}
+                placeholder="逐字填写参考音频中说出的内容"
+                onChange={(event) => setPromptText(event.target.value)}
+              />
+            </label>
             <label>
               <span>当前段落文案</span>
               <textarea rows={5} value={selectedScene?.narration ?? ''} readOnly />
@@ -196,12 +236,17 @@ export const VoiceWorkspace = ({
               <textarea
                 rows={3}
                 value={controlInstruction}
+                placeholder="例如：语速稍快，语气轻松自然，重点句适当加强"
                 onChange={(event) => setControlInstruction(event.target.value)}
               />
             </label>
             <button
               className="voice-action-button voxcpm-action"
-              disabled={!selectedScene || !referenceAudioPath || Boolean(busy)}
+              disabled={
+                !selectedScene ||
+                (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) ||
+                Boolean(busy)
+              }
               onClick={() => void generateVoxCpm()}
             >
               <b>◆</b>
