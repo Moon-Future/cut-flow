@@ -6773,6 +6773,12 @@ select:focus {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.merge-voice-action {
+  width: 100%;
+  margin: 10px 0;
+  border-color: #5f4a99;
+  background: #2b2145;
+}
 .import-action {
   border-color: #7450c7;
   background: linear-gradient(135deg, #7046cf, #51319f);

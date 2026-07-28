@@ -97,6 +97,29 @@ export const VoiceWorkspace = ({
     }
   };
 
+  const mergeSceneAudio = async () => {
+    setBusy('merge');
+    setMessage('正在按段落时间轴合并音频…');
+    try {
+      const response = await fetch('/api/voice/merge', {method: 'POST'});
+      const value = (await response.json()) as {
+        project?: ProjectFile;
+        audioPath?: string;
+        error?: string;
+      };
+      if (!response.ok || !value.project || !value.audioPath) {
+        throw new Error(value.error ?? '合并分段音频失败');
+      }
+      onGenerated(value.project);
+      onAudioReady();
+      setMessage('分段音频已合并，并切换为完整音频模式。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const generateVoxCpm = async () => {
     if (!selectedScene) return;
     if (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) {
@@ -437,6 +460,18 @@ export const VoiceWorkspace = ({
               分段音频
             </button>
           </div>
+          <button
+            type="button"
+            className="voice-action-button merge-voice-action"
+            disabled={
+              busy === 'merge' ||
+              !project.scenes.some((scene) => Boolean(scene.narrationAudio))
+            }
+            onClick={() => void mergeSceneAudio()}
+          >
+            <b>⇢</b>
+            <span>{busy === 'merge' ? '正在合并…' : '合并分段音频'}</span>
+          </button>
           {audioAvailable && project.narrationAudio ? (
             <>
               <audio controls src={`/${projectId}/${project.narrationAudio}`} />

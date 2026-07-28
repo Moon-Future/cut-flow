@@ -59,6 +59,16 @@ const runtimeRoot = process.env.CUT_FLOW_RUNTIME_ROOT
 const requireFromApp = createRequire(
   path.join(process.env.CUT_FLOW_APP_ROOT ?? repositoryRoot, 'package.json'),
 );
+const rendererRequire = createRequire(requireFromApp.resolve('@remotion/renderer'));
+const ffmpegExecutable =
+  process.platform === 'win32'
+    ? path.join(
+        path.dirname(
+          rendererRequire.resolve('@remotion/compositor-win32-x64-msvc/package.json'),
+        ),
+        'ffmpeg.exe',
+      )
+    : 'ffmpeg';
 const react = (requireFromApp('@vitejs/plugin-react') as {default: () => Plugin}).default;
 const defaultConfigRoot = path.join(workspaceRoot, 'cut-flow-data');
 const defaultProjectsRoot = path.join(workspaceRoot, 'projects');
@@ -686,6 +696,92 @@ const localApi = (): Plugin => ({
               narrationAudio: scene.narrationAudio ?? null,
               narrationAudioCandidates: scene.narrationAudioCandidates ?? [],
               task: scene.voiceGenerationTask ?? null,
+            });
+            return;
+          }
+          if (url === '/api/voice/merge' && request.method === 'POST') {
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            if (!project.scenes.some((scene) => Boolean(scene.narrationAudio))) {
+              sendJson(response, 400, {error: '尚无可合并的分段音频'});
+              return;
+            }
+            const audioDirectory = path.join(assetsRoot, 'audio');
+            await mkdir(audioDirectory, {recursive: true});
+            const outputName = `narration-merged-${Date.now()}.wav`;
+            const outputFile = path.join(audioDirectory, outputName);
+            const args: string[] = ['-y'];
+            const filters: string[] = [];
+            for (const [index, scene] of project.scenes.entries()) {
+              const duration = Math.max(0.1, scene.duration);
+              if (scene.narrationAudio) {
+                const audioFile = path.resolve(projectRoot, scene.narrationAudio);
+                if (!audioFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
+                  sendJson(response, 400, {error: `段落 ${index + 1} 的音频路径无效`});
+                  return;
+                }
+                try {
+                  await stat(audioFile);
+                } catch {
+                  sendJson(response, 400, {error: `段落 ${index + 1} 的音频文件不存在`});
+                  return;
+                }
+                args.push('-i', audioFile);
+              } else {
+                args.push(
+                  '-f',
+                  'lavfi',
+                  '-t',
+                  String(duration),
+                  '-i',
+                  'anullsrc=r=48000:cl=stereo',
+                );
+              }
+              filters.push(
+                `[${index}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,` +
+                  `atrim=0:${duration},apad=pad_dur=${duration},atrim=0:${duration}[a${index}]`,
+              );
+            }
+            filters.push(
+              `${project.scenes.map((_, index) => `[a${index}]`).join('')}` +
+                `concat=n=${project.scenes.length}:v=0:a=1[out]`,
+            );
+            args.push(
+              '-filter_complex',
+              filters.join(';'),
+              '-map',
+              '[out]',
+              '-c:a',
+              'pcm_s16le',
+              outputFile,
+            );
+            const result = await new Promise<{code: number | null; error: string}>((resolve) => {
+              const child = spawn(ffmpegExecutable, args, {
+                cwd: projectRoot,
+                windowsHide: true,
+              });
+              let error = '';
+              child.stderr.on('data', (chunk: Buffer) => {
+                error = `${error}${chunk.toString('utf8')}`.slice(-4000);
+              });
+              child.on('error', (spawnError) =>
+                resolve({code: null, error: spawnError.message}),
+              );
+              child.on('close', (code) => resolve({code, error}));
+            });
+            if (result.code !== 0) {
+              sendJson(response, 500, {error: `合并分段音频失败：${result.error}`});
+              return;
+            }
+            project.narrationAudio = `assets/audio/${outputName}`;
+            project.narrationMode = 'full';
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 200, {
+              audioPath: project.narrationAudio,
+              project,
             });
             return;
           }
