@@ -457,7 +457,7 @@ export const SettingsWorkspace = () => {
           <header>
             <div>
               <strong>七牛云对象存储</strong>
-              <p>仅在用户勾选参考图片并生成视频时上传。</p>
+              <p>参考图片选择后立即上传；存储区域固定为华南-广东。</p>
             </div>
             <span>{settings.qiniu.configured ? '已配置' : '未配置'}</span>
           </header>
@@ -506,17 +506,19 @@ export const SettingsWorkspace = () => {
               />
             </label>
             <label>
-              <span>上传域名</span>
+              <span>存储区域</span>
+              <input value="华南-广东（z2）" disabled />
+            </label>
+            <label>
+              <span>上传地址</span>
               <input
-                value={settings.qiniu.uploadHost}
-                placeholder="https://upload.qiniup.com"
-                onChange={(event) =>
-                  setSettings({
-                    ...settings,
-                    qiniu: {...settings.qiniu, uploadHost: event.target.value},
-                  })
-                }
+                value="https://up-z2.qiniup.com"
+                disabled
               />
+            </label>
+            <label>
+              <span>对象目录</span>
+              <input value="cl8023/project/cut-flow/reference-image/" disabled />
             </label>
           </div>
         </article>

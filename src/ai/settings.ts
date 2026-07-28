@@ -77,7 +77,7 @@ const defaults: AiSettings = {
     secretKey: '',
     bucket: '',
     cdnDomain: '',
-    uploadHost: 'https://upload.qiniup.com',
+    uploadHost: 'https://up-z2.qiniup.com',
   },
 };
 
@@ -101,6 +101,7 @@ const mergeSettings = (saved: Partial<AiSettings>): AiSettings => {
     volcengineVideo: {...defaults.volcengineVideo, ...saved.volcengineVideo},
     qiniu: {...defaults.qiniu, ...saved.qiniu},
   };
+  settings.qiniu.uploadHost = defaults.qiniu.uploadHost;
   if (settings.providers.deepseek.model === 'deepseek-chat') {
     settings.providers.deepseek.model = 'deepseek-v4-flash';
   }
@@ -166,7 +167,7 @@ export const saveAiSettings = async (
       secretKey: input.qiniu?.secretKey?.trim() || current.qiniu.secretKey,
       bucket: (input.qiniu?.bucket ?? current.qiniu.bucket).trim(),
       cdnDomain: (input.qiniu?.cdnDomain ?? current.qiniu.cdnDomain).trim(),
-      uploadHost: (input.qiniu?.uploadHost ?? current.qiniu.uploadHost).trim(),
+      uploadHost: 'https://up-z2.qiniup.com',
     },
   };
   for (const id of ['openai', 'deepseek', 'doubao'] as const) {

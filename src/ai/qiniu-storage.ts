@@ -10,6 +10,9 @@ type QiniuConfig = {
   uploadHost?: string;
 };
 
+const QINIU_SOUTH_CHINA_UPLOAD_HOST = 'https://up-z2.qiniup.com';
+const REFERENCE_IMAGE_PREFIX = 'cl8023/project/cut-flow/reference-image';
+
 const base64Url = (value: string | Buffer) =>
   Buffer.from(value)
     .toString('base64')
@@ -23,7 +26,7 @@ const uploadToQiniu = async (
   config: QiniuConfig,
 ) => {
   const extension = path.extname(fileName).toLowerCase();
-  const key = `cut-flow/reference/${Date.now()}-${randomUUID()}${extension}`;
+  const key = `${REFERENCE_IMAGE_PREFIX}/${Date.now()}-${randomUUID()}${extension}`;
   const policy = base64Url(
     JSON.stringify({
       scope: `${config.bucket}:${key}`,
@@ -40,7 +43,7 @@ const uploadToQiniu = async (
     new Blob([new Uint8Array(content)], {type: contentType}),
     path.basename(fileName),
   );
-  const response = await fetch(config.uploadHost || 'https://upload.qiniup.com', {
+  const response = await fetch(QINIU_SOUTH_CHINA_UPLOAD_HOST, {
     method: 'POST',
     body: form,
     signal: AbortSignal.timeout(120_000),
