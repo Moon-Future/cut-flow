@@ -45,6 +45,7 @@ import type {
 } from '../src/media/pixabay';
 import {loadAiSettings, publicAiSettings, saveAiSettings} from '../src/ai/settings';
 import {createEditingPackage} from '../src/export/production-package';
+import {uploadFileToQiniu} from '../src/ai/qiniu-storage';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
   ? path.resolve(process.env.CUT_FLOW_APP_ROOT)
@@ -1546,6 +1547,7 @@ const localApi = (): Plugin => ({
               provider?: 'volcengine-pippit';
               duration?: VideoTargetDuration;
               prompt?: string;
+              referenceImagePaths?: string[];
             };
             if (!input.sceneId || !input.shotId) {
               sendJson(response, 400, {error: '缺少场景或镜头标识'});
@@ -1597,6 +1599,24 @@ const localApi = (): Plugin => ({
                 input.duration ?? aiSettings.volcengineVideo.defaultDuration,
               ),
               enableWatermark: aiSettings.volcengineVideo.enableWatermark,
+              referenceImageUrls: input.referenceImagePaths?.length
+                ? await Promise.all(
+                    input.referenceImagePaths.map(async (referencePath) => {
+                      if (!aiSettings.qiniu.accessKey || !aiSettings.qiniu.secretKey || !aiSettings.qiniu.bucket || !aiSettings.qiniu.cdnDomain) {
+                        throw new Error('请先在设置中配置七牛云 AK、SK、Bucket 和 CDN 域名');
+                      }
+                      const localFile = path.resolve(projectRoot, referencePath);
+                      if (!localFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
+                        throw new Error('参考图片路径无效');
+                      }
+                      const fileInfo = await stat(localFile);
+                      if (fileInfo.size > 20 * 1024 * 1024) {
+                        throw new Error('单张参考图片不能超过 20MB');
+                      }
+                      return uploadFileToQiniu(localFile, aiSettings.qiniu);
+                    }),
+                  )
+                : [],
             });
             const targetDuration = input.duration ?? aiSettings.volcengineVideo.defaultDuration;
             const finalPrompt = limitVideoPrompt(

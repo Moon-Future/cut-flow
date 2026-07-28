@@ -6047,6 +6047,48 @@ select:focus {
   gap: 12px;
   margin-top: 10px;
 }
+.video-reference-images {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #2d3749;
+  border-radius: 8px;
+  background: #0c1119;
+}
+.video-reference-images > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.video-reference-images > header small,
+.video-reference-images > p {
+  margin: 0;
+  color: #748095;
+  font-size: 10px;
+}
+.video-reference-images > label {
+  display: grid;
+  grid-template-columns: auto 46px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #273143;
+  border-radius: 7px;
+  background: #111823;
+}
+.video-reference-images img {
+  width: 46px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.video-reference-images label span {
+  overflow: hidden;
+  color: #b8c1cf;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .video-generation-footer p {
   margin: 0;
   color: #887da0;

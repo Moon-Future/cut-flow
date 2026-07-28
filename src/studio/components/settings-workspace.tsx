@@ -18,6 +18,12 @@ type PublicSettings = {
     provider: 'volcengine-pippit';
     model: string;
   };
+  qiniu: {
+    configured: boolean;
+    bucket: string;
+    cdnDomain: string;
+    uploadHost: string;
+  };
 };
 type StorageSettings = {
   configRoot: string;
@@ -51,6 +57,7 @@ export const SettingsWorkspace = () => {
     accessKey: '',
     secretKey: '',
   });
+  const [qiniuKeys, setQiniuKeys] = useState({accessKey: '', secretKey: ''});
   const [storage, setStorage] = useState<StorageSettings | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -110,6 +117,10 @@ export const SettingsWorkspace = () => {
             ...settings.volcengineVideo,
             ...volcengineVideoKeys,
           },
+          qiniu: {
+            ...settings.qiniu,
+            ...qiniuKeys,
+          },
         }),
       });
       const value = (await response.json()) as PublicSettings & {error?: string};
@@ -117,6 +128,7 @@ export const SettingsWorkspace = () => {
       setSettings(value);
       setPixabayApiKey('');
       setVolcengineVideoKeys({accessKey: '', secretKey: ''});
+      setQiniuKeys({accessKey: '', secretKey: ''});
       setDraft({
         openai: {apiKey: '', secretKey: ''},
         deepseek: {apiKey: '', secretKey: ''},
@@ -434,6 +446,79 @@ export const SettingsWorkspace = () => {
             />
             显示“AI 生成 / 小云雀 AI 生成”明水印
           </label>
+        </article>
+        <div className="settings-group-heading">
+          <div>
+            <strong>参考素材公网存储</strong>
+            <p>将本地参考图片上传到七牛云，再把 CDN 公网 URL 传给小云雀。</p>
+          </div>
+        </div>
+        <article className={settings.qiniu.configured ? 'enabled' : ''}>
+          <header>
+            <div>
+              <strong>七牛云对象存储</strong>
+              <p>仅在用户勾选参考图片并生成视频时上传。</p>
+            </div>
+            <span>{settings.qiniu.configured ? '已配置' : '未配置'}</span>
+          </header>
+          <div className="provider-form">
+            <label>
+              <span>Access Key（AK）</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={qiniuKeys.accessKey}
+                placeholder={settings.qiniu.configured ? '已保存，留空则不修改' : '请输入 AK'}
+                onChange={(event) => setQiniuKeys({...qiniuKeys, accessKey: event.target.value})}
+              />
+            </label>
+            <label>
+              <span>Secret Key（SK）</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={qiniuKeys.secretKey}
+                placeholder={settings.qiniu.configured ? '已保存，留空则不修改' : '请输入 SK'}
+                onChange={(event) => setQiniuKeys({...qiniuKeys, secretKey: event.target.value})}
+              />
+            </label>
+            <label>
+              <span>Bucket 名称</span>
+              <input
+                value={settings.qiniu.bucket}
+                placeholder="例如：cut-flow-assets"
+                onChange={(event) =>
+                  setSettings({...settings, qiniu: {...settings.qiniu, bucket: event.target.value}})
+                }
+              />
+            </label>
+            <label>
+              <span>CDN 域名</span>
+              <input
+                value={settings.qiniu.cdnDomain}
+                placeholder="例如：https://cdn.example.com"
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    qiniu: {...settings.qiniu, cdnDomain: event.target.value},
+                  })
+                }
+              />
+            </label>
+            <label>
+              <span>上传域名</span>
+              <input
+                value={settings.qiniu.uploadHost}
+                placeholder="https://upload.qiniup.com"
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    qiniu: {...settings.qiniu, uploadHost: event.target.value},
+                  })
+                }
+              />
+            </label>
+          </div>
         </article>
       </div>
       {storage ? (

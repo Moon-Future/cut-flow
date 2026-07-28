@@ -27,6 +27,13 @@ export type AiSettings = {
     enableWatermark: boolean;
     defaultDuration: '5s' | '10s' | '～15s' | '～30s' | '40～60s';
   };
+  qiniu: {
+    accessKey: string;
+    secretKey: string;
+    bucket: string;
+    cdnDomain: string;
+    uploadHost: string;
+  };
 };
 
 const defaults: AiSettings = {
@@ -65,6 +72,13 @@ const defaults: AiSettings = {
     enableWatermark: true,
     defaultDuration: '～15s',
   },
+  qiniu: {
+    accessKey: '',
+    secretKey: '',
+    bucket: '',
+    cdnDomain: '',
+    uploadHost: 'https://upload.qiniup.com',
+  },
 };
 
 const settingsRoot = () =>
@@ -85,6 +99,7 @@ const mergeSettings = (saved: Partial<AiSettings>): AiSettings => {
     },
     pixabay: {...defaults.pixabay, ...saved.pixabay},
     volcengineVideo: {...defaults.volcengineVideo, ...saved.volcengineVideo},
+    qiniu: {...defaults.qiniu, ...saved.qiniu},
   };
   if (settings.providers.deepseek.model === 'deepseek-chat') {
     settings.providers.deepseek.model = 'deepseek-v4-flash';
@@ -126,6 +141,7 @@ export const saveAiSettings = async (
     providers?: Partial<Record<AiProviderId, Partial<AiProviderSetting>>>;
     pixabay?: Partial<AiSettings['pixabay']>;
     volcengineVideo?: Partial<AiSettings['volcengineVideo']>;
+    qiniu?: Partial<AiSettings['qiniu']>;
   },
 ): Promise<AiSettings> => {
   const current = await loadAiSettings();
@@ -144,6 +160,13 @@ export const saveAiSettings = async (
         input.volcengineVideo?.enableWatermark ?? current.volcengineVideo.enableWatermark,
       defaultDuration:
         input.volcengineVideo?.defaultDuration ?? current.volcengineVideo.defaultDuration,
+    },
+    qiniu: {
+      accessKey: input.qiniu?.accessKey?.trim() || current.qiniu.accessKey,
+      secretKey: input.qiniu?.secretKey?.trim() || current.qiniu.secretKey,
+      bucket: (input.qiniu?.bucket ?? current.qiniu.bucket).trim(),
+      cdnDomain: (input.qiniu?.cdnDomain ?? current.qiniu.cdnDomain).trim(),
+      uploadHost: (input.qiniu?.uploadHost ?? current.qiniu.uploadHost).trim(),
     },
   };
   for (const id of ['openai', 'deepseek', 'doubao'] as const) {
@@ -181,6 +204,17 @@ export const publicAiSettings = (settings: AiSettings) => ({
     defaultDuration: settings.volcengineVideo.defaultDuration,
     provider: 'volcengine-pippit' as const,
     model: 'pippit_iv2v_cvtob',
+  },
+  qiniu: {
+    configured: Boolean(
+      settings.qiniu.accessKey &&
+        settings.qiniu.secretKey &&
+        settings.qiniu.bucket &&
+        settings.qiniu.cdnDomain,
+    ),
+    bucket: settings.qiniu.bucket,
+    cdnDomain: settings.qiniu.cdnDomain,
+    uploadHost: settings.qiniu.uploadHost,
   },
   providers: Object.fromEntries(
     Object.entries(settings.providers).map(([id, value]) => [

@@ -21,6 +21,7 @@ type Config = {
   pollIntervalMs?: number;
   maxPolls?: number;
   fetch?: typeof globalThis.fetch;
+  referenceImageUrls?: string[];
 };
 
 type VolcResponse = {
@@ -114,6 +115,7 @@ export const createVolcengineVideoProvider = (config: Config) => {
         language: 'Chinese',
         accent: 'PuTongHua',
         enable_watermark: config.enableWatermark ?? true,
+        img_url_list: config.referenceImageUrls?.length ? config.referenceImageUrls : undefined,
       });
       const taskId = created.data?.task_id;
       if (!taskId) throw new Error('小云雀未返回任务 ID');

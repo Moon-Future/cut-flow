@@ -126,6 +126,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     provider: 'volcengine-pippit';
     duration: VideoTargetDuration;
     prompt: string;
+    referenceImagePaths: string[];
   } | null>(null);
   const [videoGenerationError, setVideoGenerationError] = useState<{
     shotId: string;
@@ -457,6 +458,11 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
               shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
               videoDefaultDuration,
             ),
+            referenceImagePaths: [...new Set(
+              [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
+                .filter((path): path is string => Boolean(path))
+                .filter((path) => !videoFilePattern.test(path)),
+            )],
           };
     setGeneratingVideoShotId(shot.id);
     setVideoGenerationError(null);
@@ -475,6 +481,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           provider: draft.provider,
           duration: draft.duration,
           prompt: limitVideoPrompt(normalizeVideoPromptDuration(visualPrompt, draft.duration)),
+          referenceImagePaths: draft.referenceImagePaths,
         }),
       });
       const value = (await response.json()) as {
@@ -1255,6 +1262,11 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           : fallbackVideoPromptZh(shot),
                         videoDefaultDuration,
                       ),
+                      referenceImagePaths: [...new Set(
+                        [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
+                          .filter((path): path is string => Boolean(path))
+                          .filter((path) => !videoFilePattern.test(path)),
+                      )],
                     });
                   }}
                 >
@@ -1315,6 +1327,45 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           <input value="pippit_iv2v_cvtob" disabled />
                         </label>
                       </div>
+                      <section className="video-reference-images">
+                        <header>
+                          <span>参考图片</span>
+                          <small>勾选后会先上传七牛云，再将 CDN URL 传给小云雀</small>
+                        </header>
+                        {[...new Set(
+                          [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
+                            .filter((path): path is string => Boolean(path))
+                            .filter((path) => !videoFilePattern.test(path)),
+                        )].map((referencePath) => (
+                          <label key={referencePath}>
+                            <input
+                              type="checkbox"
+                              checked={videoDraft.referenceImagePaths.includes(referencePath)}
+                              onChange={(event) =>
+                                setVideoDraft({
+                                  ...videoDraft,
+                                  referenceImagePaths: event.target.checked
+                                    ? [...new Set([...videoDraft.referenceImagePaths, referencePath])]
+                                    : videoDraft.referenceImagePaths.filter(
+                                        (path) => path !== referencePath,
+                                      ),
+                                })
+                              }
+                            />
+                            <img src={mediaUrl(projectId, referencePath)} alt="" />
+                            <span>{referencePath.split('/').at(-1)}</span>
+                          </label>
+                        ))}
+                        {![
+                          ...new Set(
+                            [shot.selectedAsset, ...(shot.selectedAssets ?? [])]
+                              .filter((path): path is string => Boolean(path))
+                              .filter((path) => !videoFilePattern.test(path)),
+                          ),
+                        ].length ? (
+                          <p>当前镜头没有已选图片，请先从素材库、搜索结果或 AI 图片中添加。</p>
+                        ) : null}
+                      </section>
                       <label className="final-video-prompt">
                         <span>
                           最终发送给视频模型的提示词
