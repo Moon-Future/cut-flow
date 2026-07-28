@@ -9,6 +9,7 @@ type Props = {
 
 const imagePattern = /\.(?:png|jpe?g|webp|gif|avif)(?:[?#].*)?$/iu;
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
+type CoverTextLayer = NonNullable<NonNullable<ProjectFile['cover']>['textLayers']>[number];
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
@@ -48,6 +49,30 @@ const drawCoverText = (
 
 export const CoverWorkspace = ({project, projectId}: Props) => {
   const updateProjectCover = useStudioStore((state) => state.updateCover);
+  const defaultTextLayers: CoverTextLayer[] = [
+    {
+      id: 'cover-title',
+      text: project.cover?.title || project.project.title,
+      x: project.cover?.textAlign === 'center' ? 50 : 9,
+      y: 56,
+      fontFamily: 'Microsoft YaHei',
+      fontSize: 88,
+      color: '#ffffff',
+      fontWeight: '800',
+      textAlign: project.cover?.textAlign ?? 'left',
+    },
+    {
+      id: 'cover-subtitle',
+      text: project.cover?.subtitle ?? '',
+      x: project.cover?.textAlign === 'center' ? 50 : 9,
+      y: 72,
+      fontFamily: 'Microsoft YaHei',
+      fontSize: 40,
+      color: project.cover?.accentColor ?? '#ffcf4a',
+      fontWeight: '700',
+      textAlign: project.cover?.textAlign ?? 'left',
+    },
+  ];
   const cover = {
     sourcePath: project.cover?.sourcePath ?? null,
     outputPath: project.cover?.outputPath ?? null,
@@ -56,6 +81,10 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
     textAlign: project.cover?.textAlign ?? ('left' as const),
     overlayOpacity: project.cover?.overlayOpacity ?? 0.42,
     accentColor: project.cover?.accentColor ?? '#ffcf4a',
+    backgroundScale: project.cover?.backgroundScale ?? 1,
+    backgroundX: project.cover?.backgroundX ?? 50,
+    backgroundY: project.cover?.backgroundY ?? 50,
+    textLayers: project.cover?.textLayers ?? defaultTextLayers,
   };
   const [busy, setBusy] = useState<'upload' | 'save' | null>(null);
   const [message, setMessage] = useState('');
@@ -81,6 +110,11 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
   );
 
   const updateCover = (patch: Partial<typeof cover>) => updateProjectCover(patch);
+  const updateTextLayer = (id: string, patch: Partial<CoverTextLayer>) =>
+    updateCover({
+      textLayers: cover.textLayers.map((layer) => (layer.id === id ? {...layer, ...patch} : layer)),
+      outputPath: null,
+    });
 
   const uploadSource = async (file: File) => {
     setBusy('upload');
@@ -120,45 +154,49 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       const context = canvas.getContext('2d');
       if (!context) throw new Error('浏览器无法创建封面画布');
       const image = await loadImage(mediaUrl(projectId, cover.sourcePath));
-      const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+      const scale =
+        Math.max(canvas.width / image.width, canvas.height / image.height) *
+        cover.backgroundScale;
       const width = image.width * scale;
       const height = image.height * scale;
-      context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+      const movableX = Math.max(0, (width - canvas.width) / 2);
+      const movableY = Math.max(0, (height - canvas.height) / 2);
+      const offsetX = ((cover.backgroundX - 50) / 50) * movableX;
+      const offsetY = ((cover.backgroundY - 50) / 50) * movableY;
+      context.drawImage(
+        image,
+        (canvas.width - width) / 2 - offsetX,
+        (canvas.height - height) / 2 - offsetY,
+        width,
+        height,
+      );
       const gradient = context.createLinearGradient(0, 300, 0, 1700);
       gradient.addColorStop(0, `rgba(0,0,0,${cover.overlayOpacity * 0.35})`);
       gradient.addColorStop(0.45, `rgba(0,0,0,${cover.overlayOpacity * 0.15})`);
       gradient.addColorStop(1, `rgba(0,0,0,${cover.overlayOpacity})`);
       context.fillStyle = gradient;
       context.fillRect(0, 0, canvas.width, canvas.height);
-      const centered = cover.textAlign === 'center';
-      const x = centered ? 540 : 92;
-      const maximumWidth = centered ? 900 : 850;
-      context.textAlign = centered ? 'center' : 'left';
       context.textBaseline = 'top';
-      context.font = '700 88px "Microsoft YaHei", sans-serif';
-      context.fillStyle = '#ffffff';
       context.shadowColor = 'rgba(0,0,0,.55)';
       context.shadowBlur = 18;
-      const titleHeight = drawCoverText(
-        context,
-        cover.title,
-        x,
-        1080,
-        maximumWidth,
-        112,
-        context.textAlign,
-      );
-      if (cover.subtitle.trim()) {
-        context.font = '600 40px "Microsoft YaHei", sans-serif';
-        context.fillStyle = cover.accentColor;
-        context.shadowBlur = 10;
+      for (const layer of cover.textLayers) {
+        if (!layer.text.trim()) continue;
+        context.textAlign = layer.textAlign;
+        context.font = `${layer.fontWeight} ${layer.fontSize}px "${layer.fontFamily}", sans-serif`;
+        context.fillStyle = layer.color;
+        const maximumWidth =
+          layer.textAlign === 'center'
+            ? 2 * Math.min(layer.x, 100 - layer.x) * 10.8
+            : layer.textAlign === 'left'
+              ? (100 - layer.x) * 10.8 - 40
+              : layer.x * 10.8 - 40;
         drawCoverText(
           context,
-          cover.subtitle,
-          x,
-          1080 + titleHeight + 28,
-          maximumWidth,
-          56,
+          layer.text,
+          (layer.x / 100) * canvas.width,
+          (layer.y / 100) * canvas.height,
+          Math.max(180, maximumWidth),
+          layer.fontSize * 1.25,
           context.textAlign,
         );
       }
@@ -232,50 +270,201 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         >
           {busy === 'upload' ? '正在上传…' : '从电脑上传底图'}
         </button>
-        <label>
-          <span>主标题</span>
-          <textarea
-            rows={3}
-            maxLength={36}
-            value={cover.title}
-            onChange={(event) => updateCover({title: event.target.value, outputPath: null})}
-          />
-          <small>{cover.title.length} / 36，建议 8～16 字</small>
-        </label>
-        <label>
-          <span>强调文字</span>
-          <input
-            maxLength={24}
-            value={cover.subtitle}
-            placeholder="可选，例如：3分钟讲清楚"
-            onChange={(event) => updateCover({subtitle: event.target.value, outputPath: null})}
-          />
-        </label>
-        <div className="cover-form-pair">
+        <section className="cover-setting-group">
+          <header>
+            <strong>背景图位置</strong>
+            <small>放大后可调整主体在安全区内的位置</small>
+          </header>
           <label>
-            <span>文字对齐</span>
-            <select
-              value={cover.textAlign}
+            <span>缩放 {cover.backgroundScale.toFixed(2)}×</span>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.05"
+              value={cover.backgroundScale}
               onChange={(event) =>
+                updateCover({backgroundScale: Number(event.target.value), outputPath: null})
+              }
+            />
+          </label>
+          <label>
+            <span>水平位置 {Math.round(cover.backgroundX)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={cover.backgroundX}
+              onChange={(event) =>
+                updateCover({backgroundX: Number(event.target.value), outputPath: null})
+              }
+            />
+          </label>
+          <label>
+            <span>垂直位置 {Math.round(cover.backgroundY)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={cover.backgroundY}
+              onChange={(event) =>
+                updateCover({backgroundY: Number(event.target.value), outputPath: null})
+              }
+            />
+          </label>
+        </section>
+        <section className="cover-setting-group cover-text-settings">
+          <header>
+            <div>
+              <strong>文字图层</strong>
+              <small>每条文字可独立设置位置和样式</small>
+            </div>
+            <button
+              type="button"
+              disabled={cover.textLayers.length >= 12}
+              onClick={() =>
                 updateCover({
-                  textAlign: event.target.value as 'left' | 'center',
+                  textLayers: [
+                    ...cover.textLayers,
+                    {
+                      id: `cover-text-${Date.now()}`,
+                      text: '新文字',
+                      x: 50,
+                      y: 65,
+                      fontFamily: 'Microsoft YaHei',
+                      fontSize: 48,
+                      color: '#ffffff',
+                      fontWeight: '700',
+                      textAlign: 'center',
+                    },
+                  ],
                   outputPath: null,
                 })
               }
             >
-              <option value="left">左对齐</option>
-              <option value="center">居中</option>
-            </select>
-          </label>
-          <label>
-            <span>强调色</span>
-            <input
-              type="color"
-              value={cover.accentColor}
-              onChange={(event) => updateCover({accentColor: event.target.value, outputPath: null})}
-            />
-          </label>
-        </div>
+              ＋ 添加文字
+            </button>
+          </header>
+          {cover.textLayers.map((layer, index) => (
+            <article className="cover-text-layer-card" key={layer.id}>
+              <header>
+                <strong>文字 {index + 1}</strong>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateCover({
+                      textLayers: cover.textLayers.filter((item) => item.id !== layer.id),
+                      outputPath: null,
+                    })
+                  }
+                >
+                  删除
+                </button>
+              </header>
+              <textarea
+                rows={2}
+                maxLength={60}
+                value={layer.text}
+                onChange={(event) => updateTextLayer(layer.id, {text: event.target.value})}
+              />
+              <div className="cover-layer-grid">
+                <label>
+                  <span>字体</span>
+                  <select
+                    value={layer.fontFamily}
+                    onChange={(event) =>
+                      updateTextLayer(layer.id, {fontFamily: event.target.value})
+                    }
+                  >
+                    <option value="Microsoft YaHei">微软雅黑</option>
+                    <option value="SimHei">黑体</option>
+                    <option value="KaiTi">楷体</option>
+                    <option value="FangSong">仿宋</option>
+                  </select>
+                </label>
+                <label>
+                  <span>粗细</span>
+                  <select
+                    value={layer.fontWeight}
+                    onChange={(event) =>
+                      updateTextLayer(layer.id, {
+                        fontWeight: event.target.value as CoverTextLayer['fontWeight'],
+                      })
+                    }
+                  >
+                    <option value="400">常规</option>
+                    <option value="600">半粗</option>
+                    <option value="700">粗体</option>
+                    <option value="800">特粗</option>
+                    <option value="900">最粗</option>
+                  </select>
+                </label>
+                <label>
+                  <span>对齐</span>
+                  <select
+                    value={layer.textAlign}
+                    onChange={(event) =>
+                      updateTextLayer(layer.id, {
+                        textAlign: event.target.value as CoverTextLayer['textAlign'],
+                      })
+                    }
+                  >
+                    <option value="left">左对齐</option>
+                    <option value="center">居中</option>
+                    <option value="right">右对齐</option>
+                  </select>
+                </label>
+                <label>
+                  <span>颜色</span>
+                  <input
+                    type="color"
+                    value={layer.color}
+                    onChange={(event) => updateTextLayer(layer.id, {color: event.target.value})}
+                  />
+                </label>
+              </div>
+              <label>
+                <span>字号 {layer.fontSize}px</span>
+                <input
+                  type="range"
+                  min="20"
+                  max="180"
+                  step="2"
+                  value={layer.fontSize}
+                  onChange={(event) =>
+                    updateTextLayer(layer.id, {fontSize: Number(event.target.value)})
+                  }
+                />
+              </label>
+              <div className="cover-layer-position">
+                <label>
+                  <span>水平 {Math.round(layer.x)}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={layer.x}
+                    onChange={(event) =>
+                      updateTextLayer(layer.id, {x: Number(event.target.value)})
+                    }
+                  />
+                </label>
+                <label>
+                  <span>垂直 {Math.round(layer.y)}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={layer.y}
+                    onChange={(event) =>
+                      updateTextLayer(layer.id, {y: Number(event.target.value)})
+                    }
+                  />
+                </label>
+              </div>
+            </article>
+          ))}
+        </section>
         <label>
           <span>背景压暗 {Math.round(cover.overlayOpacity * 100)}%</span>
           <input
@@ -292,7 +481,11 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         <button
           type="button"
           className="primary-button cover-save-button"
-          disabled={busy === 'save' || !cover.sourcePath || !cover.title.trim()}
+          disabled={
+            busy === 'save' ||
+            !cover.sourcePath ||
+            !cover.textLayers.some((layer) => layer.text.trim())
+          }
           onClick={() => void saveCover()}
         >
           {busy === 'save' ? '正在生成封面…' : '生成并保存封面'}
@@ -310,14 +503,19 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
           </div>
         </header>
         <div className="douyin-cover-shell">
-          <div
-            className={`douyin-cover ${cover.textAlign}`}
-            style={
-              cover.sourcePath
-                ? {backgroundImage: `url("${mediaUrl(projectId, cover.sourcePath)}")`}
-                : undefined
-            }
-          >
+          <div className="douyin-cover">
+            {cover.sourcePath ? (
+              <img
+                className="cover-background-image"
+                src={mediaUrl(projectId, cover.sourcePath)}
+                alt=""
+                style={{
+                  transform: `translate(${(50 - cover.backgroundX) * 0.55}%, ${
+                    (50 - cover.backgroundY) * 0.55
+                  }%) scale(${cover.backgroundScale})`,
+                }}
+              />
+            ) : null}
             <div
               className="cover-dark-layer"
               style={{opacity: cover.overlayOpacity}}
@@ -325,12 +523,31 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             <div className="douyin-safe-zone">
               <span>3:4 主页封面安全区</span>
             </div>
-            <div className="cover-copy">
-              <strong>{cover.title || '输入封面标题'}</strong>
-              {cover.subtitle ? (
-                <small style={{color: cover.accentColor}}>{cover.subtitle}</small>
-              ) : null}
-            </div>
+            {cover.textLayers.map((layer) =>
+              layer.text ? (
+                <div
+                  className="cover-text-preview-layer"
+                  key={layer.id}
+                  style={{
+                    left: `${layer.x}%`,
+                    top: `${layer.y}%`,
+                    color: layer.color,
+                    fontFamily: layer.fontFamily,
+                    fontSize: `${Math.max(9, layer.fontSize * 0.42)}px`,
+                    fontWeight: layer.fontWeight,
+                    textAlign: layer.textAlign,
+                    transform:
+                      layer.textAlign === 'center'
+                        ? 'translateX(-50%)'
+                        : layer.textAlign === 'right'
+                          ? 'translateX(-100%)'
+                          : undefined,
+                  }}
+                >
+                  {layer.text}
+                </div>
+              ) : null,
+            )}
             {!cover.sourcePath ? <p>选择项目图片或从电脑上传底图</p> : null}
           </div>
         </div>

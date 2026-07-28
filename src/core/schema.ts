@@ -255,6 +255,25 @@ export const projectFileSchema = z
         textAlign: z.enum(['left', 'center']).default('left'),
         overlayOpacity: z.number().min(0).max(0.85).default(0.42),
         accentColor: z.string().regex(/^#[0-9a-f]{6}$/iu).default('#ffcf4a'),
+        backgroundScale: z.number().min(1).max(3).default(1),
+        backgroundX: z.number().min(0).max(100).default(50),
+        backgroundY: z.number().min(0).max(100).default(50),
+        textLayers: z
+          .array(
+            z.object({
+              id: z.string().min(1),
+              text: z.string().default(''),
+              x: z.number().min(0).max(100).default(50),
+              y: z.number().min(0).max(100).default(60),
+              fontFamily: z.string().default('Microsoft YaHei'),
+              fontSize: z.number().min(20).max(180).default(72),
+              color: z.string().regex(/^#[0-9a-f]{6}$/iu).default('#ffffff'),
+              fontWeight: z.enum(['400', '600', '700', '800', '900']).default('800'),
+              textAlign: z.enum(['left', 'center', 'right']).default('center'),
+            }),
+          )
+          .max(12)
+          .optional(),
       })
       .optional(),
     scenes: z.array(sceneSchema).min(1),

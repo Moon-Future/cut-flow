@@ -6268,6 +6268,8 @@ select:focus {
   display: grid;
   align-content: start;
   gap: 12px;
+  padding-right: 18px;
+  padding-left: 18px;
   overflow-y: auto;
 }
 .cover-controls > header,
@@ -6323,6 +6325,63 @@ select:focus {
   grid-template-columns: minmax(0, 1fr) 90px;
   gap: 10px;
 }
+.cover-setting-group {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #2b3547;
+  border-radius: 9px;
+  background: #101722;
+}
+.cover-setting-group > header,
+.cover-text-layer-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cover-setting-group > header strong,
+.cover-setting-group > header small {
+  display: block;
+}
+.cover-setting-group > header small {
+  margin-top: 3px;
+  color: #6f7b8e;
+  font-size: 9px;
+}
+.cover-text-settings > header > button {
+  padding: 6px 9px;
+  border: 1px solid #7053b6;
+  border-radius: 6px;
+  background: #2b2045;
+  color: #d7c6ff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cover-text-layer-card {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #364156;
+  border-radius: 8px;
+  background: #0b111a;
+}
+.cover-text-layer-card > header > button {
+  border: 0;
+  background: transparent;
+  color: #cc7e89;
+  cursor: pointer;
+}
+.cover-layer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(72px, 0.8fr));
+  gap: 7px;
+}
+.cover-layer-position {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
 .cover-upload-button {
   padding: 9px 12px;
   border: 1px solid #465673;
@@ -6372,9 +6431,16 @@ select:focus {
   border: 1px solid #4a566a;
   border-radius: 9px;
   background: linear-gradient(145deg, #232d3e, #101722);
-  background-position: center;
-  background-size: cover;
   box-shadow: 0 18px 50px #0008;
+}
+.cover-background-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+  will-change: transform;
 }
 .cover-dark-layer {
   position: absolute;
@@ -6424,6 +6490,15 @@ select:focus {
   font-size: clamp(11px, 1.4vw, 19px);
   font-weight: 700;
 }
+.cover-text-preview-layer {
+  position: absolute;
+  z-index: 3;
+  max-width: 88%;
+  line-height: 1.22;
+  text-shadow: 0 3px 12px #000d;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .douyin-cover > p {
   position: absolute;
   inset: 0;
@@ -6452,6 +6527,12 @@ select:focus {
   }
   .cover-canvas-panel {
     min-height: 680px;
+  }
+}
+@media (max-width: 560px) {
+  .cover-layer-grid,
+  .cover-layer-position {
+    grid-template-columns: 1fr;
   }
 }
 .video-generation-footer button {
