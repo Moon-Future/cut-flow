@@ -162,6 +162,7 @@ export const sceneSchema = z.object({
   id: z.string().min(1),
   copyRole: z.enum(['digital-human', 'voiceover', 'visual-explanation']).optional(),
   narration: z.string(),
+  narrationAudio: z.string().min(1).nullable().optional(),
   caption: z.string().min(1),
   assetType: z.enum(['image', 'video']),
   assetPath: z.string().min(1),

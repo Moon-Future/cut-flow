@@ -669,6 +669,83 @@ const localApi = (): Plugin => ({
             sendJson(response, 200, {savedAt: new Date().toISOString()});
             return;
           }
+          if (url === '/api/voice/voxcpm-demo' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              text?: string;
+              controlInstruction?: string;
+            };
+            const text = input.text?.trim();
+            if (!input.sceneId || !text) {
+              sendJson(response, 400, {error: '缺少段落或配音文本'});
+              return;
+            }
+            const demoBase = 'https://openbmb-voxcpm-demo.hf.space';
+            const submit = await fetch(`${demoBase}/gradio_api/call/generate`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                data: [
+                  text,
+                  input.controlInstruction?.trim() ?? '',
+                  null,
+                  false,
+                  '',
+                  2,
+                  true,
+                  false,
+                ],
+              }),
+              signal: AbortSignal.timeout(15_000),
+            });
+            if (!submit.ok) {
+              sendJson(response, submit.status === 429 ? 429 : 502, {
+                error: submit.status === 429 ? 'VoxCPM 公共服务繁忙，请稍后重试' : '无法提交到 VoxCPM Demo',
+              });
+              return;
+            }
+            const submitted = (await submit.json()) as {event_id?: string};
+            if (!submitted.event_id) {
+              sendJson(response, 502, {error: 'VoxCPM Demo 未返回任务编号'});
+              return;
+            }
+            const result = await fetch(
+              `${demoBase}/gradio_api/call/generate/${submitted.event_id}`,
+              {headers: {Accept: 'text/event-stream'}, signal: AbortSignal.timeout(135_000)},
+            );
+            const events = await result.text();
+            const complete = [...events.matchAll(/^data: (.+)$/gmu)]
+              .map((match) => match[1])
+              .reverse()
+              .find((value): value is string => Boolean(value?.startsWith('[')));
+            if (!result.ok || !complete) {
+              sendJson(response, result.status === 429 ? 429 : 502, {
+                error: 'VoxCPM Demo 生成失败或等待超时',
+              });
+              return;
+            }
+            const output = JSON.parse(complete) as Array<{url?: string} | string | null>;
+            const remoteUrl =
+              typeof output[0] === 'string' ? output[0] : output[0]?.url;
+            if (!remoteUrl) {
+              sendJson(response, 502, {error: 'VoxCPM Demo 未返回音频'});
+              return;
+            }
+            const audioResponse = await fetch(remoteUrl, {signal: AbortSignal.timeout(30_000)});
+            if (!audioResponse.ok) {
+              sendJson(response, 502, {error: '无法下载 VoxCPM 生成的音频'});
+              return;
+            }
+            const audioDirectory = path.join(assetsRoot, 'audio');
+            await mkdir(audioDirectory, {recursive: true});
+            const storedName = `voxcpm-${input.sceneId}-${Date.now()}.mp3`;
+            await writeFile(
+              path.join(audioDirectory, storedName),
+              Buffer.from(await audioResponse.arrayBuffer()),
+            );
+            sendJson(response, 200, {audioPath: `assets/audio/${storedName}`});
+            return;
+          }
           if (url === '/api/assets' && request.method === 'POST') {
             const contentLength = Number(request.headers['content-length'] ?? 0);
             if (contentLength > 500 * 1024 * 1024) {

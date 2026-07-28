@@ -6549,6 +6549,59 @@ select:focus {
 .voice-editor {
   overflow: auto;
 }
+.voice-source-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+.voice-source-panel > section {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #293246;
+  border-radius: 9px;
+  background: #101620;
+}
+.voice-source-panel p,
+.voice-source-panel small {
+  margin: 0;
+  color: #7f8a9d;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.voice-source-panel label {
+  display: grid;
+  gap: 6px;
+  color: #aeb7c5;
+  font-size: 11px;
+}
+.voice-source-panel textarea {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #303a4e;
+  border-radius: 7px;
+  background: #090e15;
+  color: #d8dee8;
+  resize: vertical;
+}
+.experimental-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.experimental-title span {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #3b2c18;
+  color: #e7ad59;
+  font-size: 10px;
+}
+.voice-message {
+  padding: 9px;
+  border-radius: 7px;
+  background: #171e2a;
+  color: #b8c1cf !important;
+}
 .voice-segments {
   display: grid;
   gap: 8px;
@@ -6585,6 +6638,35 @@ select:focus {
   border-radius: 50%;
   background: #6842c4;
   color: #fff;
+}
+.segment-import {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #263044;
+  color: #c4ccda;
+  font-size: 10px;
+  cursor: pointer;
+}
+.segment-audio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.segment-audio audio {
+  width: 100%;
+  height: 32px;
+}
+.segment-audio button,
+.voice-remove-full {
+  border: 0;
+  background: transparent;
+  color: #d27f88;
+  cursor: pointer;
+}
+.voice-remove-full {
+  margin: 0 12px 14px;
 }
 .voice-segments textarea {
   width: 100%;
