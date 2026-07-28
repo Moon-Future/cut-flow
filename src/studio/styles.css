@@ -6584,6 +6584,69 @@ select:focus {
   color: #d8dee8;
   resize: vertical;
 }
+.voice-action-button {
+  min-height: 42px;
+  display: flex;
+  gap: 9px;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #fff;
+  font-weight: 650;
+  cursor: pointer;
+}
+.voice-action-button b {
+  font-size: 17px;
+}
+.voice-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.import-action {
+  border-color: #7450c7;
+  background: linear-gradient(135deg, #7046cf, #51319f);
+  box-shadow: 0 7px 18px #4d2c8f38;
+}
+.voxcpm-action {
+  border-color: #347f73;
+  background: linear-gradient(135deg, #287d70, #245b66);
+  box-shadow: 0 7px 18px #1f746c32;
+}
+.voice-reference-picker {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 9px;
+  border: 1px dashed #46516a;
+  border-radius: 8px;
+  background: #0b111a;
+  color: #c6cfdb;
+  text-align: left;
+  cursor: pointer;
+}
+.voice-reference-picker > b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #28354b;
+  color: #6fd0bb;
+}
+.voice-reference-picker > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.voice-reference-picker strong,
+.voice-reference-picker small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .experimental-title {
   display: flex;
   justify-content: space-between;

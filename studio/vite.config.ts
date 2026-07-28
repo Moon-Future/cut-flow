@@ -674,13 +674,43 @@ const localApi = (): Plugin => ({
               sceneId?: string;
               text?: string;
               controlInstruction?: string;
+              referenceAudioPath?: string;
+              promptText?: string;
             };
             const text = input.text?.trim();
-            if (!input.sceneId || !text) {
-              sendJson(response, 400, {error: '缺少段落或配音文本'});
+            const promptText = input.promptText?.trim();
+            if (!input.sceneId || !text || !input.referenceAudioPath || !promptText) {
+              sendJson(response, 400, {error: '极致克隆需要参考音频、参考音频原文和段落文案'});
               return;
             }
             const demoBase = 'https://openbmb-voxcpm-demo.hf.space';
+            const referenceFile = path.resolve(projectRoot, input.referenceAudioPath);
+            if (!referenceFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
+              sendJson(response, 400, {error: '参考音频路径无效'});
+              return;
+            }
+            const referenceBytes = await readFile(referenceFile);
+            const uploadForm = new FormData();
+            uploadForm.append(
+              'files',
+              new Blob([referenceBytes], {type: 'audio/wav'}),
+              path.basename(referenceFile),
+            );
+            const upload = await fetch(`${demoBase}/gradio_api/upload`, {
+              method: 'POST',
+              body: uploadForm,
+              signal: AbortSignal.timeout(30_000),
+            });
+            if (!upload.ok) {
+              sendJson(response, 502, {error: '参考音频上传到 VoxCPM Demo 失败'});
+              return;
+            }
+            const uploadedFiles = (await upload.json()) as string[];
+            const uploadedReference = uploadedFiles[0];
+            if (!uploadedReference) {
+              sendJson(response, 502, {error: 'VoxCPM Demo 未接收参考音频'});
+              return;
+            }
             const submit = await fetch(`${demoBase}/gradio_api/call/generate`, {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
@@ -688,12 +718,16 @@ const localApi = (): Plugin => ({
                 data: [
                   text,
                   input.controlInstruction?.trim() ?? '',
-                  null,
-                  false,
-                  '',
+                  {
+                    path: uploadedReference,
+                    orig_name: path.basename(referenceFile),
+                    meta: {_type: 'gradio.FileData'},
+                  },
+                  true,
+                  promptText,
                   2,
                   true,
-                  false,
+                  true,
                 ],
               }),
               signal: AbortSignal.timeout(15_000),

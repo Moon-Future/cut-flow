@@ -25,7 +25,11 @@ export const VoiceWorkspace = ({
   const [controlInstruction, setControlInstruction] = useState(
     '自然清晰的中文讲解，语速适中，避免播音腔',
   );
+  const [referenceAudioPath, setReferenceAudioPath] = useState('');
+  const [referenceAudioName, setReferenceAudioName] = useState('');
+  const [promptText, setPromptText] = useState('');
   const fullAudioInput = useRef<HTMLInputElement>(null);
+  const referenceAudioInput = useRef<HTMLInputElement>(null);
   const selectedScene = project.scenes.find((scene) => scene.id === selectedSceneId);
   const duration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
 
@@ -80,6 +84,10 @@ export const VoiceWorkspace = ({
 
   const generateVoxCpm = async () => {
     if (!selectedScene) return;
+    if (!referenceAudioPath || !promptText.trim()) {
+      setMessage('请先上传参考音频并填写参考音频中的准确原文。');
+      return;
+    }
     setBusy(`voxcpm-${selectedScene.id}`);
     setMessage('正在等待 VoxCPM 公共服务生成，请勿重复提交…');
     try {
@@ -90,6 +98,8 @@ export const VoiceWorkspace = ({
           sceneId: selectedScene.id,
           text: selectedScene.narration,
           controlInstruction,
+          referenceAudioPath,
+          promptText,
         }),
       });
       const value = (await response.json()) as {audioPath?: string; error?: string};
@@ -133,11 +143,12 @@ export const VoiceWorkspace = ({
               }}
             />
             <button
-              className="primary-action"
+              className="voice-action-button import-action"
               disabled={Boolean(busy)}
               onClick={() => fullAudioInput.current?.click()}
             >
-              {busy === 'full' ? '正在导入…' : audioAvailable ? '替换完整配音' : '导入完整配音'}
+              <b>＋</b>
+              <span>{busy === 'full' ? '正在导入…' : audioAvailable ? '替换完整配音' : '导入完整配音'}</span>
             </button>
             <small>也可在中间每个段落内单独导入或替换配音。</small>
           </section>
@@ -146,21 +157,68 @@ export const VoiceWorkspace = ({
               <strong>VoxCPM 公共体验</strong>
               <span>实验性</span>
             </div>
-            <p>只生成当前选中段落。公共服务可能排队、限流或不可用。</p>
+            <p>使用参考音频和准确原文续写当前段落，尽量还原音色与表达细节。</p>
+            <input
+              ref={referenceAudioInput}
+              hidden
+              type="file"
+              accept={AUDIO_ACCEPT}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                setBusy('reference');
+                void uploadAudio(file)
+                  .then((audioPath) => {
+                    setReferenceAudioPath(audioPath);
+                    setReferenceAudioName(file.name);
+                    setMessage('参考音频已准备，请填写该音频中的准确原文。');
+                  })
+                  .catch((error: unknown) =>
+                    setMessage(error instanceof Error ? error.message : String(error)),
+                  )
+                  .finally(() => setBusy(null));
+                event.target.value = '';
+              }}
+            />
+            <button
+              className="voice-reference-picker"
+              disabled={Boolean(busy)}
+              onClick={() => referenceAudioInput.current?.click()}
+            >
+              <b>♪</b>
+              <span>
+                <strong>{referenceAudioName || '上传参考音频'}</strong>
+                <small>{referenceAudioName ? '点击可替换' : '建议使用清晰、无背景音乐的人声片段'}</small>
+              </span>
+            </button>
             <label>
-              <span>声音与表达要求</span>
+              <span>参考音频原文</span>
               <textarea
-                rows={4}
+                rows={3}
+                value={promptText}
+                placeholder="逐字填写参考音频中说出的内容"
+                onChange={(event) => setPromptText(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>当前段落文案</span>
+              <textarea rows={5} value={selectedScene?.narration ?? ''} readOnly />
+            </label>
+            <label>
+              <span>补充表达要求（可选）</span>
+              <textarea
+                rows={3}
                 value={controlInstruction}
                 onChange={(event) => setControlInstruction(event.target.value)}
               />
             </label>
             <button
-              className="secondary-action"
-              disabled={!selectedScene || Boolean(busy)}
+              className="voice-action-button voxcpm-action"
+              disabled={!selectedScene || !referenceAudioPath || !promptText.trim() || Boolean(busy)}
               onClick={() => void generateVoxCpm()}
             >
-              {busy?.startsWith('voxcpm-') ? '生成中…' : '生成当前段落'}
+              <b>◆</b>
+              <span>{busy?.startsWith('voxcpm-') ? '正在进行极致克隆…' : '极致克隆当前段落'}</span>
             </button>
             <small>文本会发送到公开的 Hugging Face Demo，请勿提交敏感内容。</small>
           </section>
