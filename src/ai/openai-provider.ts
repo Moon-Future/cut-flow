@@ -1,5 +1,6 @@
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, TranscriptWord} from './types';
+import {buildFallbackVideoPromptZh} from './video-prompt-fallback';
 
 const videoTypeLabels: Record<GenerateInput['videoType'], string> = {
   'science-explainer': '科普讲解',
@@ -210,21 +211,26 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
             .filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
             .join('; ');
           const imagePrompt =
-            rawImagePrompt.length >= 220
+            rawImagePrompt.length > 0
               ? rawImagePrompt
               : `Vertical ${input.aspectRatio} cinematic keyframe centered on "${sceneDescription}". Build a clear visual narrative that communicates the subject without captions. Place the core subject or essential object in the foreground from the lower frame toward the visual center, with realistic material, texture, color, and state details. In the middle ground, show the people, actions, or visible process required by the narration; define plausible roles, positions, gaze directions, facial expressions, hand gestures, and body language so every element supports the same narrative point. Use the background to establish a specific location, time, atmosphere, and relevant props without distracting decoration. Create distinct foreground, middle-ground, and background depth with a stable close-up plus medium-close composition. Freeze the most informative instant of action, emotion, contrast, or result. Expressions may be vivid but must remain believable and non-cartoonish. Use scene-appropriate cinematic lighting, clear facial modeling, controlled depth of field, a coherent color palette, ${input.visualStyle}, realistic high detail, and enough spatial continuity for later animation. Avoid abstract symbols, illegible interface text, unrelated people, text, subtitles, logos, and watermarks.`;
           const videoPrompt =
-            rawVideoPrompt.length >= 280
+            rawVideoPrompt.length > 0
               ? rawVideoPrompt
               : `Vertical ${input.aspectRatio} cinematic video, approximately ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} seconds, telling a concise visual story about "${sceneDescription}" with a clear beginning, change, and result. Use the corresponding image as the first frame and preserve the exact subject identity, facial features, clothing, props, object positions, background layout, lighting direction, and color palette. During the opening second, hold a stable establishing view so the relationship between the subject, people, and environment is readable. In the middle, let the characters perform scene-specific visible actions in a logical sequence, including natural gaze changes, hand movements, facial reactions, and body posture, while key objects respond according to real-world physics. In the final one to two seconds, settle on the most informative emotional contrast, transformation, or outcome. Begin with a stable camera, then use a restrained slow push-in, subtle lateral track, or gentle subject follow; avoid large rotations and abrupt scene changes. Keep motion continuous, pacing deliberate, environmental movement subtle, and all anatomy, fingers, clothing colors, object structures, and spatial relationships consistent. Do not introduce unrelated people or make objects appear or disappear. ${input.visualStyle}, cinematic lighting, realistic high detail, no abstract effects, illegible interface text, text, subtitles, logos, or watermarks.`;
           const imagePromptZh =
-            rawImagePromptZh.length >= 220
+            rawImagePromptZh.length > 0
               ? rawImagePromptZh
               : `${input.aspectRatio} 竖屏电影感画面，围绕“${sceneDescription}”设计有明确叙事重点的关键帧，让观众不看文字也能理解本镜头表达的关系、变化或冲突。前景安排核心主体或关键物体，占据画面下方至中央的主要区域，清楚表现材质、纹理、颜色和状态；中景安排承担叙事作用的人物、动作或变化过程，明确人物身份、数量、位置、视线、面部表情、手势和身体姿态；背景完整交代地点、时间、环境和相关道具，避免无关装饰。采用前景特写与中近景结合的稳定构图，主体位于视觉中心或三分线交点，形成清晰的前、中、后景层次。定格在动作、情绪、差异或结果最有信息量的一瞬间，突出真实的情绪和视觉对比，但不要卡通化。使用符合场景的电影级布光，主体清晰明亮，人物面部明暗层次自然，背景适度虚化；保持${input.visualStyle}、统一色彩、真实高细节，并为后续动作留出空间。不要抽象符号、无法辨认的界面文字、无关人物、文字、字幕、标志、Logo 和水印。`;
           const videoPromptZh =
-            rawVideoPromptZh.length >= 260
+            rawVideoPromptZh.length > 0
               ? rawVideoPromptZh
-              : `${input.aspectRatio} 竖屏电影感视频，约 ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} 秒，围绕“${sceneDescription}”完成一个有起点、变化和结果的微型镜头叙事。以对应图片作为首帧，前景主体、中景人物、背景环境、外貌服装、道具位置、光线和色彩完全一致。开始 0—1 秒稳定建立场景，让观众看清主体关系；中段人物依次完成与画面意图直接相关的可见动作，具体表现视线、手部动作、面部情绪和身体反应，关键物体同步产生符合真实物理的变化；最后 1—2 秒停留在最能说明观点、差异或结果的状态。镜头先稳定，再缓慢推近核心主体或小幅平滑横移，必要时轻微跟随人物，不大幅旋转、不突然切换场景。保持节奏清楚、动作连续、环境动态克制，人物外貌、手指、服装颜色、物体结构和空间布局稳定，不新增无关人物，不让物体凭空出现或消失。使用${input.visualStyle}、电影级光影、真实高细节，不要抽象特效、无法辨认的界面内容、文字、字幕、标志、Logo 和水印。`;
+              : buildFallbackVideoPromptZh({
+                  aspectRatio: input.aspectRatio,
+                  subject: sceneDescription,
+                  duration: Number(scene.suggestedDuration) || 5,
+                  visualStyle: `${input.visualStyle}、电影级光影和真实高细节`,
+                });
           return {
             ...shot,
             shotType,
@@ -366,6 +372,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
 
 视频提示词必须是图片提示词的动态延续，中文不少于 320 个汉字，不能直接复制图片提示词。必须写清：
 0. 不得复制、引用或概括完整 narration，不要把口播稿写入提示词；只把其中与当前镜头有关的信息转译成可见的场景、主体、动作、变化和结果。
+0.1 先判断镜头属于人物、物体、地图/数据、环境或界面中的哪一类，再按实际存在的主体编写。无人镜头严禁出现人物、视线、面部、手部、手指、服装或身体动作；地图/数据镜头应具体描述区域高亮顺序、数据强弱变化、空间对应关系和最终比较结果。
 1. 总时长、画面比例，并按“开始 0—1 秒 / 中段 / 最后 1—2 秒”描述动作先后顺序和最终状态。
 2. 每位人物的视线、表情、手势、身体动作，以及关键物体如何随动作变化；无人物镜头则描述现象或过程的连续变化。
 3. 镜头从何处开始，何时推近、横移、跟随或保持稳定，运镜必须服务叙事且幅度克制。

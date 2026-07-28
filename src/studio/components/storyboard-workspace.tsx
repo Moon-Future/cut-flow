@@ -13,6 +13,7 @@ import {
   removeNarrationFromVideoPrompt,
   type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
+import {buildFallbackVideoPromptZh} from '../../ai/video-prompt-fallback';
 import {useStudioStore} from '../store';
 import {applyVersusComposition} from '../../templates/shot-compositions';
 import {VideoComposition} from '../../remotion/video-composition';
@@ -253,8 +254,11 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   };
   const fallbackVideoPromptZh = (shot: VisualShot) => {
     const subject = shot.visualPurpose || chineseSceneDescription;
-    const duration = Math.max(3, Math.min(8, shot.duration || 5));
-    return `${aspectRatio} 竖屏电影感视频，时长约 ${duration} 秒，围绕“${subject}”完成一个有起点、变化和结果的微型镜头叙事。以对应图片作为首帧：前景核心主体、中景人物、背景环境、服装、道具位置、光线方向和色彩完全保持一致。开始 0—1 秒，镜头稳定建立场景，让观众看清主体与人物关系；1—${Math.max(2, duration - 2)} 秒，人物依次完成与旁白直接相关的自然动作，清楚表现视线、手部动作、面部情绪和身体反应，关键物体同步产生符合真实物理规律的变化；最后 1—2 秒，动作停留在最能说明观点、差异或结果的状态。镜头先保持稳定，再缓慢推近核心主体或进行小幅平滑横移，必要时轻微跟随人物动作，不大幅旋转、不突然切换场景。节奏由观察到变化再到强调结果，环境中只加入轻微且合理的动态。保持人物外貌、手指数量、服装颜色、物体结构和空间布局稳定，动作自然连贯，不新增无关人物，不让物体凭空出现或消失。使用真实电影摄影质感、清晰光影和统一色调，不要抽象特效，不要生成无法辨认的界面内容，不要文字、字幕、标志、Logo 和水印。`;
+    return buildFallbackVideoPromptZh({
+      aspectRatio,
+      subject,
+      duration: shot.duration || 5,
+    });
   };
   const motionPlanFor = (shot: VisualShot): NonNullable<VisualShot['motionPlan']> =>
     shot.motionPlan ?? {
@@ -1208,7 +1212,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                   <textarea
                     rows={11}
                     value={
-                      (shot.videoPromptZh?.trim().length ?? 0) >= 260
+                      Boolean(shot.videoPromptZh?.trim())
                         ? shot.videoPromptZh
                         : fallbackVideoPromptZh(shot)
                     }
@@ -1261,7 +1265,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       provider: 'volcengine-pippit',
                       duration: videoDefaultDuration,
                       prompt: normalizeVideoPromptDuration(
-                        (shot.videoPromptZh?.trim().length ?? 0) >= 260
+                        Boolean(shot.videoPromptZh?.trim())
                           ? shot.videoPromptZh!
                           : fallbackVideoPromptZh(shot),
                         videoDefaultDuration,
