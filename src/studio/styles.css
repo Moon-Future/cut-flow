@@ -5332,7 +5332,7 @@ select:focus {
 }
 .acquisition-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   border: 1px solid #293244;
@@ -5502,16 +5502,14 @@ select:focus {
     .acquisition-reference,
     .acquisition-download,
     .acquisition-ai-image,
-    .acquisition-ai-video,
-    .acquisition-library
+    .acquisition-ai-video
   ) {
   display: none;
 }
 .shot-editor-list > article.acquisition-mode-reference .acquisition-reference,
 .shot-editor-list > article.acquisition-mode-download .acquisition-download,
 .shot-editor-list > article.acquisition-mode-ai-image .acquisition-ai-image,
-.shot-editor-list > article.acquisition-mode-ai-video .acquisition-ai-video,
-.shot-editor-list > article.acquisition-mode-library .acquisition-library {
+.shot-editor-list > article.acquisition-mode-ai-video .acquisition-ai-video {
   display: block;
 }
 .shot-editor-list > article.acquisition-mode-reference label.acquisition-reference {
@@ -5547,9 +5545,9 @@ select:focus {
   white-space: nowrap;
 }
 .content-platform-search {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 11px;
   border: 1px solid #3d365b;
@@ -5571,6 +5569,7 @@ select:focus {
 }
 .content-platform-search > div:last-child {
   display: flex;
+  justify-content: flex-end;
   gap: 7px;
   flex: 0 0 auto;
   margin-left: auto;

@@ -22,7 +22,7 @@ type Props = {
   projectId: string;
   onGoToAssets: (shotId: string) => void;
 };
-type AcquisitionMode = 'reference' | 'download' | 'ai-image' | 'ai-video' | 'library';
+type AcquisitionMode = 'reference' | 'download' | 'ai-image' | 'ai-video';
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 const videoFilePattern = /\.(mp4|mov|webm|mkv)(?:[?#].*)?$/i;
 const activeGenerationStatuses = new Set<GenerationTask['status']>(['queued', 'running']);
@@ -81,28 +81,16 @@ const contentSearchLinks = (query: string) => {
 };
 
 const getShotProgress = (shot: VisualShot) => {
-  if (shot.composition === 'versus') {
-    const layers = shot.layers ?? [];
-    const total = Math.max(3, layers.length);
-    const ready = layers.filter((layer) => Boolean(layer.assetPath)).length;
-    const missing = layers
-      .filter((layer) => !layer.assetPath)
-      .map((layer) =>
-        layer.role === 'background' ? '背景' : layer.position.x < 0.5 ? '左侧人物' : '右侧人物',
-      );
-    return {
-      ready,
-      total,
-      complete: ready >= total,
-      label: ready >= total ? '素材完整' : `待补：${missing.join('、') || '图层素材'}`,
-    };
-  }
-  const complete = Boolean(shot.selectedAsset || shot.selectedAssets?.length);
+  const selectedCount = new Set(
+    [...(shot.selectedAssets ?? []), ...(shot.selectedAsset ? [shot.selectedAsset] : [])],
+  ).size;
+  const complete = selectedCount > 0;
   return {
     ready: complete ? 1 : 0,
     total: 1,
     complete,
-    label: complete ? '素材完整' : '待选择素材',
+    selectedCount,
+    label: complete ? `已选 ${selectedCount} 个素材` : '待选择素材',
   };
 };
 
@@ -646,10 +634,8 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                 </header>
                 <div className="shot-primary-actions">
                   <span>
-                    <b>
-                      {progress.ready}/{progress.total}
-                    </b>
-                    素材就绪
+                    <b>{progress.selectedCount}</b>
+                    个已选素材
                   </span>
                   <button type="button" onClick={() => onGoToAssets(shot.id)}>
                     {progress.complete ? '更换素材' : '选择缺少的素材'}
@@ -662,7 +648,6 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       ['download', '可下载素材'],
                       ['ai-image', 'AI 图片'],
                       ['ai-video', 'AI 视频'],
-                      ['library', '项目素材库'],
                     ] as const
                   ).map(([mode, label]) => (
                     <button
@@ -1220,6 +1205,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                 </details>
                 <details
                   className="video-generation-panel acquisition-ai-video"
+                  open
                   onToggle={(event) => {
                     if (!event.currentTarget.open || videoDraft?.shotId === shot.id) return;
                     setVideoDraft({
@@ -1469,19 +1455,6 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     )}
                   </section>
                 </details>
-                <div className="shot-assets acquisition-library">
-                  <div className="shot-assets-heading">
-                    <strong>镜头素材</strong>
-                    <span>
-                      {shot.selectedAsset
-                        ? '当前镜头已有选用素材，可继续更换'
-                        : '可以在上方选用生成结果，或前往素材页面查找更多素材'}
-                    </span>
-                  </div>
-                  <button className="add-shot-asset" onClick={() => onGoToAssets(shot.id)}>
-                    打开素材页面选择更多
-                  </button>
-                </div>
                 {videoGenerationError?.shotId === shot.id ? (
                   <p className="candidate-error">{videoGenerationError.message}</p>
                 ) : null}
