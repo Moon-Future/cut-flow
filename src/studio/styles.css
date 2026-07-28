@@ -5039,6 +5039,7 @@ select:focus {
   height: 100%;
   max-height: 100%;
   display: grid;
+  grid-auto-rows: max-content;
   align-content: start;
   gap: 10px;
   padding-right: 4px;
