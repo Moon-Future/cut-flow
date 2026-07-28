@@ -270,6 +270,7 @@ export const projectFileSchema = z
               color: z.string().regex(/^#[0-9a-f]{6}$/iu).default('#ffffff'),
               fontWeight: z.enum(['400', '600', '700', '800', '900']).default('800'),
               textAlign: z.enum(['left', 'center', 'right']).default('center'),
+              canvasAlign: z.enum(['left', 'center', 'right', 'custom']).default('custom'),
               styles: z
                 .array(
                   z.object({

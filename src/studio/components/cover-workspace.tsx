@@ -96,6 +96,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       color: '#ffffff',
       fontWeight: '800',
       textAlign: project.cover?.textAlign ?? 'left',
+      canvasAlign: project.cover?.textAlign === 'center' ? 'center' : 'left',
     },
     {
       id: 'cover-subtitle',
@@ -107,6 +108,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       color: project.cover?.accentColor ?? '#ffcf4a',
       fontWeight: '700',
       textAlign: project.cover?.textAlign ?? 'left',
+      canvasAlign: project.cover?.textAlign === 'center' ? 'center' : 'left',
     },
   ];
   const cover = {
@@ -132,17 +134,24 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
   const [partialColor, setPartialColor] = useState('#ffcf4a');
   const [templates, setTemplates] = useState<CoverTemplate[]>([]);
   const [templateName, setTemplateName] = useState('');
+  const [dragPreview, setDragPreview] = useState<{
+    kind: 'background' | 'text';
+    id?: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const interaction = useRef<{
-    kind: 'background' | 'text' | 'text-scale';
+    kind: 'background' | 'text';
     id?: string;
     startX: number;
     startY: number;
     originalX: number;
     originalY: number;
-    originalSize?: number;
   } | null>(null);
+  const dragPreviewRef = useRef<typeof dragPreview>(null);
+  const dragFrame = useRef<number | null>(null);
   useEffect(() => {
     try {
       setTemplates(
@@ -189,6 +198,14 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       y: ((event.clientY - bounds.top) / bounds.height) * 100,
     };
   };
+  const queueDragPreview = (preview: NonNullable<typeof dragPreview>) => {
+    dragPreviewRef.current = preview;
+    if (dragFrame.current !== null) return;
+    dragFrame.current = window.requestAnimationFrame(() => {
+      setDragPreview(dragPreviewRef.current);
+      dragFrame.current = null;
+    });
+  };
   const handlePointerMove = (event: ReactPointerEvent) => {
     const active = interaction.current;
     if (!active) return;
@@ -196,26 +213,39 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
     const deltaX = position.x - active.startX;
     const deltaY = position.y - active.startY;
     if (active.kind === 'background') {
-      updateCover({
-        backgroundX: Math.max(0, Math.min(100, active.originalX - deltaX)),
-        backgroundY: Math.max(0, Math.min(100, active.originalY - deltaY)),
-        outputPath: null,
-      });
+      const preview = {
+        kind: 'background',
+        x: Math.max(0, Math.min(100, active.originalX - deltaX)),
+        y: Math.max(0, Math.min(100, active.originalY - deltaY)),
+      } as const;
+      queueDragPreview(preview);
     } else if (active.kind === 'text' && active.id) {
-      updateTextLayer(active.id, {
+      const preview = {
+        kind: 'text',
+        id: active.id,
         x: Math.max(0, Math.min(100, active.originalX + deltaX)),
         y: Math.max(0, Math.min(100, active.originalY + deltaY)),
-      });
-    } else if (active.kind === 'text-scale' && active.id) {
-      updateTextLayer(active.id, {
-        fontSize: Math.max(
-          20,
-          Math.min(180, Math.round((active.originalSize ?? 48) + deltaX * 2)),
-        ),
-      });
+      } as const;
+      queueDragPreview(preview);
+    }
+    if (dragFrame.current !== null) {
+      window.cancelAnimationFrame(dragFrame.current);
+      dragFrame.current = null;
     }
   };
   const endInteraction = () => {
+    const preview = dragPreviewRef.current;
+    if (preview?.kind === 'background') {
+      updateCover({backgroundX: preview.x, backgroundY: preview.y, outputPath: null});
+    } else if (preview?.kind === 'text' && preview.id) {
+      updateTextLayer(preview.id, {
+        x: preview.x,
+        y: preview.y,
+        canvasAlign: 'custom',
+      });
+    }
+    dragPreviewRef.current = null;
+    setDragPreview(null);
     interaction.current = null;
   };
   const applyPartialStyle = () => {
@@ -453,6 +483,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                       color: '#ffffff',
                       fontWeight: '700',
                       textAlign: 'center',
+                      canvasAlign: 'center',
                     },
                   ],
                   outputPath: null,
@@ -530,7 +561,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                   </select>
                 </label>
                 <label>
-                  <span>对齐</span>
+                  <span>框内对齐</span>
                   <select
                     value={layer.textAlign}
                     onChange={(event) =>
@@ -542,6 +573,32 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                     <option value="left">左对齐</option>
                     <option value="center">居中</option>
                     <option value="right">右对齐</option>
+                  </select>
+                </label>
+                <label>
+                  <span>画布对齐</span>
+                  <select
+                    value={layer.canvasAlign ?? 'custom'}
+                    onChange={(event) => {
+                      const canvasAlign = event.target
+                        .value as NonNullable<CoverTextLayer['canvasAlign']>;
+                      updateTextLayer(layer.id, {
+                        canvasAlign,
+                        x:
+                          canvasAlign === 'left'
+                            ? 8
+                            : canvasAlign === 'center'
+                              ? 50
+                              : canvasAlign === 'right'
+                                ? 92
+                                : layer.x,
+                      });
+                    }}
+                  >
+                    <option value="left">画布左侧</option>
+                    <option value="center">画布居中</option>
+                    <option value="right">画布右侧</option>
+                    <option value="custom">自定义位置</option>
                   </select>
                 </label>
                 <label>
@@ -761,21 +818,6 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             onPointerCancel={endInteraction}
             onWheel={(event) => {
               event.preventDefault();
-              if (
-                (event.target as HTMLElement).closest('.cover-text-preview-layer') &&
-                selectedLayerId
-              ) {
-                const layer = cover.textLayers.find((item) => item.id === selectedLayerId);
-                if (layer) {
-                  updateTextLayer(layer.id, {
-                    fontSize: Math.max(
-                      20,
-                      Math.min(180, layer.fontSize + (event.deltaY < 0 ? 2 : -2)),
-                    ),
-                  });
-                }
-                return;
-              }
               updateCover({
                 backgroundScale: Math.max(
                   1,
@@ -791,8 +833,11 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                 src={mediaUrl(projectId, cover.sourcePath)}
                 alt=""
                 style={{
-                  transform: `translate(${(50 - cover.backgroundX) * 0.55}%, ${
-                    (50 - cover.backgroundY) * 0.55
+                  transform: `translate(${(50 - (
+                    dragPreview?.kind === 'background' ? dragPreview.x : cover.backgroundX
+                  )) * 0.55}%, ${
+                    (50 - (dragPreview?.kind === 'background' ? dragPreview.y : cover.backgroundY)) *
+                    0.55
                   }%) scale(${cover.backgroundScale})`,
                 }}
               />
@@ -812,8 +857,16 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                   }`}
                   key={layer.id}
                   style={{
-                    left: `${layer.x}%`,
-                    top: `${layer.y}%`,
+                    left: `${
+                      dragPreview?.kind === 'text' && dragPreview.id === layer.id
+                        ? dragPreview.x
+                        : layer.x
+                    }%`,
+                    top: `${
+                      dragPreview?.kind === 'text' && dragPreview.id === layer.id
+                        ? dragPreview.y
+                        : layer.y
+                    }%`,
                     fontFamily: layer.fontFamily,
                     fontSize: `${Math.max(9, layer.fontSize * 0.42)}px`,
                     fontWeight: layer.fontWeight,
@@ -854,27 +907,6 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                       </span>
                     );
                   })}
-                  {selectedLayerId === layer.id ? (
-                    <button
-                      type="button"
-                      className="cover-text-resize-handle"
-                      title="拖动缩放文字"
-                      onPointerDown={(event) => {
-                        event.stopPropagation();
-                        const position = pointerPosition(event);
-                        interaction.current = {
-                          kind: 'text-scale',
-                          id: layer.id,
-                          startX: position.x,
-                          startY: position.y,
-                          originalX: layer.x,
-                          originalY: layer.y,
-                          originalSize: layer.fontSize,
-                        };
-                        canvasRef.current?.setPointerCapture(event.pointerId);
-                      }}
-                    />
-                  ) : null}
                 </div>
               ) : null,
             )}

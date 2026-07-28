@@ -6378,7 +6378,7 @@ select:focus {
 }
 .cover-layer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(72px, 0.8fr));
+  grid-template-columns: 1fr 1fr;
   gap: 7px;
 }
 .cover-layer-position {
@@ -6585,19 +6585,6 @@ select:focus {
 .cover-text-preview-layer.selected {
   outline: 1px dashed #ffffffd4;
   outline-offset: 5px;
-}
-.cover-text-resize-handle {
-  position: absolute;
-  right: -11px;
-  bottom: -11px;
-  width: 12px;
-  height: 12px;
-  padding: 0;
-  border: 2px solid #fff;
-  border-radius: 999px;
-  background: #7654cf;
-  box-shadow: 0 1px 5px #000a;
-  cursor: nwse-resize;
 }
 .douyin-cover > p {
   position: absolute;
