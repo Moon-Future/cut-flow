@@ -147,7 +147,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   } | null>(null);
   const [previewShotId, setPreviewShotId] = useState<string | null>(null);
   const [shotPreviewOpen, setShotPreviewOpen] = useState(false);
-  const [acquisitionMode, setAcquisitionMode] = useState<AcquisitionMode>('reference');
+  const [acquisitionMode, setAcquisitionMode] = useState<AcquisitionMode>('ai-video');
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
   const selectedIndex = project.scenes.findIndex((scene) => scene.id === selected.id);
