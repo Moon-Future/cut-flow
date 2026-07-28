@@ -490,7 +490,7 @@ export const VoiceWorkspace = ({
               <audio controls src={`/${projectId}/${project.narrationAudio}`} />
               <div className="voice-full-actions">
                 <button
-                  className="text-action"
+                  className="directory-action-button"
                   onClick={() => void openAudioLocation()}
                 >
                   打开所在目录

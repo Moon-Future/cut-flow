@@ -6788,6 +6788,40 @@ select:focus {
 .voice-full-actions {
   margin-top: 8px;
 }
+.generated-video-actions {
+  justify-content: flex-end;
+}
+.directory-action-button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #465673;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #202a3a, #18202d);
+  box-shadow: inset 0 1px #ffffff0a;
+  color: #bdc9da;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.directory-action-button::before {
+  color: #8fa8cc;
+  content: '▰';
+  font-size: 12px;
+}
+.directory-action-button:hover {
+  border-color: #667da2;
+  background: linear-gradient(180deg, #29364a, #202a3a);
+  color: #eef4ff;
+}
+.voice-full-actions .voice-remove-full {
+  margin: 0;
+  padding: 7px 9px;
+}
 .import-action {
   border-color: #7450c7;
   background: linear-gradient(135deg, #7046cf, #51319f);

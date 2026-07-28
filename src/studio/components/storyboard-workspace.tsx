@@ -1638,7 +1638,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                             candidate.taskCompletedAt ?? fallbackTask?.completedAt;
                           return (
                             <>
-                              <video src={mediaUrl(projectId, candidate.path)} controls autoPlay />
+                              <video src={mediaUrl(projectId, candidate.path)} controls />
                               <dl>
                                 <div>
                                   <dt>开始时间</dt>
@@ -1683,7 +1683,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               <div className="generated-video-actions">
                                 <button
                                   type="button"
-                                  className="secondary-button"
+                                  className="directory-action-button"
                                   onClick={() =>
                                     void fetch('/api/files/open-location', {
                                       method: 'POST',
