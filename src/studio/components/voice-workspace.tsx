@@ -99,7 +99,7 @@ export const VoiceWorkspace = ({
 
   const mergeSceneAudio = async () => {
     setBusy('merge');
-    setMessage('正在按段落时间轴合并音频…');
+    setMessage('正在按段落顺序连续合并音频…');
     try {
       const response = await fetch('/api/voice/merge', {method: 'POST'});
       const value = (await response.json()) as {

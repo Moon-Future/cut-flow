@@ -713,39 +713,33 @@ const localApi = (): Plugin => ({
             const outputFile = path.join(audioDirectory, outputName);
             const args: string[] = ['-y'];
             const filters: string[] = [];
-            for (const [index, scene] of project.scenes.entries()) {
-              const duration = Math.max(0.1, scene.duration);
-              if (scene.narrationAudio) {
-                const audioFile = path.resolve(projectRoot, scene.narrationAudio);
-                if (!audioFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
-                  sendJson(response, 400, {error: `段落 ${index + 1} 的音频路径无效`});
-                  return;
-                }
-                try {
-                  await stat(audioFile);
-                } catch {
-                  sendJson(response, 400, {error: `段落 ${index + 1} 的音频文件不存在`});
-                  return;
-                }
-                args.push('-i', audioFile);
-              } else {
-                args.push(
-                  '-f',
-                  'lavfi',
-                  '-t',
-                  String(duration),
-                  '-i',
-                  'anullsrc=r=48000:cl=stereo',
-                );
+            const selectedScenes = project.scenes
+              .map((scene, sceneIndex) => ({scene, sceneIndex}))
+              .filter(
+                (item): item is typeof item & {scene: typeof item.scene & {narrationAudio: string}} =>
+                  Boolean(item.scene.narrationAudio),
+              );
+            for (const [inputIndex, {scene, sceneIndex}] of selectedScenes.entries()) {
+              const audioFile = path.resolve(projectRoot, scene.narrationAudio);
+              if (!audioFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
+                sendJson(response, 400, {error: `段落 ${sceneIndex + 1} 的音频路径无效`});
+                return;
               }
+              try {
+                await stat(audioFile);
+              } catch {
+                sendJson(response, 400, {error: `段落 ${sceneIndex + 1} 的音频文件不存在`});
+                return;
+              }
+              args.push('-i', audioFile);
               filters.push(
-                `[${index}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,` +
-                  `atrim=0:${duration},apad=pad_dur=${duration},atrim=0:${duration}[a${index}]`,
+                `[${inputIndex}:a]aresample=48000,` +
+                  `aformat=sample_fmts=fltp:channel_layouts=stereo[a${inputIndex}]`,
               );
             }
             filters.push(
-              `${project.scenes.map((_, index) => `[a${index}]`).join('')}` +
-                `concat=n=${project.scenes.length}:v=0:a=1[out]`,
+              `${selectedScenes.map((_, index) => `[a${index}]`).join('')}` +
+                `concat=n=${selectedScenes.length}:v=0:a=1[out]`,
             );
             args.push(
               '-filter_complex',
