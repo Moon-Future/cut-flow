@@ -78,6 +78,32 @@ const contentSearchLinks = (query: string) => {
   ] as const;
 };
 
+const getShotProgress = (shot: VisualShot) => {
+  if (shot.composition === 'versus') {
+    const total = Math.max(3, shot.layers?.length ?? 0);
+    const ready = shot.layers?.filter((layer) => Boolean(layer.assetPath)).length ?? 0;
+    return {
+      ready,
+      total,
+      complete: ready >= total,
+      label: ready >= total ? '素材完整' : `缺少 ${total - ready} 个图层`,
+    };
+  }
+  const complete = Boolean(shot.selectedAsset);
+  return {
+    ready: complete ? 1 : 0,
+    total: 1,
+    complete,
+    label: complete ? '素材完整' : '待选择素材',
+  };
+};
+
+const getSceneProgress = (scene: ProjectFile['scenes'][number]) => {
+  const shots = scene.shots ?? [];
+  const ready = shots.filter((shot) => getShotProgress(shot).complete).length;
+  return {ready, total: shots.length, complete: shots.length > 0 && ready === shots.length};
+};
+
 export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) => {
   const {selectedSceneId, selectScene, updateScene, updateVisualShot, syncVisualShot} =
     useStudioStore();
@@ -119,6 +145,17 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   const previewShot =
     selected.shots?.find((shot) => shot.id === previewShotId) ?? selected.shots?.[0];
   const previewDuration = previewShot?.duration ?? selected.duration;
+  const selectedProgress = getSceneProgress(selected);
+  const projectProgress = project.scenes.reduce(
+    (progress, scene) => {
+      const sceneProgress = getSceneProgress(scene);
+      return {
+        ready: progress.ready + sceneProgress.ready,
+        total: progress.total + sceneProgress.total,
+      };
+    },
+    {ready: 0, total: 0},
+  );
   const previewProject = useMemo<ProjectFile>(
     () => ({
       ...project,
@@ -392,38 +429,48 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         <header>
           <div>
             <strong>分镜列表</strong>
-            <span>{project.scenes.length} 个段落</span>
+            <span>
+              {project.scenes.length} 个段落 · {projectProgress.ready}/{projectProgress.total}{' '}
+              个镜头完成
+            </span>
           </div>
-          <button disabled title="请在文案页重新生成脚本与分镜">
-            在文案页生成
-          </button>
+          <em className={projectProgress.ready === projectProgress.total ? 'complete' : ''}>
+            {projectProgress.total
+              ? `${Math.round((projectProgress.ready / projectProgress.total) * 100)}%`
+              : '待生成'}
+          </em>
         </header>
         <div>
-          {project.scenes.map((scene, index) => (
-            <button
-              key={scene.id}
-              data-scene-navigator={scene.id}
-              className={scene.id === selected.id ? 'active' : ''}
-              onClick={() => selectScene(scene.id)}
-            >
-              <i>
-                {scene.assetType === 'video' ? (
-                  <video src={mediaUrl(projectId, scene.assetPath)} muted />
-                ) : (
-                  <img src={mediaUrl(projectId, scene.assetPath)} alt="" />
-                )}
-              </i>
-              <span>
-                <strong>
-                  {String(index + 1).padStart(2, '0')} · {scene.caption}
-                </strong>
-                <small>
-                  {scene.duration.toFixed(1)} 秒 · {scene.visualIntent || '待完善画面意图'}
-                </small>
-              </span>
-              <em>{scene.shots?.length ?? 0}</em>
-            </button>
-          ))}
+          {project.scenes.map((scene, index) => {
+            const progress = getSceneProgress(scene);
+            return (
+              <button
+                key={scene.id}
+                data-scene-navigator={scene.id}
+                className={scene.id === selected.id ? 'active' : ''}
+                onClick={() => selectScene(scene.id)}
+              >
+                <i>
+                  {scene.assetType === 'video' ? (
+                    <video src={mediaUrl(projectId, scene.assetPath)} muted />
+                  ) : (
+                    <img src={mediaUrl(projectId, scene.assetPath)} alt="" />
+                  )}
+                </i>
+                <span>
+                  <strong>
+                    {String(index + 1).padStart(2, '0')} · {scene.caption}
+                  </strong>
+                  <small>
+                    {scene.duration.toFixed(1)} 秒 · {scene.visualIntent || '待完善画面意图'}
+                  </small>
+                </span>
+                <em className={progress.complete ? 'complete' : progress.ready ? 'partial' : ''}>
+                  {progress.total ? `${progress.ready}/${progress.total}` : '未生成'}
+                </em>
+              </button>
+            );
+          })}
         </div>
       </aside>
       <main className="board-editor stage-panel">
@@ -436,10 +483,23 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           </div>
         </header>
         <div className="storyboard-purpose-note">
-          <strong>这里负责设计分镜、准备候选并确认镜头素材</strong>
-          <span>
-            可以在当前页搜索、生成并选用镜头素材；需要批量整理、替换或移除时，再进入素材页面处理。
-          </span>
+          <div>
+            <strong>完成当前段落</strong>
+            <span>
+              {selectedProgress.ready}/{selectedProgress.total} 个镜头素材完整
+            </span>
+          </div>
+          <ol>
+            <li className="done">1 设计画面</li>
+            <li className={selectedProgress.ready ? 'done' : 'active'}>2 准备素材</li>
+            <li className={previewShot ? 'active' : ''}>3 预览检查</li>
+            <li className={selectedProgress.complete ? 'done' : ''}>4 确认完成</li>
+          </ol>
+          {firstShotId ? (
+            <button type="button" onClick={() => onGoToAssets(firstShotId)}>
+              选择镜头素材
+            </button>
+          ) : null}
         </div>
         <div className="board-copy">
           <label>
@@ -485,463 +545,162 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           ) : null}
         </div>
         <div className="shot-editor-list">
-          {(selected.shots ?? []).map((shot, index) => (
-            <article key={shot.id} className={previewShot?.id === shot.id ? 'previewing' : ''}>
-              <header>
-                <b>镜头 {index + 1}</b>
-                <span className={shot.status}>
-                  {shot.status === 'ready'
-                    ? '素材就绪'
-                    : shot.status === 'needs-review'
-                      ? '待审核'
-                      : '缺少素材'}
-                </span>
-                <button type="button" onClick={() => setPreviewShotId(shot.id)}>
-                  {previewShot?.id === shot.id ? '正在预览' : '预览此镜头'}
-                </button>
-              </header>
-              <label>
-                <span>画面内容</span>
-                <input
-                  value={shot.visualPurpose}
-                  onChange={(event) => updateShot(shot, {visualPurpose: event.target.value})}
-                />
-              </label>
-              <div className="form-pair">
+          {(selected.shots ?? []).map((shot, index) => {
+            const progress = getShotProgress(shot);
+            return (
+              <article key={shot.id} className={previewShot?.id === shot.id ? 'previewing' : ''}>
+                <header>
+                  <b>镜头 {index + 1}</b>
+                  <span className={progress.complete ? 'ready' : 'missing'}>{progress.label}</span>
+                  <button type="button" onClick={() => setPreviewShotId(shot.id)}>
+                    {previewShot?.id === shot.id ? '正在预览' : '预览此镜头'}
+                  </button>
+                </header>
+                <div className="shot-primary-actions">
+                  <span>
+                    <b>
+                      {progress.ready}/{progress.total}
+                    </b>
+                    素材就绪
+                  </span>
+                  <button type="button" onClick={() => onGoToAssets(shot.id)}>
+                    {progress.complete ? '更换素材' : '选择缺少的素材'}
+                  </button>
+                </div>
                 <label>
-                  <span>镜头类型</span>
-                  <select
-                    value={shot.shotType}
-                    onChange={(event) =>
-                      updateShot(shot, {shotType: event.target.value as VisualShot['shotType']})
-                    }
-                  >
-                    <option value="video">视频画面（来源不限）</option>
-                    <option value="image">图片画面（来源不限）</option>
-                    <option value="science-animation">科普动画</option>
-                    <option value="digital-human">数字人</option>
-                  </select>
-                </label>
-                <label>
-                  <span>时长</span>
+                  <span>画面内容</span>
                   <input
-                    type="number"
-                    value={shot.duration}
-                    onChange={(event) => updateShot(shot, {duration: Number(event.target.value)})}
+                    value={shot.visualPurpose}
+                    onChange={(event) => updateShot(shot, {visualPurpose: event.target.value})}
                   />
                 </label>
-              </div>
-              <details className="layer-composition-panel" open={shot.composition === 'versus'}>
-                <summary>
-                  <span>
-                    <strong>画面编排</strong>
-                    <small>
-                      {shot.composition === 'versus'
-                        ? `左右对立 · ${shot.layers?.filter((layer) => layer.assetPath).length ?? 0}/3 个素材已就绪`
-                        : '单素材镜头'}
-                    </small>
-                  </span>
-                  <b>{shot.composition === 'versus' ? '多图层' : '未启用'}</b>
-                </summary>
-                <div className="layer-composition-content">
-                  {shot.composition !== 'versus' ? (
-                    <div className="composition-template-card">
-                      <div>
-                        <strong>左右对立模板</strong>
-                        <span>背景 + 左人物 + 右人物，适合观点、喜恶和前后对比。</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => updateShot(shot, applyVersusComposition(shot))}
-                      >
-                        应用模板
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="composition-template-card active">
+                <div className="form-pair">
+                  <label>
+                    <span>镜头类型</span>
+                    <select
+                      value={shot.shotType}
+                      onChange={(event) =>
+                        updateShot(shot, {shotType: event.target.value as VisualShot['shotType']})
+                      }
+                    >
+                      <option value="video">视频画面（来源不限）</option>
+                      <option value="image">图片画面（来源不限）</option>
+                      <option value="science-animation">科普动画</option>
+                      <option value="digital-human">数字人</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>时长</span>
+                    <input
+                      type="number"
+                      value={shot.duration}
+                      onChange={(event) => updateShot(shot, {duration: Number(event.target.value)})}
+                    />
+                  </label>
+                </div>
+                <details className="layer-composition-panel" open={shot.composition === 'versus'}>
+                  <summary>
+                    <span>
+                      <strong>画面编排</strong>
+                      <small>
+                        {shot.composition === 'versus'
+                          ? `左右对立 · ${shot.layers?.filter((layer) => layer.assetPath).length ?? 0}/3 个素材已就绪`
+                          : '单素材镜头'}
+                      </small>
+                    </span>
+                    <b>{shot.composition === 'versus' ? '多图层' : '未启用'}</b>
+                  </summary>
+                  <div className="layer-composition-content">
+                    {shot.composition !== 'versus' ? (
+                      <div className="composition-template-card">
                         <div>
                           <strong>左右对立模板</strong>
-                          <span>人物素材建议使用透明背景 PNG。</span>
+                          <span>背景 + 左人物 + 右人物，适合观点、喜恶和前后对比。</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => updateShot(shot, applyVersusComposition(shot))}
                         >
-                          重置布局
+                          应用模板
                         </button>
                       </div>
-                      <div className="layer-slot-list">
-                        {(shot.layers ?? []).map((layer) => (
-                          <label key={layer.id} className="layer-slot">
-                            <span>
-                              {layer.role === 'background'
-                                ? '背景'
-                                : layer.position.x < 0.5
-                                  ? '左侧人物'
-                                  : '右侧人物'}
-                            </span>
-                            <input
-                              value={layer.assetPath ?? ''}
-                              placeholder="assets/example.png"
-                              onChange={(event) =>
-                                updateLayer(shot, layer.id, {
-                                  assetPath: event.target.value.trim() || null,
-                                })
-                              }
-                            />
-                            {layer.role === 'background' && shot.selectedAsset ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  updateLayer(shot, layer.id, {assetPath: shot.selectedAsset})
+                    ) : (
+                      <>
+                        <div className="composition-template-card active">
+                          <div>
+                            <strong>左右对立模板</strong>
+                            <span>人物素材建议使用透明背景 PNG。</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => updateShot(shot, applyVersusComposition(shot))}
+                          >
+                            重置布局
+                          </button>
+                        </div>
+                        <div className="layer-slot-list">
+                          {(shot.layers ?? []).map((layer) => (
+                            <label key={layer.id} className="layer-slot">
+                              <span>
+                                {layer.role === 'background'
+                                  ? '背景'
+                                  : layer.position.x < 0.5
+                                    ? '左侧人物'
+                                    : '右侧人物'}
+                              </span>
+                              <input
+                                value={layer.assetPath ?? ''}
+                                placeholder="assets/example.png"
+                                onChange={(event) =>
+                                  updateLayer(shot, layer.id, {
+                                    assetPath: event.target.value.trim() || null,
+                                  })
                                 }
-                              >
-                                使用当前素材
-                              </button>
-                            ) : null}
-                          </label>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        className="remove-composition-button"
-                        onClick={() =>
-                          updateShot(shot, {
-                            composition: 'single',
-                            layers: [],
-                            motionPlan: {...motionPlanFor(shot), requiresLayering: false},
-                          })
-                        }
-                      >
-                        恢复为单素材镜头
-                      </button>
-                    </>
-                  )}
-                </div>
-              </details>
-              <label>
-                <span>中文主题搜索词（用于内容平台）</span>
-                <textarea
-                  rows={2}
-                  value={
-                    shot.searchQueriesZh?.join('\n') ||
-                    [shot.visualPurpose || chineseSceneDescription, chineseSceneDescription].join(
-                      '\n',
-                    )
-                  }
-                  placeholder="每行一个中文主题，例如：为什么有人觉得香菜像肥皂"
-                  onChange={(event) =>
-                    updateShot(shot, {
-                      searchQueriesZh: event.target.value
-                        .split('\n')
-                        .map((item) => item.trim())
-                        .filter(Boolean)
-                        .slice(0, 8),
-                    })
-                  }
-                />
-              </label>
-              <div className="content-platform-search">
-                <div>
-                  <strong>搜索相关视频内容</strong>
-                  <span>使用上面第一条中文主题词打开平台搜索结果，仅作选题和画面参考</span>
-                </div>
-                <div>
-                  {contentSearchLinks(
-                    shot.searchQueriesZh?.[0] ||
-                      `${project.content?.topic || project.project.title} ${shot.visualPurpose}`,
-                  ).map(([name, href]) => (
-                    <a key={name} href={href} target="_blank" rel="noreferrer">
-                      搜索{name}
-                    </a>
-                  ))}
-                </div>
-              </div>
-              <details className="online-material-search">
-                <summary className="online-material-search-heading">
-                  <div>
-                    <strong>搜索可下载素材</strong>
-                    <span>Pixabay 使用英文场景词，适合寻找可用素材，不用于搜索完整主题</span>
-                  </div>
-                  <div className="online-material-search-actions">
-                    <button
-                      type="button"
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                      }}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        const panel = event.currentTarget.closest('details');
-                        if (panel && !panel.open) panel.open = true;
-                        void searchOnline(shot, 'image');
-                      }}
-                    >
-                      搜索图片
-                    </button>
-                    <button
-                      type="button"
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                      }}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        const panel = event.currentTarget.closest('details');
-                        if (panel && !panel.open) panel.open = true;
-                        void searchOnline(shot, 'video');
-                      }}
-                    >
-                      搜索视频
-                    </button>
-                  </div>
-                </summary>
-                {onlineSearch?.shotId === shot.id ? (
-                  <div className="online-material-results">
-                    <div className="pixabay-search-row">
-                      <input
-                        aria-label="在线素材搜索词"
-                        value={onlineSearch.query}
-                        onChange={(event) =>
-                          setOnlineSearch({...onlineSearch, query: event.target.value})
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            void searchOnline(shot, onlineSearch.kind, onlineSearch.query);
+                              />
+                              {layer.role === 'background' && shot.selectedAsset ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateLayer(shot, layer.id, {assetPath: shot.selectedAsset})
+                                  }
+                                >
+                                  使用当前素材
+                                </button>
+                              ) : null}
+                            </label>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="remove-composition-button"
+                          onClick={() =>
+                            updateShot(shot, {
+                              composition: 'single',
+                              layers: [],
+                              motionPlan: {...motionPlanFor(shot), requiresLayering: false},
+                            })
                           }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        disabled={onlineSearch.loading || !onlineSearch.query.trim()}
-                        onClick={() =>
-                          void searchOnline(shot, onlineSearch.kind, onlineSearch.query)
-                        }
-                      >
-                        {onlineSearch.loading ? '搜索中…' : '重新搜索'}
-                      </button>
-                    </div>
-                    {onlineSearch.error ? (
-                      <p className="candidate-error">{onlineSearch.error}</p>
-                    ) : null}
-                    {!onlineSearch.loading && onlineSearch.results.length ? (
-                      <div className="pixabay-grid">
-                        {onlineSearch.results.map((result) => (
-                          <article className="pixabay-card" key={`${result.kind}-${result.id}`}>
-                            <button
-                              type="button"
-                              className="online-preview-button"
-                              onClick={() =>
-                                setMediaPreview({
-                                  kind: result.kind,
-                                  src:
-                                    result.kind === 'video'
-                                      ? result.downloadUrl
-                                      : result.previewUrl,
-                                  title: `${result.author} 的素材`,
-                                })
-                              }
-                            >
-                              <img src={result.previewUrl} alt={`${result.author} 的素材预览`} />
-                              <span>{result.kind === 'video' ? '▶ 点击播放' : '点击放大'}</span>
-                            </button>
-                            <div>
-                              <strong>
-                                {result.kind === 'image' ? '图片' : '视频'} · {result.width}×
-                                {result.height}
-                              </strong>
-                              <span>{result.author}</span>
-                            </div>
-                            <div className="pixabay-card-actions">
-                              <a href={result.pageUrl} target="_blank" rel="noreferrer">
-                                查看来源
-                              </a>
-                              <button
-                                type="button"
-                                disabled={Boolean(onlineSearch.downloadingId)}
-                                onClick={() => void downloadOnline(shot, result)}
-                              >
-                                {onlineSearch.downloadingId === result.id
-                                  ? '下载中…'
-                                  : '下载并使用'}
-                              </button>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    ) : !onlineSearch.loading && !onlineSearch.error ? (
-                      <div className="pixabay-empty">没有找到素材，请更换英文搜索词</div>
-                    ) : null}
+                        >
+                          恢复为单素材镜头
+                        </button>
+                      </>
+                    )}
                   </div>
-                ) : null}
-              </details>
-              <details className="shot-motion-panel">
-                <summary>
-                  <span>
-                    <strong>图片动态化</strong>
-                    <small>
-                      {motionPresetLabels[motionPlanFor(shot).preset]} · 强度{' '}
-                      {Math.round(motionPlanFor(shot).intensity * 100)}%
-                    </small>
-                  </span>
-                  <b>
-                    {motionPlanFor(shot).requiresAiVideo
-                      ? '建议视频'
-                      : motionPlanFor(shot).requiresLayering
-                        ? '建议分层'
-                        : '图片可完成'}
-                  </b>
-                </summary>
-                <div className="shot-motion-content">
-                  <div className="shot-motion-controls">
-                    <label>
-                      <span>动画预设</span>
-                      <select
-                        value={motionPlanFor(shot).preset}
-                        onChange={(event) =>
-                          updateShot(shot, {
-                            motionPlan: {
-                              ...motionPlanFor(shot),
-                              preset: event.target.value as NonNullable<
-                                VisualShot['motionPlan']
-                              >['preset'],
-                            },
-                          })
-                        }
-                      >
-                        {Object.entries(motionPresetLabels).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>动画强度 · {Math.round(motionPlanFor(shot).intensity * 100)}%</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={motionPlanFor(shot).intensity}
-                        onChange={(event) =>
-                          updateShot(shot, {
-                            motionPlan: {
-                              ...motionPlanFor(shot),
-                              intensity: Number(event.target.value),
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                  <div className="shot-motion-focus">
-                    <label>
-                      <span>开始关注</span>
-                      <input
-                        value={motionPlanFor(shot).focusStart}
-                        onChange={(event) =>
-                          updateShot(shot, {
-                            motionPlan: {...motionPlanFor(shot), focusStart: event.target.value},
-                          })
-                        }
-                      />
-                    </label>
-                    <span>→</span>
-                    <label>
-                      <span>结束关注</span>
-                      <input
-                        value={motionPlanFor(shot).focusEnd}
-                        onChange={(event) =>
-                          updateShot(shot, {
-                            motionPlan: {...motionPlanFor(shot), focusEnd: event.target.value},
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                  <div className="shot-motion-flags">
-                    <button
-                      type="button"
-                      className={motionPlanFor(shot).requiresLayering ? 'active' : ''}
-                      onClick={() =>
-                        updateShot(shot, {
-                          motionPlan: {
-                            ...motionPlanFor(shot),
-                            requiresLayering: !motionPlanFor(shot).requiresLayering,
-                          },
-                        })
-                      }
-                    >
-                      需要分层视差
-                    </button>
-                    <button
-                      type="button"
-                      className={motionPlanFor(shot).requiresAiVideo ? 'active warning' : ''}
-                      onClick={() =>
-                        updateShot(shot, {
-                          motionPlan: {
-                            ...motionPlanFor(shot),
-                            requiresAiVideo: !motionPlanFor(shot).requiresAiVideo,
-                          },
-                        })
-                      }
-                    >
-                      静态图片无法完成
-                    </button>
-                  </div>
-                  <p>
-                    普通推拉和平移不会消耗 AI
-                    Token；人物表情变化、转头或复杂操作需要多张图片、分层素材或视频。
-                  </p>
-                </div>
-              </details>
-              <details className="prompt-editor">
-                <summary>
-                  <span>图片生成提示词</span>
-                  <small>展开查看或编辑</small>
-                </summary>
-                <textarea
-                  rows={9}
-                  value={
-                    (shot.imagePromptZh?.trim().length ?? 0) >= 220
-                      ? shot.imagePromptZh
-                      : fallbackImagePromptZh(shot)
-                  }
-                  placeholder="描述主体、场景、构图、光线、色彩、景别、风格和画面比例"
-                  onChange={(event) => updateShot(shot, {imagePromptZh: event.target.value})}
-                />
-              </details>
-              <details className="prompt-editor">
-                <summary>
-                  <span>视频生成提示词</span>
-                  <small>展开查看或编辑</small>
-                </summary>
-                <textarea
-                  rows={11}
-                  value={
-                    (shot.videoPromptZh?.trim().length ?? 0) >= 260
-                      ? shot.videoPromptZh
-                      : fallbackVideoPromptZh(shot)
-                  }
-                  placeholder="描述初始画面、动作顺序、场景变化、运镜、节奏、时长及一致性"
-                  onChange={(event) => updateShot(shot, {videoPromptZh: event.target.value})}
-                />
-              </details>
-              <details className="original-prompts">
-                <summary>查看英文原始提示词（实际生成使用）</summary>
+                </details>
                 <label>
-                  <span>英文素材搜索词</span>
+                  <span>中文主题搜索词（用于内容平台）</span>
                   <textarea
                     rows={2}
-                    value={shot.searchQueries.join('\n')}
+                    value={
+                      shot.searchQueriesZh?.join('\n') ||
+                      [shot.visualPurpose || chineseSceneDescription, chineseSceneDescription].join(
+                        '\n',
+                      )
+                    }
+                    placeholder="每行一个中文主题，例如：为什么有人觉得香菜像肥皂"
                     onChange={(event) =>
                       updateShot(shot, {
-                        searchQueries: event.target.value
+                        searchQueriesZh: event.target.value
                           .split('\n')
                           .map((item) => item.trim())
                           .filter(Boolean)
@@ -950,292 +709,601 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     }
                   />
                 </label>
-                <label>
-                  <span>英文图片提示词</span>
-                  <textarea
-                    rows={5}
-                    value={shot.imagePrompt ?? ''}
-                    onChange={(event) => updateShot(shot, {imagePrompt: event.target.value})}
-                  />
-                </label>
-                <label>
-                  <span>英文视频提示词</span>
-                  <textarea
-                    rows={7}
-                    value={shot.videoPrompt ?? ''}
-                    onChange={(event) => updateShot(shot, {videoPrompt: event.target.value})}
-                  />
-                </label>
-              </details>
-              <details
-                className="video-generation-panel"
-                onToggle={(event) => {
-                  if (!event.currentTarget.open || videoDraft?.shotId === shot.id) return;
-                  setVideoDraft({
-                    shotId: shot.id,
-                    provider: 'volcengine-pippit',
-                    duration: videoDefaultDuration,
-                    prompt: normalizeVideoPromptDuration(
-                      (shot.videoPromptZh?.trim().length ?? 0) >= 260
-                        ? shot.videoPromptZh!
-                        : fallbackVideoPromptZh(shot),
-                      videoDefaultDuration,
-                    ),
-                  });
-                }}
-              >
-                <summary>
-                  <span>
-                    <strong>AI 视频生成</strong>
-                    <small>确认模型、时长和最终提示词后手动生成</small>
-                  </span>
-                  <b>
-                    {generatingVideoShotId === shot.id ||
-                    (shot.generationTask &&
-                      activeGenerationStatuses.has(shot.generationTask.status))
-                      ? '生成中'
-                      : '展开设置'}
-                  </b>
-                </summary>
-                {videoDraft?.shotId === shot.id ? (
+                <div className="content-platform-search">
                   <div>
-                    <div className="video-generation-options">
-                      <label>
-                        <span>生成服务</span>
-                        <select
-                          value={videoDraft.provider}
-                          onChange={(event) =>
-                            setVideoDraft({
-                              ...videoDraft,
-                              provider: event.target.value as 'volcengine-pippit',
-                            })
-                          }
-                        >
-                          <option value="volcengine-pippit">火山引擎 · 小云雀智能生视频</option>
-                        </select>
-                      </label>
-                      <label>
-                        <span>目标时长</span>
-                        <select
-                          value={videoDraft.duration}
-                          onChange={(event) =>
-                            setVideoDraft({
-                              ...videoDraft,
-                              duration: event.target.value as VideoTargetDuration,
-                              prompt: normalizeVideoPromptDuration(
-                                videoDraft.prompt,
-                                event.target.value as VideoTargetDuration,
-                              ),
-                            })
-                          }
-                        >
-                          <option value="5s">5 秒</option>
-                          <option value="10s">10 秒</option>
-                          <option value="～15s">约 15 秒</option>
-                          <option value="～30s">约 30 秒</option>
-                          <option value="40～60s">40～60 秒</option>
-                        </select>
-                      </label>
-                      <label>
-                        <span>模型</span>
-                        <input value="pippit_iv2v_cvtob" disabled />
-                      </label>
+                    <strong>搜索相关视频内容</strong>
+                    <span>使用上面第一条中文主题词打开平台搜索结果，仅作选题和画面参考</span>
+                  </div>
+                  <div>
+                    {contentSearchLinks(
+                      shot.searchQueriesZh?.[0] ||
+                        `${project.content?.topic || project.project.title} ${shot.visualPurpose}`,
+                    ).map(([name, href]) => (
+                      <a key={name} href={href} target="_blank" rel="noreferrer">
+                        搜索{name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+                <details className="online-material-search">
+                  <summary className="online-material-search-heading">
+                    <div>
+                      <strong>搜索可下载素材</strong>
+                      <span>Pixabay 使用英文场景词，适合寻找可用素材，不用于搜索完整主题</span>
                     </div>
-                    <label className="final-video-prompt">
-                      <span>
-                        最终发送给视频模型的提示词
-                        <em
-                          className={
-                            countVideoPromptCharacters(videoDraft.prompt) >= 1900
-                              ? 'near-limit'
-                              : ''
-                          }
-                        >
-                          {countVideoPromptCharacters(videoDraft.prompt)} / 2000，剩余{' '}
-                          {Math.max(0, 2000 - countVideoPromptCharacters(videoDraft.prompt))}
-                        </em>
-                      </span>
-                      <textarea
-                        rows={12}
-                        value={videoDraft.prompt}
-                        onChange={(event) =>
-                          setVideoDraft({
-                            ...videoDraft,
-                            prompt: limitVideoPrompt(event.target.value),
-                          })
-                        }
-                      />
-                      <small>
-                        字数必须不超过 2000；提示词过长可能导致接口异常或部分指令不生效。
-                      </small>
-                    </label>
-                    <div className="video-generation-footer">
-                      <p>
-                        {videoWatermark ? '已开启平台明水印' : '未开启平台明水印'}；目标时长仅供
-                        Agent
-                        匹配；若源视频超长，项目会严格按所选时长截断使用。生成视频不含音乐、配音或人声。
-                      </p>
+                    <div className="online-material-search-actions">
                       <button
                         type="button"
-                        disabled={
-                          generatingVideoShotId === shot.id ||
-                          Boolean(
-                            shot.generationTask &&
-                            activeGenerationStatuses.has(shot.generationTask.status),
-                          ) ||
-                          !videoDraft.prompt.trim()
-                        }
-                        onClick={() => void generateVideo(shot)}
+                        onPointerDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const panel = event.currentTarget.closest('details');
+                          if (panel && !panel.open) panel.open = true;
+                          void searchOnline(shot, 'image');
+                        }}
                       >
-                        {generatingVideoShotId === shot.id ||
-                        (shot.generationTask &&
-                          activeGenerationStatuses.has(shot.generationTask.status))
-                          ? '正在生成，请勿关闭应用…'
-                          : '确认并生成视频'}
+                        搜索图片
+                      </button>
+                      <button
+                        type="button"
+                        onPointerDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const panel = event.currentTarget.closest('details');
+                          if (panel && !panel.open) panel.open = true;
+                          void searchOnline(shot, 'video');
+                        }}
+                      >
+                        搜索视频
                       </button>
                     </div>
-                  </div>
-                ) : null}
-                <section className="generated-video-library">
-                  <header>
-                    <div>
-                      <strong>已生成视频</strong>
-                      <span>
-                        {shot.candidates.filter((candidate) => candidate.kind === 'video').length}{' '}
-                        个结果
-                      </span>
-                    </div>
-                    <small>点击结果查看生成时间、模型和任务状态</small>
-                  </header>
-                  <div className="generated-video-grid">
-                    {[...shot.candidates]
-                      .filter((candidate) => candidate.kind === 'video')
-                      .reverse()
-                      .map((candidate) => (
+                  </summary>
+                  {onlineSearch?.shotId === shot.id ? (
+                    <div className="online-material-results">
+                      <div className="pixabay-search-row">
+                        <input
+                          aria-label="在线素材搜索词"
+                          value={onlineSearch.query}
+                          onChange={(event) =>
+                            setOnlineSearch({...onlineSearch, query: event.target.value})
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              void searchOnline(shot, onlineSearch.kind, onlineSearch.query);
+                            }
+                          }}
+                        />
                         <button
                           type="button"
-                          key={candidate.id}
-                          className={selectedVideoCandidateId === candidate.id ? 'active' : ''}
-                          onClick={() => setSelectedVideoCandidateId(candidate.id)}
+                          disabled={onlineSearch.loading || !onlineSearch.query.trim()}
+                          onClick={() =>
+                            void searchOnline(shot, onlineSearch.kind, onlineSearch.query)
+                          }
                         >
-                          <video
-                            src={mediaUrl(projectId, candidate.path)}
-                            muted
-                            preload="metadata"
-                          />
-                          <span>
-                            <strong>{candidate.model}</strong>
-                            <small>{formatTaskTime(candidate.createdAt)}</small>
-                          </span>
-                          {candidate.path === shot.selectedAsset ? <b>已选用</b> : null}
+                          {onlineSearch.loading ? '搜索中…' : '重新搜索'}
                         </button>
-                      ))}
+                      </div>
+                      {onlineSearch.error ? (
+                        <p className="candidate-error">{onlineSearch.error}</p>
+                      ) : null}
+                      {!onlineSearch.loading && onlineSearch.results.length ? (
+                        <div className="pixabay-grid">
+                          {onlineSearch.results.map((result) => (
+                            <article className="pixabay-card" key={`${result.kind}-${result.id}`}>
+                              <button
+                                type="button"
+                                className="online-preview-button"
+                                onClick={() =>
+                                  setMediaPreview({
+                                    kind: result.kind,
+                                    src:
+                                      result.kind === 'video'
+                                        ? result.downloadUrl
+                                        : result.previewUrl,
+                                    title: `${result.author} 的素材`,
+                                  })
+                                }
+                              >
+                                <img src={result.previewUrl} alt={`${result.author} 的素材预览`} />
+                                <span>{result.kind === 'video' ? '▶ 点击播放' : '点击放大'}</span>
+                              </button>
+                              <div>
+                                <strong>
+                                  {result.kind === 'image' ? '图片' : '视频'} · {result.width}×
+                                  {result.height}
+                                </strong>
+                                <span>{result.author}</span>
+                              </div>
+                              <div className="pixabay-card-actions">
+                                <a href={result.pageUrl} target="_blank" rel="noreferrer">
+                                  查看来源
+                                </a>
+                                <button
+                                  type="button"
+                                  disabled={Boolean(onlineSearch.downloadingId)}
+                                  onClick={() => void downloadOnline(shot, result)}
+                                >
+                                  {onlineSearch.downloadingId === result.id
+                                    ? '下载中…'
+                                    : '下载并使用'}
+                                </button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : !onlineSearch.loading && !onlineSearch.error ? (
+                        <div className="pixabay-empty">没有找到素材，请更换英文搜索词</div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </details>
+                <details className="shot-motion-panel">
+                  <summary>
+                    <span>
+                      <strong>图片动态化</strong>
+                      <small>
+                        {motionPresetLabels[motionPlanFor(shot).preset]} · 强度{' '}
+                        {Math.round(motionPlanFor(shot).intensity * 100)}%
+                      </small>
+                    </span>
+                    <b>
+                      {motionPlanFor(shot).requiresAiVideo
+                        ? '建议视频'
+                        : motionPlanFor(shot).requiresLayering
+                          ? '建议分层'
+                          : '图片可完成'}
+                    </b>
+                  </summary>
+                  <div className="shot-motion-content">
+                    <div className="shot-motion-controls">
+                      <label>
+                        <span>动画预设</span>
+                        <select
+                          value={motionPlanFor(shot).preset}
+                          onChange={(event) =>
+                            updateShot(shot, {
+                              motionPlan: {
+                                ...motionPlanFor(shot),
+                                preset: event.target.value as NonNullable<
+                                  VisualShot['motionPlan']
+                                >['preset'],
+                              },
+                            })
+                          }
+                        >
+                          {Object.entries(motionPresetLabels).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>动画强度 · {Math.round(motionPlanFor(shot).intensity * 100)}%</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={motionPlanFor(shot).intensity}
+                          onChange={(event) =>
+                            updateShot(shot, {
+                              motionPlan: {
+                                ...motionPlanFor(shot),
+                                intensity: Number(event.target.value),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="shot-motion-focus">
+                      <label>
+                        <span>开始关注</span>
+                        <input
+                          value={motionPlanFor(shot).focusStart}
+                          onChange={(event) =>
+                            updateShot(shot, {
+                              motionPlan: {...motionPlanFor(shot), focusStart: event.target.value},
+                            })
+                          }
+                        />
+                      </label>
+                      <span>→</span>
+                      <label>
+                        <span>结束关注</span>
+                        <input
+                          value={motionPlanFor(shot).focusEnd}
+                          onChange={(event) =>
+                            updateShot(shot, {
+                              motionPlan: {...motionPlanFor(shot), focusEnd: event.target.value},
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="shot-motion-flags">
+                      <button
+                        type="button"
+                        className={motionPlanFor(shot).requiresLayering ? 'active' : ''}
+                        onClick={() =>
+                          updateShot(shot, {
+                            motionPlan: {
+                              ...motionPlanFor(shot),
+                              requiresLayering: !motionPlanFor(shot).requiresLayering,
+                            },
+                          })
+                        }
+                      >
+                        需要分层视差
+                      </button>
+                      <button
+                        type="button"
+                        className={motionPlanFor(shot).requiresAiVideo ? 'active warning' : ''}
+                        onClick={() =>
+                          updateShot(shot, {
+                            motionPlan: {
+                              ...motionPlanFor(shot),
+                              requiresAiVideo: !motionPlanFor(shot).requiresAiVideo,
+                            },
+                          })
+                        }
+                      >
+                        静态图片无法完成
+                      </button>
+                    </div>
+                    <p>
+                      普通推拉和平移不会消耗 AI
+                      Token；人物表情变化、转头或复杂操作需要多张图片、分层素材或视频。
+                    </p>
                   </div>
-                  {shot.candidates.some(
-                    (candidate) =>
-                      candidate.kind === 'video' && candidate.id === selectedVideoCandidateId,
-                  ) ? (
-                    <article className="generated-video-detail">
-                      {(() => {
-                        const candidate = shot.candidates.find(
-                          (item) => item.kind === 'video' && item.id === selectedVideoCandidateId,
-                        );
-                        if (!candidate) return null;
-                        const latestVideoCandidate = [...shot.candidates]
-                          .filter((item) => item.kind === 'video')
-                          .sort(
-                            (left, right) =>
-                              new Date(right.createdAt).getTime() -
-                              new Date(left.createdAt).getTime(),
-                          )[0];
-                        const fallbackTask =
-                          candidate.id === latestVideoCandidate?.id ? shot.generationTask : null;
-                        const taskStatus = candidate.taskStatus ?? fallbackTask?.status;
-                        const taskStartedAt = candidate.taskStartedAt ?? fallbackTask?.startedAt;
-                        const taskCompletedAt =
-                          candidate.taskCompletedAt ?? fallbackTask?.completedAt;
-                        return (
-                          <>
-                            <video src={mediaUrl(projectId, candidate.path)} controls autoPlay />
-                            <dl>
-                              <div>
-                                <dt>开始时间</dt>
-                                <dd>{formatTaskTime(taskStartedAt ?? candidate.createdAt)}</dd>
-                              </div>
-                              <div>
-                                <dt>完成时间</dt>
-                                <dd>{formatTaskTime(taskCompletedAt ?? candidate.createdAt)}</dd>
-                              </div>
-                              <div>
-                                <dt>生成用时</dt>
-                                <dd>
-                                  {formatTaskDuration(
-                                    taskStartedAt ?? candidate.createdAt,
-                                    taskCompletedAt ?? candidate.createdAt,
-                                    currentTime,
-                                  )}
-                                </dd>
-                              </div>
-                              <div>
-                                <dt>状态</dt>
-                                <dd>
-                                  {candidate.path === shot.selectedAsset
-                                    ? '已选用'
-                                    : taskStatus
-                                      ? generationStatusLabel(taskStatus)
-                                      : '生成完成'}
-                                </dd>
-                              </div>
-                              <div>
-                                <dt>服务 / 模型</dt>
-                                <dd>
-                                  {candidate.provider} / {candidate.model}
-                                </dd>
-                              </div>
-                              <div>
-                                <dt>视频时长</dt>
-                                <dd>{candidate.duration ? `${candidate.duration} 秒` : '—'}</dd>
-                              </div>
-                            </dl>
-                            <p>{candidate.prompt}</p>
-                            <button
-                              type="button"
-                              className="primary-button"
-                              onClick={() => applyCandidate(shot, candidate)}
-                            >
-                              {candidate.path === shot.selectedAsset
-                                ? '当前已选用'
-                                : '选用为当前镜头素材'}
-                            </button>
-                          </>
-                        );
-                      })()}
-                    </article>
-                  ) : shot.candidates.some((candidate) => candidate.kind === 'video') ? (
-                    <p className="shot-generation-empty">请选择一个视频查看生成详情</p>
-                  ) : (
-                    <p className="shot-generation-empty">当前还没有 AI 视频生成结果</p>
-                  )}
-                </section>
-              </details>
-              <div className="shot-assets">
-                <div className="shot-assets-heading">
-                  <strong>镜头素材</strong>
-                  <span>
-                    {shot.selectedAsset
-                      ? '当前镜头已有选用素材，可继续更换'
-                      : '可以在上方选用生成结果，或前往素材页面查找更多素材'}
-                  </span>
+                </details>
+                <details className="prompt-editor">
+                  <summary>
+                    <span>图片生成提示词</span>
+                    <small>展开查看或编辑</small>
+                  </summary>
+                  <textarea
+                    rows={9}
+                    value={
+                      (shot.imagePromptZh?.trim().length ?? 0) >= 220
+                        ? shot.imagePromptZh
+                        : fallbackImagePromptZh(shot)
+                    }
+                    placeholder="描述主体、场景、构图、光线、色彩、景别、风格和画面比例"
+                    onChange={(event) => updateShot(shot, {imagePromptZh: event.target.value})}
+                  />
+                </details>
+                <details className="prompt-editor">
+                  <summary>
+                    <span>视频生成提示词</span>
+                    <small>展开查看或编辑</small>
+                  </summary>
+                  <textarea
+                    rows={11}
+                    value={
+                      (shot.videoPromptZh?.trim().length ?? 0) >= 260
+                        ? shot.videoPromptZh
+                        : fallbackVideoPromptZh(shot)
+                    }
+                    placeholder="描述初始画面、动作顺序、场景变化、运镜、节奏、时长及一致性"
+                    onChange={(event) => updateShot(shot, {videoPromptZh: event.target.value})}
+                  />
+                </details>
+                <details className="original-prompts">
+                  <summary>查看英文原始提示词（实际生成使用）</summary>
+                  <label>
+                    <span>英文素材搜索词</span>
+                    <textarea
+                      rows={2}
+                      value={shot.searchQueries.join('\n')}
+                      onChange={(event) =>
+                        updateShot(shot, {
+                          searchQueries: event.target.value
+                            .split('\n')
+                            .map((item) => item.trim())
+                            .filter(Boolean)
+                            .slice(0, 8),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>英文图片提示词</span>
+                    <textarea
+                      rows={5}
+                      value={shot.imagePrompt ?? ''}
+                      onChange={(event) => updateShot(shot, {imagePrompt: event.target.value})}
+                    />
+                  </label>
+                  <label>
+                    <span>英文视频提示词</span>
+                    <textarea
+                      rows={7}
+                      value={shot.videoPrompt ?? ''}
+                      onChange={(event) => updateShot(shot, {videoPrompt: event.target.value})}
+                    />
+                  </label>
+                </details>
+                <details
+                  className="video-generation-panel"
+                  onToggle={(event) => {
+                    if (!event.currentTarget.open || videoDraft?.shotId === shot.id) return;
+                    setVideoDraft({
+                      shotId: shot.id,
+                      provider: 'volcengine-pippit',
+                      duration: videoDefaultDuration,
+                      prompt: normalizeVideoPromptDuration(
+                        (shot.videoPromptZh?.trim().length ?? 0) >= 260
+                          ? shot.videoPromptZh!
+                          : fallbackVideoPromptZh(shot),
+                        videoDefaultDuration,
+                      ),
+                    });
+                  }}
+                >
+                  <summary>
+                    <span>
+                      <strong>AI 视频生成</strong>
+                      <small>确认模型、时长和最终提示词后手动生成</small>
+                    </span>
+                    <b>
+                      {generatingVideoShotId === shot.id ||
+                      (shot.generationTask &&
+                        activeGenerationStatuses.has(shot.generationTask.status))
+                        ? '生成中'
+                        : '展开设置'}
+                    </b>
+                  </summary>
+                  {videoDraft?.shotId === shot.id ? (
+                    <div>
+                      <div className="video-generation-options">
+                        <label>
+                          <span>生成服务</span>
+                          <select
+                            value={videoDraft.provider}
+                            onChange={(event) =>
+                              setVideoDraft({
+                                ...videoDraft,
+                                provider: event.target.value as 'volcengine-pippit',
+                              })
+                            }
+                          >
+                            <option value="volcengine-pippit">火山引擎 · 小云雀智能生视频</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span>目标时长</span>
+                          <select
+                            value={videoDraft.duration}
+                            onChange={(event) =>
+                              setVideoDraft({
+                                ...videoDraft,
+                                duration: event.target.value as VideoTargetDuration,
+                                prompt: normalizeVideoPromptDuration(
+                                  videoDraft.prompt,
+                                  event.target.value as VideoTargetDuration,
+                                ),
+                              })
+                            }
+                          >
+                            <option value="5s">5 秒</option>
+                            <option value="10s">10 秒</option>
+                            <option value="～15s">约 15 秒</option>
+                            <option value="～30s">约 30 秒</option>
+                            <option value="40～60s">40～60 秒</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span>模型</span>
+                          <input value="pippit_iv2v_cvtob" disabled />
+                        </label>
+                      </div>
+                      <label className="final-video-prompt">
+                        <span>
+                          最终发送给视频模型的提示词
+                          <em
+                            className={
+                              countVideoPromptCharacters(videoDraft.prompt) >= 1900
+                                ? 'near-limit'
+                                : ''
+                            }
+                          >
+                            {countVideoPromptCharacters(videoDraft.prompt)} / 2000，剩余{' '}
+                            {Math.max(0, 2000 - countVideoPromptCharacters(videoDraft.prompt))}
+                          </em>
+                        </span>
+                        <textarea
+                          rows={12}
+                          value={videoDraft.prompt}
+                          onChange={(event) =>
+                            setVideoDraft({
+                              ...videoDraft,
+                              prompt: limitVideoPrompt(event.target.value),
+                            })
+                          }
+                        />
+                        <small>
+                          字数必须不超过 2000；提示词过长可能导致接口异常或部分指令不生效。
+                        </small>
+                      </label>
+                      <div className="video-generation-footer">
+                        <p>
+                          {videoWatermark ? '已开启平台明水印' : '未开启平台明水印'}；目标时长仅供
+                          Agent
+                          匹配；若源视频超长，项目会严格按所选时长截断使用。生成视频不含音乐、配音或人声。
+                        </p>
+                        <button
+                          type="button"
+                          disabled={
+                            generatingVideoShotId === shot.id ||
+                            Boolean(
+                              shot.generationTask &&
+                              activeGenerationStatuses.has(shot.generationTask.status),
+                            ) ||
+                            !videoDraft.prompt.trim()
+                          }
+                          onClick={() => void generateVideo(shot)}
+                        >
+                          {generatingVideoShotId === shot.id ||
+                          (shot.generationTask &&
+                            activeGenerationStatuses.has(shot.generationTask.status))
+                            ? '正在生成，请勿关闭应用…'
+                            : '确认并生成视频'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  <section className="generated-video-library">
+                    <header>
+                      <div>
+                        <strong>已生成视频</strong>
+                        <span>
+                          {shot.candidates.filter((candidate) => candidate.kind === 'video').length}{' '}
+                          个结果
+                        </span>
+                      </div>
+                      <small>点击结果查看生成时间、模型和任务状态</small>
+                    </header>
+                    <div className="generated-video-grid">
+                      {[...shot.candidates]
+                        .filter((candidate) => candidate.kind === 'video')
+                        .reverse()
+                        .map((candidate) => (
+                          <button
+                            type="button"
+                            key={candidate.id}
+                            className={selectedVideoCandidateId === candidate.id ? 'active' : ''}
+                            onClick={() => setSelectedVideoCandidateId(candidate.id)}
+                          >
+                            <video
+                              src={mediaUrl(projectId, candidate.path)}
+                              muted
+                              preload="metadata"
+                            />
+                            <span>
+                              <strong>{candidate.model}</strong>
+                              <small>{formatTaskTime(candidate.createdAt)}</small>
+                            </span>
+                            {candidate.path === shot.selectedAsset ? <b>已选用</b> : null}
+                          </button>
+                        ))}
+                    </div>
+                    {shot.candidates.some(
+                      (candidate) =>
+                        candidate.kind === 'video' && candidate.id === selectedVideoCandidateId,
+                    ) ? (
+                      <article className="generated-video-detail">
+                        {(() => {
+                          const candidate = shot.candidates.find(
+                            (item) => item.kind === 'video' && item.id === selectedVideoCandidateId,
+                          );
+                          if (!candidate) return null;
+                          const latestVideoCandidate = [...shot.candidates]
+                            .filter((item) => item.kind === 'video')
+                            .sort(
+                              (left, right) =>
+                                new Date(right.createdAt).getTime() -
+                                new Date(left.createdAt).getTime(),
+                            )[0];
+                          const fallbackTask =
+                            candidate.id === latestVideoCandidate?.id ? shot.generationTask : null;
+                          const taskStatus = candidate.taskStatus ?? fallbackTask?.status;
+                          const taskStartedAt = candidate.taskStartedAt ?? fallbackTask?.startedAt;
+                          const taskCompletedAt =
+                            candidate.taskCompletedAt ?? fallbackTask?.completedAt;
+                          return (
+                            <>
+                              <video src={mediaUrl(projectId, candidate.path)} controls autoPlay />
+                              <dl>
+                                <div>
+                                  <dt>开始时间</dt>
+                                  <dd>{formatTaskTime(taskStartedAt ?? candidate.createdAt)}</dd>
+                                </div>
+                                <div>
+                                  <dt>完成时间</dt>
+                                  <dd>{formatTaskTime(taskCompletedAt ?? candidate.createdAt)}</dd>
+                                </div>
+                                <div>
+                                  <dt>生成用时</dt>
+                                  <dd>
+                                    {formatTaskDuration(
+                                      taskStartedAt ?? candidate.createdAt,
+                                      taskCompletedAt ?? candidate.createdAt,
+                                      currentTime,
+                                    )}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>状态</dt>
+                                  <dd>
+                                    {candidate.path === shot.selectedAsset
+                                      ? '已选用'
+                                      : taskStatus
+                                        ? generationStatusLabel(taskStatus)
+                                        : '生成完成'}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>服务 / 模型</dt>
+                                  <dd>
+                                    {candidate.provider} / {candidate.model}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>视频时长</dt>
+                                  <dd>{candidate.duration ? `${candidate.duration} 秒` : '—'}</dd>
+                                </div>
+                              </dl>
+                              <p>{candidate.prompt}</p>
+                              <button
+                                type="button"
+                                className="primary-button"
+                                onClick={() => applyCandidate(shot, candidate)}
+                              >
+                                {candidate.path === shot.selectedAsset
+                                  ? '当前已选用'
+                                  : '选用为当前镜头素材'}
+                              </button>
+                            </>
+                          );
+                        })()}
+                      </article>
+                    ) : shot.candidates.some((candidate) => candidate.kind === 'video') ? (
+                      <p className="shot-generation-empty">请选择一个视频查看生成详情</p>
+                    ) : (
+                      <p className="shot-generation-empty">当前还没有 AI 视频生成结果</p>
+                    )}
+                  </section>
+                </details>
+                <div className="shot-assets">
+                  <div className="shot-assets-heading">
+                    <strong>镜头素材</strong>
+                    <span>
+                      {shot.selectedAsset
+                        ? '当前镜头已有选用素材，可继续更换'
+                        : '可以在上方选用生成结果，或前往素材页面查找更多素材'}
+                    </span>
+                  </div>
+                  <button className="add-shot-asset" onClick={() => onGoToAssets(shot.id)}>
+                    打开素材页面选择更多
+                  </button>
                 </div>
-                <button className="add-shot-asset" onClick={() => onGoToAssets(shot.id)}>
-                  打开素材页面选择更多
-                </button>
-              </div>
-              {videoGenerationError?.shotId === shot.id ? (
-                <p className="candidate-error">{videoGenerationError.message}</p>
-              ) : null}
-            </article>
-          ))}
+                {videoGenerationError?.shotId === shot.id ? (
+                  <p className="candidate-error">{videoGenerationError.message}</p>
+                ) : null}
+              </article>
+            );
+          })}
           {!selected.shots?.length ? (
             <div className="empty-stage-state">
               <b>▦</b>
@@ -1295,12 +1363,12 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
             <div>
               <dt>素材状态</dt>
               <dd>
-                {selected.shots?.filter((shot) => shot.status === 'ready').length ?? 0} 已就绪
+                {selectedProgress.ready}/{selectedProgress.total} 个镜头完整
               </dd>
             </div>
             <div>
-              <dt>布局</dt>
-              <dd>{selected.layout}</dd>
+              <dt>当前布局</dt>
+              <dd>{previewShot?.composition === 'versus' ? '左右对立' : '单素材'}</dd>
             </div>
           </dl>
         </section>
