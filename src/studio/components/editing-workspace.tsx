@@ -43,15 +43,14 @@ const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 const timelineLabelWidth = 112;
 
 const workspaceTabs: Array<{
-  section: Extract<WorkspaceSection, 'content' | 'storyboard' | 'assets' | 'voice' | 'edit'>;
+  section: Extract<WorkspaceSection, 'content' | 'voice' | 'storyboard' | 'export'>;
   label: string;
   hint: string;
 }> = [
-  {section: 'content', label: '文案', hint: '整理口播内容'},
-  {section: 'storyboard', label: '脚本与分镜', hint: '拆分镜头'},
-  {section: 'assets', label: '素材', hint: '选择画面'},
-  {section: 'voice', label: '配音', hint: '生成与校对'},
-  {section: 'edit', label: '剪辑效果', hint: '调整画面与字幕'},
+  {section: 'content', label: '1 主题与脚本', hint: '确定内容'},
+  {section: 'voice', label: '2 配音与字幕', hint: '生成声音'},
+  {section: 'storyboard', label: '3 分镜与素材', hint: '准备画面'},
+  {section: 'export', label: '4 导出交付', hint: '交给剪辑软件'},
 ];
 
 const MediaThumb = ({
@@ -216,6 +215,7 @@ export const EditingWorkspace = ({
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
+      if (section !== 'edit') return;
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
@@ -435,15 +435,19 @@ export const EditingWorkspace = ({
             <div>
               {showWorkbench ? (
                 <>
-                  <button
-                    className="header-step"
-                    onClick={() => setWorkspaceInspectorOpen((open) => !open)}
-                  >
-                    属性
-                  </button>
-                  <button className="header-next" onClick={() => setExportDrawerOpen(true)}>
-                    导出视频
-                  </button>
+                  {section === 'edit' ? (
+                    <button
+                      className="header-step"
+                      onClick={() => setWorkspaceInspectorOpen((open) => !open)}
+                    >
+                      属性
+                    </button>
+                  ) : null}
+                  {section !== 'export' ? (
+                    <button className="header-next" onClick={() => onNavigate('export')}>
+                      导出交付
+                    </button>
+                  ) : null}
                 </>
               ) : null}
             </div>
@@ -451,7 +455,7 @@ export const EditingWorkspace = ({
         ) : null}
 
         {showWorkbench ? (
-          <nav className="workspace-tabs" aria-label="项目编辑模式">
+          <nav className="workspace-tabs" aria-label="项目制作步骤">
             {workspaceTabs.map((item) => (
               <button
                 key={item.section}
@@ -744,7 +748,7 @@ export const EditingWorkspace = ({
               </section>
             ) : (
               <ProjectStage
-                section={section as Exclude<WorkspaceSection, 'edit'>}
+                section={section}
                 project={project}
                 onNavigate={onNavigate}
                 onGenerated={onGenerated}
@@ -758,9 +762,10 @@ export const EditingWorkspace = ({
               />
             )}
 
-            <section
-              className={`timeline-panel edit-panel ${timelineCollapsed ? 'collapsed' : ''}`}
-            >
+            {section === 'edit' ? (
+              <section
+                className={`timeline-panel edit-panel ${timelineCollapsed ? 'collapsed' : ''}`}
+              >
               <div
                 className="timeline-resize-handle"
                 role="separator"
@@ -1052,7 +1057,8 @@ export const EditingWorkspace = ({
                   }}
                 />
               ) : null}
-            </section>
+              </section>
+            ) : null}
           </>
         ) : (
           <ProjectStage
@@ -1069,25 +1075,6 @@ export const EditingWorkspace = ({
             audioAvailable={audioAvailable}
           />
         )}
-        {showWorkbench && section !== 'edit' ? (
-          <div className="playback-engine" aria-hidden="true">
-            <Player
-              ref={playerRef}
-              component={VideoComposition}
-              inputProps={{
-                project: playerProject,
-                narrationAvailable: audioAvailable && !mutedTracks.includes('audio'),
-                assetBasePath: projectId,
-              }}
-              durationInFrames={timeline.durationInFrames}
-              compositionWidth={project.project.width}
-              compositionHeight={project.project.height}
-              fps={project.project.fps}
-              controls={false}
-              style={{width: 1, height: 1}}
-            />
-          </div>
-        ) : null}
         {exportDrawerOpen || workspaceInspectorOpen ? (
           <button
             className="workspace-drawer-backdrop"

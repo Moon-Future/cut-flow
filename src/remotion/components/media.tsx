@@ -11,6 +11,7 @@ import type {Motion, Scene} from '../../core/schema';
 import {buildShotTimeline, secondsToFrames} from '../../core/timeline';
 import type {VideoTemplate} from '../../templates/types';
 import {ScienceAnimation} from './science-animation';
+import {LayeredShot} from './layered-shot';
 
 type Props = {
   scene: Scene;
@@ -106,7 +107,14 @@ export const Media = ({scene, durationInFrames, assetBasePath, template, fps}: P
           };
           return (
             <Sequence key={shot.id} from={from} durationInFrames={shotFrames} premountFor={15}>
-              {shot.shotType === 'science-animation' && !selected ? (
+              {(shot.layers?.length ?? 0) > 0 ? (
+                <LayeredShot
+                  shot={shot}
+                  assetBasePath={assetBasePath}
+                  durationInFrames={shotFrames}
+                  fps={fps}
+                />
+              ) : shot.shotType === 'science-animation' && !selected ? (
                 <ScienceAnimation purpose={shot.visualPurpose} />
               ) : shot.selectionCleared && !selected ? (
                 <AbsoluteFill style={{background: template.backgroundColor}} />

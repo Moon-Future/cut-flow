@@ -66,4 +66,40 @@ describe('projectFileSchema', () => {
       status: 'missing-asset',
     });
   });
+  it('accepts a layered versus shot while keeping legacy shots optional', () => {
+    const scenes = [
+      {
+        ...valid.scenes[0],
+        shots: [
+          {
+            id: 'versus-shot',
+            visualPurpose: 'Opposing reactions',
+            shotType: 'generated-image',
+            assetStrategy: 'ai-generate',
+            duration: 2,
+            composition: 'versus',
+            layers: [
+              {
+                id: 'background',
+                type: 'image',
+                role: 'background',
+                assetPath: 'assets/background.png',
+                position: {x: 0.5, y: 0.5, width: 1, height: 1, zIndex: 0},
+                fit: 'cover',
+                idle: {preset: 'slow-zoom', duration: 2},
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const shot = projectFileSchema.parse({...valid, scenes}).scenes[0]?.shots?.[0];
+    expect(shot?.composition).toBe('versus');
+    expect(shot?.layers?.[0]).toMatchObject({
+      role: 'background',
+      opacity: 1,
+      start: 0,
+      position: {rotation: 0, zIndex: 0},
+    });
+  });
 });

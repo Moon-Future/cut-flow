@@ -3,7 +3,7 @@ import type {ProjectFile} from '../../core/schema';
 export type WorkspaceSection =
   'overview' | 'content' | 'storyboard' | 'voice' | 'assets' | 'edit' | 'export' | 'settings';
 
-const navItems: Array<[WorkspaceSection, string, string]> = [['overview', '项目与概览', '⌂']];
+const navItems: Array<[WorkspaceSection, string, string]> = [['overview', '我的项目', '⌂']];
 
 type Props = {
   section: WorkspaceSection;
@@ -18,7 +18,7 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
       <b>◆</b>
       <span>
         <strong>CutFlow</strong>
-        <small>让文案自动流动成视频</small>
+        <small>从选题到剪辑生产包</small>
       </span>
     </button>
     <button className="new-project-nav" onClick={onNewProject}>
@@ -37,7 +37,7 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
         </button>
       ))}
       {section === 'overview' && project ? (
-        <p className="nav-entry-hint">双击最近项目，进入文案、脚本与剪辑工作区</p>
+        <p className="nav-entry-hint">选择项目后，在项目顶部按步骤完成制作。</p>
       ) : null}
     </nav>
     <section className="project-specs">

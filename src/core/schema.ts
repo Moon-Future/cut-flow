@@ -21,6 +21,53 @@ export const shotMotionPlanSchema = z.object({
   requiresLayering: z.boolean().default(false),
   requiresAiVideo: z.boolean().default(false),
 });
+export const layerAnimationPresetSchema = z.enum([
+  'none',
+  'fade-in',
+  'fade-up',
+  'slide-in-left',
+  'slide-in-right',
+  'pop',
+  'shake',
+  'float',
+  'slow-zoom',
+]);
+export const layerAnimationSchema = z.object({
+  preset: layerAnimationPresetSchema.default('none'),
+  start: z.number().min(0).default(0),
+  duration: z.number().positive().default(0.6),
+  intensity: z.number().min(0).max(1).default(0.5),
+});
+export const visualLayerSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(['image', 'video', 'text', 'shape', 'icon']),
+  role: z.enum(['background', 'subject', 'foreground', 'decoration', 'overlay']),
+  assetPath: z.string().min(1).nullable().default(null),
+  text: z.string().optional(),
+  position: z.object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    width: z.number().positive().max(2),
+    height: z.number().positive().max(2).optional(),
+    rotation: z.number().min(-360).max(360).default(0),
+    zIndex: z.number().int().default(0),
+  }),
+  fit: z.enum(['cover', 'contain', 'fill']).default('contain'),
+  opacity: z.number().min(0).max(1).default(1),
+  enter: layerAnimationSchema.optional(),
+  idle: layerAnimationSchema.optional(),
+  exit: layerAnimationSchema.optional(),
+  start: z.number().min(0).default(0),
+  end: z.number().positive().optional(),
+  effects: z
+    .object({
+      shadow: z.boolean().default(false),
+      outline: z.boolean().default(false),
+      blur: z.number().min(0).max(100).default(0),
+      brightness: z.number().min(0).max(2).default(1),
+    })
+    .optional(),
+});
 export const videoTypeSchema = z.enum([
   'science-explainer',
   'knowledge-narration',
@@ -97,6 +144,10 @@ export const visualShotSchema = z.object({
   imagePromptZh: z.string().optional(),
   videoPromptZh: z.string().optional(),
   motionPlan: shotMotionPlanSchema.optional(),
+  composition: z
+    .enum(['single', 'versus', 'subject-center', 'before-after', 'three-layer-depth', 'custom'])
+    .optional(),
+  layers: z.array(visualLayerSchema).optional(),
   selectedAsset: z.string().nullable().default(null),
   selectionCleared: z.boolean().optional(),
   sourceStart: z.number().min(0).default(0),
@@ -207,3 +258,5 @@ export type GenerationTask = z.infer<typeof generationTaskSchema>;
 export type VideoType = z.infer<typeof videoTypeSchema>;
 export type CopyVersion = z.infer<typeof copyVersionSchema>;
 export type Motion = z.infer<typeof motionSchema>;
+export type VisualLayer = z.infer<typeof visualLayerSchema>;
+export type LayerAnimation = z.infer<typeof layerAnimationSchema>;

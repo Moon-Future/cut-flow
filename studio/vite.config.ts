@@ -44,6 +44,7 @@ import type {
   PixabaySearchResult,
 } from '../src/media/pixabay';
 import {loadAiSettings, publicAiSettings, saveAiSettings} from '../src/ai/settings';
+import {createEditingPackage} from '../src/export/production-package';
 
 const repositoryRoot = process.env.CUT_FLOW_APP_ROOT
   ? path.resolve(process.env.CUT_FLOW_APP_ROOT)
@@ -630,6 +631,23 @@ const localApi = (): Plugin => ({
               200,
               projectFileSchema.parse(JSON.parse(await readFile(projectFile, 'utf8')) as unknown),
             );
+            return;
+          }
+          if (url === '/api/export/editing-package' && request.method === 'POST') {
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const result = await createEditingPackage(project, projectRoot);
+            sendJson(response, 201, {
+              status: 'success',
+              message:
+                result.warnings.length > 0
+                  ? `剪辑生产包已生成，包含 ${result.warnings.length} 项警告`
+                  : '剪辑生产包已生成',
+              output: result.outputDirectory,
+              copiedAssets: result.copiedAssets,
+              warnings: result.warnings,
+            });
             return;
           }
           if (url === '/api/project' && request.method === 'PUT') {

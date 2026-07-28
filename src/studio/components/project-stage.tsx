@@ -24,28 +24,28 @@ type Props = {
 };
 
 const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]> = {
-  overview: ['项目概览', '从这里查看项目状态并继续下一阶段'],
-  content: ['视频文案', '确认完整口播内容和开场、结尾'],
-  storyboard: ['脚本与分镜', '逐段确认旁白、画面意图并准备候选素材'],
-  voice: ['配音', '生成或导入旁白，并检查时间对齐'],
+  overview: ['项目概览', '查看当前进度并继续下一步'],
+  content: ['主题与脚本', '确定主题，生成并确认完整口播脚本'],
+  storyboard: ['分镜与素材', '按每段旁白准备画面，缺什么就补什么'],
+  voice: ['配音与字幕', '生成或导入配音，并检查字幕时间'],
   assets: ['素材', '按分镜统一选用、替换和移除项目素材'],
-  export: ['导出', '完成最终检查并渲染成片'],
+  export: ['交付', '整理剪辑生产包，或生成一条粗剪参考视频'],
   settings: ['设置', '配置本机 AI 服务与密钥'],
 };
 
 const previousSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
   content: 'overview',
-  storyboard: 'content',
+  voice: 'content',
+  storyboard: 'voice',
   assets: 'storyboard',
-  voice: 'assets',
-  export: 'edit',
+  export: 'storyboard',
 };
 
 const nextSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
-  content: 'storyboard',
-  storyboard: 'assets',
-  assets: 'voice',
-  voice: 'edit',
+  content: 'voice',
+  voice: 'storyboard',
+  storyboard: 'export',
+  assets: 'export',
 };
 
 export const ProjectStage = ({
@@ -62,8 +62,38 @@ export const ProjectStage = ({
   audioAvailable,
 }: Props) => {
   const [assetTargetShotId, setAssetTargetShotId] = useState<string | null>(null);
+  const [packageExport, setPackageExport] = useState<{
+    status: 'idle' | 'running' | 'success' | 'error';
+    message?: string;
+    output?: string;
+    warningCount?: number;
+  }>({status: 'idle'});
   const totalDuration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
   const [title, description] = sectionTitles[section];
+  const exportEditingPackage = async () => {
+    setPackageExport({status: 'running', message: '正在整理脚本、字幕、配音和镜头素材…'});
+    try {
+      const response = await fetch('/api/export/editing-package', {method: 'POST'});
+      const value = (await response.json()) as {
+        message?: string;
+        output?: string;
+        warnings?: unknown[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(value.error ?? '剪辑生产包导出失败');
+      setPackageExport({
+        status: 'success',
+        message: value.message ?? '剪辑生产包已生成',
+        output: value.output,
+        warningCount: value.warnings?.length ?? 0,
+      });
+    } catch (error) {
+      setPackageExport({
+        status: 'error',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
 
   return (
     <section className="project-stage">
@@ -115,8 +145,11 @@ export const ProjectStage = ({
           project={project}
           projectId={currentProjectId}
           onGoToAssets={(shotId) => {
+            const sceneId =
+              project.scenes.find((scene) => scene.shots?.some((shot) => shot.id === shotId))?.id ??
+              project.scenes[0]!.id;
             setAssetTargetShotId(shotId);
-            onNavigate('assets');
+            onAssets({sceneId, shotId});
           }}
         />
       ) : null}
@@ -140,14 +173,33 @@ export const ProjectStage = ({
       {section === 'export' ? (
         <div className="stage-empty">
           <b>⇧</b>
-          <h2>准备导出视频</h2>
+          <h2>准备交付到专业剪辑软件</h2>
           <p>
             {project.scenes.length} 个镜头 · {Math.round(totalDuration)} 秒 ·{' '}
             {project.project.width} × {project.project.height}
           </p>
-          <button className="primary-button" onClick={onRender}>
-            导出 MP4
-          </button>
+          <div className="stage-export-actions">
+            <button
+              className="primary-button"
+              disabled={packageExport.status === 'running'}
+              onClick={() => void exportEditingPackage()}
+            >
+              {packageExport.status === 'running' ? '正在整理…' : '导出剪辑生产包'}
+            </button>
+            <button className="secondary-button" onClick={onRender}>
+              生成粗剪参考 MP4
+            </button>
+          </div>
+          <small>生产包包含脚本、分镜表、SRT 字幕、配音、编号素材和剪辑说明。</small>
+          {packageExport.status !== 'idle' ? (
+            <div className={`stage-export-result ${packageExport.status}`}>
+              <strong>{packageExport.message}</strong>
+              {packageExport.output ? <span>{packageExport.output}</span> : null}
+              {packageExport.warningCount ? (
+                <small>{packageExport.warningCount} 项缺失内容已写入剪辑说明</small>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {section === 'settings' ? <SettingsWorkspace /> : null}

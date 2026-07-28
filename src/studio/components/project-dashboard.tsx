@@ -62,6 +62,34 @@ export const ProjectDashboard = ({
   );
   const hour = new Date().getHours();
   const greeting = hour < 6 ? '夜深了' : hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好';
+  const scriptReady =
+    Boolean(project.copyVersions?.length) ||
+    project.scenes.some(
+      (scene) => scene.narration.trim() && !scene.narration.includes('生成视频脚本'),
+    );
+  const voiceReady = Boolean(project.narrationAudio);
+  const plannedShots = project.scenes.flatMap((scene) => scene.shots ?? []);
+  const readyShots = plannedShots.filter(
+    (shot) =>
+      Boolean(shot.selectedAsset) || (shot.layers?.some((layer) => layer.assetPath) ?? false),
+  ).length;
+  const visualsReady =
+    plannedShots.length > 0
+      ? readyShots === plannedShots.length
+      : project.scenes.every((scene) => !scene.assetPath.includes('placeholder'));
+  const nextAction = !scriptReady
+    ? {section: 'content' as const, label: '开始准备主题与脚本', hint: '先确认视频要讲什么'}
+    : !voiceReady
+      ? {section: 'voice' as const, label: '继续生成配音与字幕', hint: '脚本已经准备好'}
+      : !visualsReady
+        ? {
+            section: 'storyboard' as const,
+            label: '继续准备分镜素材',
+            hint: plannedShots.length
+              ? `还有 ${plannedShots.length - readyShots} 个镜头需要画面`
+              : '为每段旁白准备画面',
+          }
+        : {section: 'export' as const, label: '导出剪辑生产包', hint: '内容已经可以交付'};
   const enterProject = async (projectId: string) => {
     await onOpenProject(projectId);
     onNavigate('content');
@@ -174,6 +202,38 @@ export const ProjectDashboard = ({
           </button>
         </div>
       </header>
+
+      <section className="production-next-card">
+        <div>
+          <small>当前项目</small>
+          <h2>{project.project.title}</h2>
+          <p>{nextAction.hint}</p>
+        </div>
+        <ol>
+          <li className={scriptReady ? 'done' : 'current'}>
+            <b>{scriptReady ? '✓' : '1'}</b>
+            <span>主题与脚本</span>
+          </li>
+          <li className={voiceReady ? 'done' : scriptReady ? 'current' : ''}>
+            <b>{voiceReady ? '✓' : '2'}</b>
+            <span>配音与字幕</span>
+          </li>
+          <li className={visualsReady ? 'done' : voiceReady ? 'current' : ''}>
+            <b>{visualsReady ? '✓' : '3'}</b>
+            <span>
+              分镜与素材
+              {plannedShots.length ? ` ${readyShots}/${plannedShots.length}` : ''}
+            </span>
+          </li>
+          <li className={scriptReady && voiceReady && visualsReady ? 'current' : ''}>
+            <b>4</b>
+            <span>导出交付</span>
+          </li>
+        </ol>
+        <button className="primary-button" onClick={() => onNavigate(nextAction.section)}>
+          {nextAction.label} →
+        </button>
+      </section>
 
       <div className="dashboard-stats">
         <article>

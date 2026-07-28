@@ -1,5 +1,6 @@
-import {useEffect, useRef, useState} from 'react';
-import type {GenerationTask, ProjectFile, VisualShot} from '../../core/schema';
+import {useEffect, useMemo, useRef, useState} from 'react';
+import {Player} from '@remotion/player';
+import type {GenerationTask, ProjectFile, VisualLayer, VisualShot} from '../../core/schema';
 import type {
   PixabayMediaKind,
   PixabaySearchResponse,
@@ -13,6 +14,8 @@ import {
   type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
 import {useStudioStore} from '../store';
+import {applyVersusComposition} from '../../templates/shot-compositions';
+import {VideoComposition} from '../../remotion/video-composition';
 
 type Props = {
   project: ProjectFile;
@@ -108,14 +111,45 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     src: string;
     title: string;
   } | null>(null);
+  const [previewShotId, setPreviewShotId] = useState<string | null>(null);
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
   const selectedIndex = project.scenes.findIndex((scene) => scene.id === selected.id);
+  const firstShotId = selected.shots?.[0]?.id ?? null;
+  const previewShot =
+    selected.shots?.find((shot) => shot.id === previewShotId) ?? selected.shots?.[0];
+  const previewDuration = previewShot?.duration ?? selected.duration;
+  const previewProject = useMemo<ProjectFile>(
+    () => ({
+      ...project,
+      narrationAudio: null,
+      scenes: [
+        {
+          ...selected,
+          duration: previewDuration,
+          shots: previewShot ? [{...previewShot, duration: previewDuration}] : selected.shots,
+        },
+      ],
+    }),
+    [previewDuration, previewShot, project, selected],
+  );
   const updateShot = (shot: VisualShot, patch: Partial<VisualShot>) =>
     updateVisualShot(selected.id, shot.id, patch);
+  const updateLayer = (shot: VisualShot, layerId: string, patch: Partial<VisualLayer>) =>
+    updateShot(shot, {
+      layers: (shot.layers ?? []).map((layer) =>
+        layer.id === layerId ? {...layer, ...patch} : layer,
+      ),
+    });
   const applyCandidate = (shot: VisualShot, candidate: VisualShot['candidates'][number]) => {
     updateShot(shot, {
       selectedAsset: candidate.path,
+      layers:
+        shot.composition === 'versus'
+          ? (shot.layers ?? []).map((layer) =>
+              layer.role === 'background' ? {...layer, assetPath: candidate.path} : layer,
+            )
+          : shot.layers,
       status: 'ready',
       generationTask:
         shot.generationTask?.status === 'needs-selection'
@@ -169,6 +203,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       )
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    setPreviewShotId(firstShotId);
+  }, [firstShotId, selected.id]);
 
   useEffect(() => {
     const activeShots = project.scenes.flatMap((scene) =>
@@ -448,7 +486,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         </div>
         <div className="shot-editor-list">
           {(selected.shots ?? []).map((shot, index) => (
-            <article key={shot.id}>
+            <article key={shot.id} className={previewShot?.id === shot.id ? 'previewing' : ''}>
               <header>
                 <b>镜头 {index + 1}</b>
                 <span className={shot.status}>
@@ -458,6 +496,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       ? '待审核'
                       : '缺少素材'}
                 </span>
+                <button type="button" onClick={() => setPreviewShotId(shot.id)}>
+                  {previewShot?.id === shot.id ? '正在预览' : '预览此镜头'}
+                </button>
               </header>
               <label>
                 <span>画面内容</span>
@@ -490,6 +531,95 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                   />
                 </label>
               </div>
+              <details className="layer-composition-panel" open={shot.composition === 'versus'}>
+                <summary>
+                  <span>
+                    <strong>画面编排</strong>
+                    <small>
+                      {shot.composition === 'versus'
+                        ? `左右对立 · ${shot.layers?.filter((layer) => layer.assetPath).length ?? 0}/3 个素材已就绪`
+                        : '单素材镜头'}
+                    </small>
+                  </span>
+                  <b>{shot.composition === 'versus' ? '多图层' : '未启用'}</b>
+                </summary>
+                <div className="layer-composition-content">
+                  {shot.composition !== 'versus' ? (
+                    <div className="composition-template-card">
+                      <div>
+                        <strong>左右对立模板</strong>
+                        <span>背景 + 左人物 + 右人物，适合观点、喜恶和前后对比。</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => updateShot(shot, applyVersusComposition(shot))}
+                      >
+                        应用模板
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="composition-template-card active">
+                        <div>
+                          <strong>左右对立模板</strong>
+                          <span>人物素材建议使用透明背景 PNG。</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => updateShot(shot, applyVersusComposition(shot))}
+                        >
+                          重置布局
+                        </button>
+                      </div>
+                      <div className="layer-slot-list">
+                        {(shot.layers ?? []).map((layer) => (
+                          <label key={layer.id} className="layer-slot">
+                            <span>
+                              {layer.role === 'background'
+                                ? '背景'
+                                : layer.position.x < 0.5
+                                  ? '左侧人物'
+                                  : '右侧人物'}
+                            </span>
+                            <input
+                              value={layer.assetPath ?? ''}
+                              placeholder="assets/example.png"
+                              onChange={(event) =>
+                                updateLayer(shot, layer.id, {
+                                  assetPath: event.target.value.trim() || null,
+                                })
+                              }
+                            />
+                            {layer.role === 'background' && shot.selectedAsset ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateLayer(shot, layer.id, {assetPath: shot.selectedAsset})
+                                }
+                              >
+                                使用当前素材
+                              </button>
+                            ) : null}
+                          </label>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="remove-composition-button"
+                        onClick={() =>
+                          updateShot(shot, {
+                            composition: 'single',
+                            layers: [],
+                            motionPlan: {...motionPlanFor(shot), requiresLayering: false},
+                          })
+                        }
+                      >
+                        恢复为单素材镜头
+                      </button>
+                    </>
+                  )}
+                </div>
+              </details>
               <label>
                 <span>中文主题搜索词（用于内容平台）</span>
                 <textarea
@@ -1118,19 +1248,35 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       <aside className="board-preview">
         <section className="stage-panel">
           <header>
-            <strong>段落兜底画面</strong>
+            <strong>当前镜头预览</strong>
             <span>{project.project.width < project.project.height ? '9:16' : '16:9'}</span>
           </header>
           <div className="board-media-preview">
-            {selected.assetType === 'video' ? (
-              <video src={mediaUrl(projectId, selected.assetPath)} controls />
-            ) : (
-              <img src={mediaUrl(projectId, selected.assetPath)} alt="" />
-            )}
-            <strong>{selected.caption}</strong>
+            <Player
+              key={`${selected.id}-${previewShot?.id ?? 'scene'}`}
+              component={VideoComposition}
+              inputProps={{
+                project: previewProject,
+                narrationAvailable: false,
+                assetBasePath: projectId,
+              }}
+              durationInFrames={Math.max(1, Math.round(previewDuration * project.project.fps))}
+              compositionWidth={project.project.width}
+              compositionHeight={project.project.height}
+              fps={project.project.fps}
+              controls
+              style={{
+                width: '100%',
+                maxHeight: 370,
+                aspectRatio: `${project.project.width} / ${project.project.height}`,
+                margin: '0 auto',
+              }}
+            />
           </div>
           <p className="board-preview-note">
-            这里显示段落级兜底画面，不代表每个分镜都已选素材；分镜是否就绪请以中间镜头卡片为准。
+            {previewShot
+              ? `正在预览：${previewShot.visualPurpose}。这里只播放当前镜头，结束后不会自动跳到下一个。`
+              : '当前段落还没有拆分视觉镜头，暂时预览段落兜底画面。'}
           </p>
         </section>
         <section className="stage-panel board-stats">
