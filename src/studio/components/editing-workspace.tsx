@@ -411,9 +411,12 @@ export const EditingWorkspace = ({
         style={
           showWorkbench
             ? {
-                gridTemplateRows: `60px 48px minmax(220px, 1fr) ${
-                  timelineCollapsed ? 42 : timelineHeight
-                }px`,
+                gridTemplateRows:
+                  section === 'edit'
+                    ? `60px 48px minmax(220px, 1fr) ${
+                        timelineCollapsed ? 42 : timelineHeight
+                      }px`
+                    : '60px 48px minmax(0, 1fr)',
               }
             : undefined
         }

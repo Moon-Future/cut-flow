@@ -1671,7 +1671,7 @@ select:focus {
   display: grid;
   grid-template-rows: 60px auto minmax(0, 1fr);
   gap: 10px;
-  padding: 0 12px 12px;
+  padding: 0 12px 6px;
   overflow: auto;
   background: radial-gradient(circle at 70% 0%, #17203566 0, transparent 30%), #080b12;
 }
