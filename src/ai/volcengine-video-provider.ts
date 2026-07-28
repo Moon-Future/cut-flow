@@ -87,6 +87,55 @@ const responseDiagnostic = (value: VolcResponse) =>
     .filter(Boolean)
     .join('\n');
 
+const chineseFailureExplanation = (value: VolcResponse) => {
+  const detail = [
+    value.code,
+    value.message,
+    value.data?.status,
+    diagnosticText(parseResponseData(value.data?.resp_data)),
+  ]
+    .join(' ')
+    .toLowerCase();
+  if (/access.?key|secret|signature|authorization|auth|鉴权|签名|unauthorized/u.test(detail)) {
+    return '火山引擎身份验证失败。请检查设置中的 AK、SK 是否正确，以及当前账号是否已开通小云雀服务。';
+  }
+  if (/balance|insufficient|arrears|quota|credit|余额|欠费|额度|配额/u.test(detail)) {
+    return '账号余额、资源额度或调用配额不足。请到火山引擎控制台检查余额、资源包和服务额度。';
+  }
+  if (/sensitive|moderation|risk|audit|violation|违规|敏感|审核|安全/u.test(detail)) {
+    return '输入内容、参考图片或生成结果未通过内容安全审核。请更换图片或删减可能敏感的提示词后重试。';
+  }
+  if (
+    /image|img_url|download.*url|fetch.*url|invalid.*url|图片|图像|地址.*访问|url.*访问/u.test(
+      detail,
+    )
+  ) {
+    return '参考图片读取失败或不符合要求。请确认七牛云图片能公网打开，格式、大小和分辨率符合接口限制。';
+  }
+  if (/rate.?limit|too many|concurr|qps|频率|并发|限流/u.test(detail)) {
+    return '当前提交过于频繁或并发任务已满。请等待正在运行的任务结束后再试，避免重复扣费风险。';
+  }
+  if (/invalid|parameter|argument|prompt|ratio|duration|参数|提示词|时长|比例/u.test(detail)) {
+    return '提交参数不符合接口要求。请检查提示词长度、视频比例、目标时长和参考图片数量。';
+  }
+  if (/expired|过期/u.test(detail)) {
+    return '任务结果已经过期，平台无法继续查询。需要重新提交生成任务。';
+  }
+  if (/not.?found|不存在|找不到/u.test(detail)) {
+    return '平台找不到该任务，任务可能已过期、被清理或任务编号无效。';
+  }
+  if (/timeout|time.?out|超时/u.test(detail)) {
+    return '平台处理或网络请求超时。任务可能仍在服务端运行，请先到控制台确认，不要立即重复提交。';
+  }
+  if (/internal|server|service unavailable|系统|服务异常/u.test(detail)) {
+    return '小云雀平台内部服务异常，通常不是当前项目配置问题。建议稍后重试，并保留 Request ID。';
+  }
+  return '小云雀没有返回可识别的中文失败分类。请复制 Request ID，到火山引擎控制台或工单中查询具体原因。';
+};
+
+const failureDiagnostic = (value: VolcResponse) =>
+  `中文说明：${chineseFailureExplanation(value)}\n${responseDiagnostic(value)}`;
+
 const sha256 = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const hmac = (key: string | Buffer, value: string) =>
   createHmac('sha256', key).update(value).digest();
@@ -144,7 +193,9 @@ const requestApi = async (
   if (!response.ok || value.code !== 10000) {
     const phase = action === 'CVSync2AsyncSubmitTask' ? '提交失败' : '查询失败';
     throw new Error(
-      `小云雀任务${phase}\n${responseDiagnostic(value) || `HTTP 状态：${response.status}`}`,
+      `小云雀任务${phase}\n${
+        failureDiagnostic(value) || `中文说明：接口请求失败。\nHTTP 状态：${response.status}`
+      }`,
     );
   }
   return value;
@@ -183,7 +234,7 @@ export const createVolcengineVideoProvider = (config: Config) => {
         if (status === 'not_found' || status === 'expired') {
           throw new Error(
             `${status === 'expired' ? '小云雀任务已过期' : '找不到小云雀任务'}\n` +
-              `${responseDiagnostic(result) || `任务 ID：${taskId}`}`,
+              `${failureDiagnostic(result)}\n任务 ID：${taskId}`,
           );
         }
         if (status !== 'done') continue;
@@ -192,7 +243,7 @@ export const createVolcengineVideoProvider = (config: Config) => {
         if (!videoUrl) {
           throw new Error(
             `小云雀生成失败：任务已结束，但没有返回视频地址\n${
-              responseDiagnostic(result) || '服务端未返回具体失败详情'
+              failureDiagnostic(result) || '中文说明：服务端未返回具体失败详情'
             }`,
           );
         }
