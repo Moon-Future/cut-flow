@@ -6747,40 +6747,31 @@ select:focus {
   color: #d27f88;
   cursor: pointer;
 }
-.voice-candidates {
-  display: grid;
-  gap: 6px;
-  margin-top: 8px;
-}
-.voice-candidates > button {
+.voice-candidate-select {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(90px, 0.7fr) minmax(150px, 1fr) auto;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(180px, 1fr);
   gap: 8px;
   align-items: center;
-  padding: 7px;
-  border: 1px solid #2b3548;
+  margin-top: 8px;
+}
+.voice-candidate-select select {
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid #354157;
   border-radius: 7px;
   background: #0c1119;
-  color: #aeb8c6;
-  text-align: left;
+  color: #c6cfdb;
 }
-.voice-candidates > button.active {
-  border-color: #4d9c89;
-  background: #10221f;
-}
-.voice-candidates span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.voice-candidates audio {
+.voice-candidate-select audio {
   width: 100%;
-  height: 30px;
+  height: 34px;
 }
-.voice-candidates b {
-  color: #73cbb5;
-  font-size: 10px;
+.voice-candidate-select > span {
+  color: #687589;
+  font-size: 11px;
+  text-align: center;
 }
 .narration-mode-switch {
   display: grid;
@@ -6799,6 +6790,11 @@ select:focus {
   border-color: #7652c9;
   background: #2b2044;
   color: #d5c6f6;
+}
+.voice-check li {
+  color: #aeb8c7;
+  font-size: 13px;
+  line-height: 1.65;
 }
 .voice-remove-full {
   margin: 0 12px 14px;

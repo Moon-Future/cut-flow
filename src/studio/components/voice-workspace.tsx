@@ -352,7 +352,7 @@ export const VoiceWorkspace = ({
                 value={scene.narration}
                 onChange={(event) => updateScene(scene.id, {narration: event.target.value})}
               />
-              {scene.narrationAudio ? (
+              {scene.narrationAudio && !(scene.narrationAudioCandidates?.length ?? 0) ? (
                 <div className="segment-audio">
                   <audio controls src={`/${projectId}/${scene.narrationAudio}`} />
                   <button
@@ -374,25 +374,32 @@ export const VoiceWorkspace = ({
                 <div className="mini-wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>
               )}
               {(scene.narrationAudioCandidates?.length ?? 0) > 0 ? (
-                <div className="voice-candidates">
-                  {scene.narrationAudioCandidates?.map((candidate) => (
-                    <button
-                      key={candidate.id}
-                      className={candidate.path === scene.narrationAudio ? 'active' : ''}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        updateScene(scene.id, {narrationAudio: candidate.path});
-                      }}
-                    >
-                      <span>{candidate.label}</span>
-                      <audio
-                        controls
-                        src={`/${projectId}/${candidate.path}`}
-                        onClick={(event) => event.stopPropagation()}
-                      />
-                      <b>{candidate.path === scene.narrationAudio ? '当前使用' : '选择'}</b>
-                    </button>
-                  ))}
+                <div className="voice-candidate-select" onClick={(event) => event.stopPropagation()}>
+                  <select
+                    aria-label={`${scene.caption}配音版本`}
+                    value={scene.narrationAudio ?? ''}
+                    onChange={(event) =>
+                      updateScene(scene.id, {narrationAudio: event.target.value || null})
+                    }
+                  >
+                    <option value="">未选择</option>
+                    {scene.narrationAudioCandidates?.map((candidate, candidateIndex) => (
+                      <option key={candidate.id} value={candidate.path}>
+                        {candidate.source === 'voxcpm'
+                          ? `第 ${
+                              scene.narrationAudioCandidates
+                                ?.slice(0, candidateIndex + 1)
+                                .filter((item) => item.source === 'voxcpm').length
+                            } 次生成 · ${new Date(candidate.createdAt).toLocaleString('zh-CN')}`
+                          : `导入 · ${candidate.label}`}
+                      </option>
+                    ))}
+                  </select>
+                  {scene.narrationAudio ? (
+                    <audio controls src={`/${projectId}/${scene.narrationAudio}`} />
+                  ) : (
+                    <span>选择后可试听</span>
+                  )}
                 </div>
               ) : null}
             </article>
@@ -409,14 +416,23 @@ export const VoiceWorkspace = ({
           <div className="narration-mode-switch">
             <button
               className={(project.narrationMode ?? 'full') === 'full' ? 'active' : ''}
-              disabled={!project.narrationAudio}
-              onClick={() => onGenerated({...project, narrationMode: 'full'})}
+              onClick={() => {
+                if (!project.narrationAudio) {
+                  setMessage('尚未导入完整配音，请先导入后再切换。');
+                  return;
+                }
+                onGenerated({...project, narrationMode: 'full'});
+                setMessage('已切换为完整音频模式。');
+              }}
             >
               完整音频
             </button>
             <button
               className={project.narrationMode === 'segments' ? 'active' : ''}
-              onClick={() => onGenerated({...project, narrationMode: 'segments'})}
+              onClick={() => {
+                onGenerated({...project, narrationMode: 'segments'});
+                setMessage('已切换为分段音频模式。');
+              }}
             >
               分段音频
             </button>
