@@ -70,7 +70,7 @@ const defaults: AiSettings = {
     accessKey: '',
     secretKey: '',
     enableWatermark: true,
-    defaultDuration: '～15s',
+    defaultDuration: '10s',
   },
   qiniu: {
     accessKey: '',
@@ -103,6 +103,12 @@ const mergeSettings = (saved: Partial<AiSettings>): AiSettings => {
   };
   settings.qiniu.uploadHost = defaults.qiniu.uploadHost;
   settings.qiniu.cdnDomain = defaults.qiniu.cdnDomain;
+  if (
+    !saved.volcengineVideo?.defaultDuration ||
+    saved.volcengineVideo.defaultDuration === '～15s'
+  ) {
+    settings.volcengineVideo.defaultDuration = '10s';
+  }
   if (settings.providers.deepseek.model === 'deepseek-chat') {
     settings.providers.deepseek.model = 'deepseek-v4-flash';
   }

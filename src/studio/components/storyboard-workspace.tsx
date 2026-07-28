@@ -121,7 +121,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   const [generatingImageShotId, setGeneratingImageShotId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const generationRequestLock = useRef(new Set<string>());
-  const [videoDefaultDuration, setVideoDefaultDuration] = useState<VideoTargetDuration>('～15s');
+  const [videoDefaultDuration, setVideoDefaultDuration] = useState<VideoTargetDuration>('10s');
   const [videoWatermark, setVideoWatermark] = useState(true);
   const [videoDraft, setVideoDraft] = useState<{
     shotId: string;
