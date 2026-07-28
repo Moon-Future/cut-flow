@@ -11,7 +11,8 @@ type QiniuConfig = {
 };
 
 const QINIU_SOUTH_CHINA_UPLOAD_HOST = 'https://up-z2.qiniup.com';
-const REFERENCE_IMAGE_PREFIX = 'cl8023/project/cut-flow/reference-image';
+const REFERENCE_IMAGE_CDN_DOMAIN = 'https://qiniu.cdn.cl8023.com';
+const REFERENCE_IMAGE_PREFIX = 'project/cut-flow/reference-image';
 
 const base64Url = (value: string | Buffer) =>
   Buffer.from(value)
@@ -51,9 +52,10 @@ const uploadToQiniu = async (
   if (!response.ok) {
     throw new Error(`七牛云上传失败：HTTP ${response.status} ${await response.text()}`);
   }
-  const domain = config.cdnDomain.trim().replace(/\/+$/u, '');
-  const normalizedDomain = /^https?:\/\//u.test(domain) ? domain : `https://${domain}`;
-  return `${normalizedDomain}/${key.split('/').map(encodeURIComponent).join('/')}`;
+  return `${REFERENCE_IMAGE_CDN_DOMAIN}/${key
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')}`;
 };
 
 export const uploadFileToQiniu = async (filePath: string, config: QiniuConfig) =>

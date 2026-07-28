@@ -6115,13 +6115,29 @@ select:focus {
 }
 .reference-image-result {
   display: grid;
-  grid-template-columns: minmax(100px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(100px, auto) minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   padding: 7px 8px;
   border: 1px solid #273143;
   border-radius: 7px;
   background: #111823;
+}
+.reference-image-result > img,
+.reference-image-loading {
+  width: 48px;
+  height: 48px;
+  border-radius: 5px;
+}
+.reference-image-result > img {
+  object-fit: cover;
+}
+.reference-image-loading {
+  display: grid;
+  place-items: center;
+  background: #202938;
+  color: #758197;
+  font-size: 9px;
 }
 .reference-image-result small {
   overflow: hidden;

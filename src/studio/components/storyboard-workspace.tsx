@@ -1411,6 +1411,14 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                         </label>
                         {videoDraft.referenceImagePaths.map((referenceId) => (
                           <div className="reference-image-result" key={referenceId}>
+                            {videoDraft.referenceImageUrls[referenceId] ? (
+                              <img
+                                src={videoDraft.referenceImageUrls[referenceId]}
+                                alt={referenceId.split('-').slice(0, -2).join('-')}
+                              />
+                            ) : (
+                              <span className="reference-image-loading">上传中</span>
+                            )}
                             <span>{referenceId.split('-').slice(0, -2).join('-')}</span>
                             <small>
                               {videoDraft.referenceImageUrls[referenceId]

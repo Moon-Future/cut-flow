@@ -76,7 +76,7 @@ const defaults: AiSettings = {
     accessKey: '',
     secretKey: '',
     bucket: '',
-    cdnDomain: '',
+    cdnDomain: 'https://qiniu.cdn.cl8023.com',
     uploadHost: 'https://up-z2.qiniup.com',
   },
 };
@@ -102,6 +102,7 @@ const mergeSettings = (saved: Partial<AiSettings>): AiSettings => {
     qiniu: {...defaults.qiniu, ...saved.qiniu},
   };
   settings.qiniu.uploadHost = defaults.qiniu.uploadHost;
+  settings.qiniu.cdnDomain = defaults.qiniu.cdnDomain;
   if (settings.providers.deepseek.model === 'deepseek-chat') {
     settings.providers.deepseek.model = 'deepseek-v4-flash';
   }
@@ -166,7 +167,7 @@ export const saveAiSettings = async (
       accessKey: input.qiniu?.accessKey?.trim() || current.qiniu.accessKey,
       secretKey: input.qiniu?.secretKey?.trim() || current.qiniu.secretKey,
       bucket: (input.qiniu?.bucket ?? current.qiniu.bucket).trim(),
-      cdnDomain: (input.qiniu?.cdnDomain ?? current.qiniu.cdnDomain).trim(),
+      cdnDomain: defaults.qiniu.cdnDomain,
       uploadHost: 'https://up-z2.qiniup.com',
     },
   };

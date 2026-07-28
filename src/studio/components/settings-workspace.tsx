@@ -495,14 +495,8 @@ export const SettingsWorkspace = () => {
             <label>
               <span>CDN 域名</span>
               <input
-                value={settings.qiniu.cdnDomain}
-                placeholder="例如：https://cdn.example.com"
-                onChange={(event) =>
-                  setSettings({
-                    ...settings,
-                    qiniu: {...settings.qiniu, cdnDomain: event.target.value},
-                  })
-                }
+                value="https://qiniu.cdn.cl8023.com"
+                disabled
               />
             </label>
             <label>
@@ -518,7 +512,7 @@ export const SettingsWorkspace = () => {
             </label>
             <label>
               <span>对象目录</span>
-              <input value="cl8023/project/cut-flow/reference-image/" disabled />
+              <input value="project/cut-flow/reference-image/" disabled />
             </label>
           </div>
         </article>

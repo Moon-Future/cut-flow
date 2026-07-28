@@ -968,10 +968,9 @@ const localApi = (): Plugin => ({
             if (
               !aiSettings.qiniu.accessKey ||
               !aiSettings.qiniu.secretKey ||
-              !aiSettings.qiniu.bucket ||
-              !aiSettings.qiniu.cdnDomain
+              !aiSettings.qiniu.bucket
             ) {
-              sendJson(response, 400, {error: '请先在设置中配置七牛云 AK、SK、Bucket 和 CDN 域名'});
+              sendJson(response, 400, {error: '请先在设置中配置七牛云 AK、SK 和 Bucket'});
               return;
             }
             const content = await readBody(request);
