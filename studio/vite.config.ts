@@ -675,12 +675,10 @@ const localApi = (): Plugin => ({
               text?: string;
               controlInstruction?: string;
               referenceAudioPath?: string;
-              promptText?: string;
             };
             const text = input.text?.trim();
-            const promptText = input.promptText?.trim();
-            if (!input.sceneId || !text || !input.referenceAudioPath || !promptText) {
-              sendJson(response, 400, {error: '极致克隆需要参考音频、参考音频原文和段落文案'});
+            if (!input.sceneId || !text || !input.referenceAudioPath) {
+              sendJson(response, 400, {error: '声音克隆需要参考音频和段落文案'});
               return;
             }
             const demoBase = 'https://openbmb-voxcpm-demo.hf.space';
@@ -723,8 +721,8 @@ const localApi = (): Plugin => ({
                     orig_name: path.basename(referenceFile),
                     meta: {_type: 'gradio.FileData'},
                   },
-                  true,
-                  promptText,
+                  false,
+                  '',
                   2,
                   true,
                   true,

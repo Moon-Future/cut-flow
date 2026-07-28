@@ -22,12 +22,9 @@ export const VoiceWorkspace = ({
   const {selectedSceneId, selectScene, updateScene} = useStudioStore();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [controlInstruction, setControlInstruction] = useState(
-    '自然清晰的中文讲解，语速适中，避免播音腔',
-  );
+  const [controlInstruction, setControlInstruction] = useState('');
   const [referenceAudioPath, setReferenceAudioPath] = useState('');
   const [referenceAudioName, setReferenceAudioName] = useState('');
-  const [promptText, setPromptText] = useState('');
   const fullAudioInput = useRef<HTMLInputElement>(null);
   const referenceAudioInput = useRef<HTMLInputElement>(null);
   const selectedScene = project.scenes.find((scene) => scene.id === selectedSceneId);
@@ -84,8 +81,8 @@ export const VoiceWorkspace = ({
 
   const generateVoxCpm = async () => {
     if (!selectedScene) return;
-    if (!referenceAudioPath || !promptText.trim()) {
-      setMessage('请先上传参考音频并填写参考音频中的准确原文。');
+    if (!referenceAudioPath) {
+      setMessage('请先上传参考音频。');
       return;
     }
     setBusy(`voxcpm-${selectedScene.id}`);
@@ -99,7 +96,6 @@ export const VoiceWorkspace = ({
           text: selectedScene.narration,
           controlInstruction,
           referenceAudioPath,
-          promptText,
         }),
       });
       const value = (await response.json()) as {audioPath?: string; error?: string};
@@ -157,7 +153,7 @@ export const VoiceWorkspace = ({
               <strong>VoxCPM 公共体验</strong>
               <span>实验性</span>
             </div>
-            <p>使用参考音频和准确原文续写当前段落，尽量还原音色与表达细节。</p>
+            <p>使用参考音频克隆音色，并生成当前选中段落的配音。</p>
             <input
               ref={referenceAudioInput}
               hidden
@@ -171,7 +167,7 @@ export const VoiceWorkspace = ({
                   .then((audioPath) => {
                     setReferenceAudioPath(audioPath);
                     setReferenceAudioName(file.name);
-                    setMessage('参考音频已准备，请填写该音频中的准确原文。');
+                    setMessage('参考音频已准备，可以生成当前段落音频。');
                   })
                   .catch((error: unknown) =>
                     setMessage(error instanceof Error ? error.message : String(error)),
@@ -192,15 +188,6 @@ export const VoiceWorkspace = ({
               </span>
             </button>
             <label>
-              <span>参考音频原文</span>
-              <textarea
-                rows={3}
-                value={promptText}
-                placeholder="逐字填写参考音频中说出的内容"
-                onChange={(event) => setPromptText(event.target.value)}
-              />
-            </label>
-            <label>
               <span>当前段落文案</span>
               <textarea rows={5} value={selectedScene?.narration ?? ''} readOnly />
             </label>
@@ -214,11 +201,11 @@ export const VoiceWorkspace = ({
             </label>
             <button
               className="voice-action-button voxcpm-action"
-              disabled={!selectedScene || !referenceAudioPath || !promptText.trim() || Boolean(busy)}
+              disabled={!selectedScene || !referenceAudioPath || Boolean(busy)}
               onClick={() => void generateVoxCpm()}
             >
               <b>◆</b>
-              <span>{busy?.startsWith('voxcpm-') ? '正在进行极致克隆…' : '极致克隆当前段落'}</span>
+              <span>{busy?.startsWith('voxcpm-') ? '正在生成音频…' : '生成音频'}</span>
             </button>
             <small>文本会发送到公开的 Hugging Face Demo，请勿提交敏感内容。</small>
           </section>
