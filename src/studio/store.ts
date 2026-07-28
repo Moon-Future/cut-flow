@@ -92,6 +92,8 @@ export const useStudioStore = create<StudioState>((set) => ({
               overlayOpacity: 0.42,
               accentColor: '#ffcf4a',
               backgroundScale: 1,
+              backgroundScaleX: 1,
+              backgroundScaleY: 1,
               backgroundX: 50,
               backgroundY: 50,
               textLayers: [],

@@ -256,6 +256,8 @@ export const projectFileSchema = z
         overlayOpacity: z.number().min(0).max(0.85).default(0.42),
         accentColor: z.string().regex(/^#[0-9a-f]{6}$/iu).default('#ffcf4a'),
         backgroundScale: z.number().min(1).max(3).default(1),
+        backgroundScaleX: z.number().min(0.5).max(3).optional(),
+        backgroundScaleY: z.number().min(0.5).max(3).optional(),
         backgroundX: z.number().min(0).max(100).default(50),
         backgroundY: z.number().min(0).max(100).default(50),
         textLayers: z

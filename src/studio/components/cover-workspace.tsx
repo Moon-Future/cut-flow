@@ -18,6 +18,8 @@ type CoverTemplate = {
     NonNullable<ProjectFile['cover']>,
     | 'overlayOpacity'
     | 'backgroundScale'
+    | 'backgroundScaleX'
+    | 'backgroundScaleY'
     | 'backgroundX'
     | 'backgroundY'
     | 'textLayers'
@@ -34,6 +36,53 @@ const characterStyle = (layer: CoverTextLayer, index: number) => {
     }),
     {fontSize: layer.fontSize, color: layer.color},
   );
+};
+
+const createCoverDraft = (project: ProjectFile) => {
+  const legacyAlign = project.cover?.textAlign ?? ('left' as const);
+  const textLayers: CoverTextLayer[] = project.cover?.textLayers ?? [
+    {
+      id: 'cover-title',
+      text: project.cover?.title || project.project.title,
+      x: legacyAlign === 'center' ? 50 : 9,
+      y: 56,
+      fontFamily: 'Microsoft YaHei',
+      fontSize: 88,
+      color: '#ffffff',
+      fontWeight: '800',
+      textAlign: legacyAlign,
+      canvasAlign: legacyAlign === 'center' ? 'center' : 'left',
+    },
+    {
+      id: 'cover-subtitle',
+      text: project.cover?.subtitle ?? '',
+      x: legacyAlign === 'center' ? 50 : 9,
+      y: 72,
+      fontFamily: 'Microsoft YaHei',
+      fontSize: 40,
+      color: project.cover?.accentColor ?? '#ffcf4a',
+      fontWeight: '700',
+      textAlign: legacyAlign,
+      canvasAlign: legacyAlign === 'center' ? 'center' : 'left',
+    },
+  ];
+  return {
+    sourcePath: project.cover?.sourcePath ?? null,
+    outputPath: project.cover?.outputPath ?? null,
+    title: project.cover?.title || project.project.title,
+    subtitle: project.cover?.subtitle ?? '',
+    textAlign: legacyAlign,
+    overlayOpacity: project.cover?.overlayOpacity ?? 0.42,
+    accentColor: project.cover?.accentColor ?? '#ffcf4a',
+    backgroundScale: project.cover?.backgroundScale ?? 1,
+    backgroundScaleX:
+      project.cover?.backgroundScaleX ?? project.cover?.backgroundScale ?? 1,
+    backgroundScaleY:
+      project.cover?.backgroundScaleY ?? project.cover?.backgroundScale ?? 1,
+    backgroundX: project.cover?.backgroundX ?? 50,
+    backgroundY: project.cover?.backgroundY ?? 50,
+    textLayers,
+  };
 };
 
 const loadImage = (src: string) =>
@@ -85,45 +134,7 @@ const drawStyledCoverText = (
 
 export const CoverWorkspace = ({project, projectId}: Props) => {
   const updateProjectCover = useStudioStore((state) => state.updateCover);
-  const defaultTextLayers: CoverTextLayer[] = [
-    {
-      id: 'cover-title',
-      text: project.cover?.title || project.project.title,
-      x: project.cover?.textAlign === 'center' ? 50 : 9,
-      y: 56,
-      fontFamily: 'Microsoft YaHei',
-      fontSize: 88,
-      color: '#ffffff',
-      fontWeight: '800',
-      textAlign: project.cover?.textAlign ?? 'left',
-      canvasAlign: project.cover?.textAlign === 'center' ? 'center' : 'left',
-    },
-    {
-      id: 'cover-subtitle',
-      text: project.cover?.subtitle ?? '',
-      x: project.cover?.textAlign === 'center' ? 50 : 9,
-      y: 72,
-      fontFamily: 'Microsoft YaHei',
-      fontSize: 40,
-      color: project.cover?.accentColor ?? '#ffcf4a',
-      fontWeight: '700',
-      textAlign: project.cover?.textAlign ?? 'left',
-      canvasAlign: project.cover?.textAlign === 'center' ? 'center' : 'left',
-    },
-  ];
-  const cover = {
-    sourcePath: project.cover?.sourcePath ?? null,
-    outputPath: project.cover?.outputPath ?? null,
-    title: project.cover?.title || project.project.title,
-    subtitle: project.cover?.subtitle ?? '',
-    textAlign: project.cover?.textAlign ?? ('left' as const),
-    overlayOpacity: project.cover?.overlayOpacity ?? 0.42,
-    accentColor: project.cover?.accentColor ?? '#ffcf4a',
-    backgroundScale: project.cover?.backgroundScale ?? 1,
-    backgroundX: project.cover?.backgroundX ?? 50,
-    backgroundY: project.cover?.backgroundY ?? 50,
-    textLayers: project.cover?.textLayers ?? defaultTextLayers,
-  };
+  const [cover, setCover] = useState(() => createCoverDraft(project));
   const [busy, setBusy] = useState<'upload' | 'save' | null>(null);
   const [message, setMessage] = useState('');
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(
@@ -134,7 +145,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
   const [partialColor, setPartialColor] = useState('#ffcf4a');
   const [templates, setTemplates] = useState<CoverTemplate[]>([]);
   const [templateName, setTemplateName] = useState('');
-  const [dragPreview, setDragPreview] = useState<{
+  const dragPreviewRef = useRef<{
     kind: 'background' | 'text';
     id?: string;
     x: number;
@@ -142,6 +153,8 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
   } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const backgroundImageRef = useRef<HTMLImageElement>(null);
+  const textElementRefs = useRef(new Map<string, HTMLDivElement>());
   const interaction = useRef<{
     kind: 'background' | 'text';
     id?: string;
@@ -150,8 +163,6 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
     originalX: number;
     originalY: number;
   } | null>(null);
-  const dragPreviewRef = useRef<typeof dragPreview>(null);
-  const dragFrame = useRef<number | null>(null);
   useEffect(() => {
     try {
       setTemplates(
@@ -181,7 +192,8 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
     [project.scenes],
   );
 
-  const updateCover = (patch: Partial<typeof cover>) => updateProjectCover(patch);
+  const updateCover = (patch: Partial<typeof cover>) =>
+    setCover((current) => ({...current, ...patch}));
   const updateTextLayer = (id: string, patch: Partial<CoverTextLayer>) =>
     updateCover({
       textLayers: cover.textLayers.map((layer) => (layer.id === id ? {...layer, ...patch} : layer)),
@@ -198,13 +210,24 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       y: ((event.clientY - bounds.top) / bounds.height) * 100,
     };
   };
-  const queueDragPreview = (preview: NonNullable<typeof dragPreview>) => {
-    dragPreviewRef.current = preview;
-    if (dragFrame.current !== null) return;
-    dragFrame.current = window.requestAnimationFrame(() => {
-      setDragPreview(dragPreviewRef.current);
-      dragFrame.current = null;
-    });
+  const applyBackgroundTransform = (x: number, y: number) => {
+    if (!backgroundImageRef.current) return;
+    backgroundImageRef.current.style.transform =
+      `translate(${(50 - x) * 0.55}%, ${(50 - y) * 0.55}%) ` +
+      `scale(${cover.backgroundScaleX}, ${cover.backgroundScaleY})`;
+  };
+  const applyTextPosition = (id: string, x: number, y: number) => {
+    const element = textElementRefs.current.get(id);
+    if (!element) return;
+    const layer = cover.textLayers.find((item) => item.id === id);
+    element.style.left = `${x}%`;
+    element.style.top = `${y}%`;
+    element.style.transform =
+      layer?.textAlign === 'center'
+        ? 'translateX(-50%)'
+        : layer?.textAlign === 'right'
+          ? 'translateX(-100%)'
+          : '';
   };
   const handlePointerMove = (event: ReactPointerEvent) => {
     const active = interaction.current;
@@ -218,7 +241,8 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         x: Math.max(0, Math.min(100, active.originalX - deltaX)),
         y: Math.max(0, Math.min(100, active.originalY - deltaY)),
       } as const;
-      queueDragPreview(preview);
+      dragPreviewRef.current = preview;
+      applyBackgroundTransform(preview.x, preview.y);
     } else if (active.kind === 'text' && active.id) {
       const preview = {
         kind: 'text',
@@ -226,11 +250,8 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         x: Math.max(0, Math.min(100, active.originalX + deltaX)),
         y: Math.max(0, Math.min(100, active.originalY + deltaY)),
       } as const;
-      queueDragPreview(preview);
-    }
-    if (dragFrame.current !== null) {
-      window.cancelAnimationFrame(dragFrame.current);
-      dragFrame.current = null;
+      dragPreviewRef.current = preview;
+      applyTextPosition(preview.id, preview.x, preview.y);
     }
   };
   const endInteraction = () => {
@@ -245,7 +266,6 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       });
     }
     dragPreviewRef.current = null;
-    setDragPreview(null);
     interaction.current = null;
   };
   const applyPartialStyle = () => {
@@ -306,11 +326,9 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       const context = canvas.getContext('2d');
       if (!context) throw new Error('浏览器无法创建封面画布');
       const image = await loadImage(mediaUrl(projectId, cover.sourcePath));
-      const scale =
-        Math.max(canvas.width / image.width, canvas.height / image.height) *
-        cover.backgroundScale;
-      const width = image.width * scale;
-      const height = image.height * scale;
+      const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+      const width = image.width * scale * cover.backgroundScaleX;
+      const height = image.height * scale * cover.backgroundScaleY;
       const movableX = Math.max(0, (width - canvas.width) / 2);
       const movableY = Math.max(0, (height - canvas.height) / 2);
       const offsetX = ((cover.backgroundX - 50) / 50) * movableX;
@@ -364,7 +382,9 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       });
       const value = (await response.json()) as {assetPath?: string; error?: string};
       if (!response.ok || !value.assetPath) throw new Error(value.error ?? '封面保存失败');
-      updateCover({outputPath: value.assetPath});
+      const savedCover = {...cover, outputPath: value.assetPath};
+      setCover(savedCover);
+      updateProjectCover(savedCover);
       setMessage('封面已生成并保存到项目，可随生产包导出。');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -423,15 +443,28 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             <small>放大后可调整主体在安全区内的位置</small>
           </header>
           <label>
-            <span>缩放 {cover.backgroundScale.toFixed(2)}×</span>
+            <span>横向缩放 {cover.backgroundScaleX.toFixed(2)}×</span>
             <input
               type="range"
-              min="1"
+              min="0.5"
               max="3"
               step="0.05"
-              value={cover.backgroundScale}
+              value={cover.backgroundScaleX}
               onChange={(event) =>
-                updateCover({backgroundScale: Number(event.target.value), outputPath: null})
+                updateCover({backgroundScaleX: Number(event.target.value), outputPath: null})
+              }
+            />
+          </label>
+          <label>
+            <span>纵向缩放 {cover.backgroundScaleY.toFixed(2)}×</span>
+            <input
+              type="range"
+              min="0.5"
+              max="3"
+              step="0.05"
+              value={cover.backgroundScaleY}
+              onChange={(event) =>
+                updateCover({backgroundScaleY: Number(event.target.value), outputPath: null})
               }
             />
           </label>
@@ -722,6 +755,8 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                   settings: {
                     overlayOpacity: cover.overlayOpacity,
                     backgroundScale: cover.backgroundScale,
+                    backgroundScaleX: cover.backgroundScaleX,
+                    backgroundScaleY: cover.backgroundScaleY,
                     backgroundX: cover.backgroundX,
                     backgroundY: cover.backgroundY,
                     textLayers: cover.textLayers,
@@ -818,27 +853,27 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             onPointerCancel={endInteraction}
             onWheel={(event) => {
               event.preventDefault();
+              const delta = event.deltaY < 0 ? 0.05 : -0.05;
               updateCover({
-                backgroundScale: Math.max(
-                  1,
-                  Math.min(3, cover.backgroundScale + (event.deltaY < 0 ? 0.05 : -0.05)),
-                ),
+                backgroundScaleX: Math.max(0.5, Math.min(3, cover.backgroundScaleX + delta)),
+                backgroundScaleY: Math.max(0.5, Math.min(3, cover.backgroundScaleY + delta)),
                 outputPath: null,
               });
             }}
           >
             {cover.sourcePath ? (
               <img
+                ref={backgroundImageRef}
                 className="cover-background-image"
                 src={mediaUrl(projectId, cover.sourcePath)}
                 alt=""
+                draggable={false}
+                onDragStart={(event) => event.preventDefault()}
                 style={{
-                  transform: `translate(${(50 - (
-                    dragPreview?.kind === 'background' ? dragPreview.x : cover.backgroundX
-                  )) * 0.55}%, ${
-                    (50 - (dragPreview?.kind === 'background' ? dragPreview.y : cover.backgroundY)) *
-                    0.55
-                  }%) scale(${cover.backgroundScale})`,
+                  transform:
+                    `translate(${(50 - cover.backgroundX) * 0.55}%, ${
+                      (50 - cover.backgroundY) * 0.55
+                    }%) scale(${cover.backgroundScaleX}, ${cover.backgroundScaleY})`,
                 }}
               />
             ) : null}
@@ -852,21 +887,17 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             {cover.textLayers.map((layer) =>
               layer.text ? (
                 <div
+                  ref={(element) => {
+                    if (element) textElementRefs.current.set(layer.id, element);
+                    else textElementRefs.current.delete(layer.id);
+                  }}
                   className={`cover-text-preview-layer ${
                     selectedLayerId === layer.id ? 'selected' : ''
                   }`}
                   key={layer.id}
                   style={{
-                    left: `${
-                      dragPreview?.kind === 'text' && dragPreview.id === layer.id
-                        ? dragPreview.x
-                        : layer.x
-                    }%`,
-                    top: `${
-                      dragPreview?.kind === 'text' && dragPreview.id === layer.id
-                        ? dragPreview.y
-                        : layer.y
-                    }%`,
+                    left: `${layer.x}%`,
+                    top: `${layer.y}%`,
                     fontFamily: layer.fontFamily,
                     fontSize: `${Math.max(9, layer.fontSize * 0.42)}px`,
                     fontWeight: layer.fontWeight,

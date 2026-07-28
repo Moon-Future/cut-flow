@@ -6522,6 +6522,9 @@ select:focus {
   object-fit: cover;
   transform-origin: center;
   will-change: transform;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 .cover-dark-layer {
   position: absolute;
