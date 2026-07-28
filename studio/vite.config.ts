@@ -683,6 +683,7 @@ const localApi = (): Plugin => ({
             }
             sendJson(response, 200, {
               narrationAudio: scene.narrationAudio ?? null,
+              narrationAudioCandidates: scene.narrationAudioCandidates ?? [],
               task: scene.voiceGenerationTask ?? null,
             });
             return;
@@ -747,6 +748,16 @@ const localApi = (): Plugin => ({
                 const target = latest.scenes.find((item) => item.id === input.sceneId);
                 if (!target || target.voiceGenerationTask?.id !== task.id) return;
                 target.narrationAudio = value.audioPath;
+                target.narrationAudioCandidates = [
+                  ...(target.narrationAudioCandidates ?? []),
+                  {
+                    id: `voice-${randomUUID()}`,
+                    path: value.audioPath,
+                    label: `VoxCPM · 第 ${(target.narrationAudioCandidates?.filter((item) => item.source === 'voxcpm').length ?? 0) + 1} 次生成`,
+                    source: 'voxcpm',
+                    createdAt: new Date().toISOString(),
+                  },
+                ];
                 target.voiceGenerationTask = {
                   ...task,
                   status: 'succeeded',

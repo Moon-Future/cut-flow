@@ -35,9 +35,24 @@ export const VideoComposition = ({
           />
         </Sequence>
       ))}
-      {narrationAvailable && project.narrationAudio ? (
+      {(project.narrationMode ?? 'full') === 'full' &&
+      narrationAvailable &&
+      project.narrationAudio ? (
         <Audio src={staticFile(`${assetBasePath}/${project.narrationAudio}`)} />
       ) : null}
+      {project.narrationMode === 'segments'
+        ? timeline.scenes.map(({scene, from, durationInFrames}) =>
+            scene.narrationAudio ? (
+              <Sequence
+                key={`voice-${scene.id}`}
+                from={from}
+                durationInFrames={durationInFrames}
+              >
+                <Audio src={staticFile(`${assetBasePath}/${scene.narrationAudio}`)} />
+              </Sequence>
+            ) : null,
+          )
+        : null}
     </AbsoluteFill>
   );
 };

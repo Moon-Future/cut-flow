@@ -182,7 +182,34 @@ export const createEditingPackage = async (
   }
 
   let narrationFile: string | null = null;
-  if (project.narrationAudio) {
+  if (project.narrationMode === 'segments') {
+    const segmentDirectory = path.join(directories.voice, 'segments');
+    await mkdir(segmentDirectory, {recursive: true});
+    for (const [index, scene] of project.scenes.entries()) {
+      if (!scene.narrationAudio) {
+        warnings.push({
+          code: 'MISSING_NARRATION',
+          message: `段落 ${index + 1} 尚未选择配音`,
+        });
+        continue;
+      }
+      const source = resolveInside(projectRoot, scene.narrationAudio);
+      if (!(await exists(source))) {
+        warnings.push({
+          code: 'MISSING_NARRATION',
+          message: `段落 ${index + 1} 配音文件不存在：${scene.narrationAudio}`,
+          sourcePath: scene.narrationAudio,
+        });
+        continue;
+      }
+      const extension = path.extname(source).toLowerCase() || '.wav';
+      await copyFile(
+        source,
+        path.join(segmentDirectory, `${String(index + 1).padStart(2, '0')}-${scene.id}${extension}`),
+      );
+    }
+    narrationFile = '01-voice/segments/';
+  } else if (project.narrationAudio) {
     const source = resolveInside(projectRoot, project.narrationAudio);
     if (await exists(source)) {
       const fileName = `narration${path.extname(source).toLowerCase() || '.wav'}`;

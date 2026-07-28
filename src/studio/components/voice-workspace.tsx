@@ -55,7 +55,7 @@ export const VoiceWorkspace = ({
     setMessage('');
     try {
       const audioPath = await uploadAudio(file);
-      onGenerated({...project, narrationAudio: audioPath});
+      onGenerated({...project, narrationAudio: audioPath, narrationMode: 'full'});
       onAudioReady();
       setMessage('完整配音已导入，可在右侧试听。');
     } catch (error) {
@@ -70,10 +70,23 @@ export const VoiceWorkspace = ({
     setMessage('');
     try {
       const audioPath = await uploadAudio(file);
+      const candidate = {
+        id: `voice-${Date.now()}`,
+        path: audioPath,
+        label: file.name,
+        source: 'import' as const,
+        createdAt: new Date().toISOString(),
+      };
       onGenerated({
         ...project,
         scenes: project.scenes.map((scene) =>
-          scene.id === sceneId ? {...scene, narrationAudio: audioPath} : scene,
+          scene.id === sceneId
+            ? {
+                ...scene,
+                narrationAudio: audioPath,
+                narrationAudioCandidates: [...(scene.narrationAudioCandidates ?? []), candidate],
+              }
+            : scene,
         ),
       });
       setMessage('当前段落配音已导入。');
@@ -131,11 +144,14 @@ export const VoiceWorkspace = ({
           .then(
             (value: {
               narrationAudio?: string | null;
+              narrationAudioCandidates?: typeof scene.narrationAudioCandidates;
               task?: typeof scene.voiceGenerationTask;
             }) => {
               if (!value.task) return;
               updateScene(scene.id, {
                 narrationAudio: value.narrationAudio ?? scene.narrationAudio,
+                narrationAudioCandidates:
+                  value.narrationAudioCandidates ?? scene.narrationAudioCandidates,
                 voiceGenerationTask: value.task,
               });
               if (value.task.status === 'succeeded') {
@@ -351,12 +367,34 @@ export const VoiceWorkspace = ({
                       });
                     }}
                   >
-                    移除
+                    取消选择
                   </button>
                 </div>
               ) : (
                 <div className="mini-wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>
               )}
+              {(scene.narrationAudioCandidates?.length ?? 0) > 0 ? (
+                <div className="voice-candidates">
+                  {scene.narrationAudioCandidates?.map((candidate) => (
+                    <button
+                      key={candidate.id}
+                      className={candidate.path === scene.narrationAudio ? 'active' : ''}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        updateScene(scene.id, {narrationAudio: candidate.path});
+                      }}
+                    >
+                      <span>{candidate.label}</span>
+                      <audio
+                        controls
+                        src={`/${projectId}/${candidate.path}`}
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                      <b>{candidate.path === scene.narrationAudio ? '当前使用' : '选择'}</b>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>
@@ -365,15 +403,36 @@ export const VoiceWorkspace = ({
       <aside className="voice-preview">
         <section className="stage-panel">
           <header>
-            <strong>完整配音预览</strong>
+            <strong>主配音模式</strong>
             <span>{Math.round(duration)} 秒</span>
           </header>
+          <div className="narration-mode-switch">
+            <button
+              className={(project.narrationMode ?? 'full') === 'full' ? 'active' : ''}
+              disabled={!project.narrationAudio}
+              onClick={() => onGenerated({...project, narrationMode: 'full'})}
+            >
+              完整音频
+            </button>
+            <button
+              className={project.narrationMode === 'segments' ? 'active' : ''}
+              onClick={() => onGenerated({...project, narrationMode: 'segments'})}
+            >
+              分段音频
+            </button>
+          </div>
           {audioAvailable && project.narrationAudio ? (
             <>
               <audio controls src={`/${projectId}/${project.narrationAudio}`} />
               <button
                 className="text-action voice-remove-full"
-                onClick={() => onGenerated({...project, narrationAudio: null})}
+                onClick={() =>
+                  onGenerated({
+                    ...project,
+                    narrationAudio: null,
+                    narrationMode: 'segments',
+                  })
+                }
               >
                 移除完整配音
               </button>
@@ -390,6 +449,7 @@ export const VoiceWorkspace = ({
           <ul>
             <li>✓ 文案段落完整</li>
             <li>{project.scenes.filter((scene) => scene.narrationAudio).length} / {project.scenes.length} 段已有独立配音</li>
+            <li>当前导出：{project.narrationMode === 'segments' ? '分段音频' : '完整音频'}</li>
             <li>{audioAvailable ? '✓ 完整配音已就绪' : '○ 可导入完整配音作为主音轨'}</li>
             <li>○ 建议试听并检查配音与镜头时长</li>
           </ul>

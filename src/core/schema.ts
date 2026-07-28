@@ -163,6 +163,17 @@ export const sceneSchema = z.object({
   copyRole: z.enum(['digital-human', 'voiceover', 'visual-explanation']).optional(),
   narration: z.string(),
   narrationAudio: z.string().min(1).nullable().optional(),
+  narrationAudioCandidates: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        path: z.string().min(1),
+        label: z.string().min(1),
+        source: z.enum(['import', 'voxcpm']),
+        createdAt: z.string().min(1),
+      }),
+    )
+    .optional(),
   voiceGenerationTask: generationTaskSchema.nullable().optional(),
   caption: z.string().min(1),
   assetType: z.enum(['image', 'video']),
@@ -234,6 +245,7 @@ export const projectFileSchema = z
       captionStyle: z.string().optional(),
     }),
     narrationAudio: z.string().min(1).nullable().optional(),
+    narrationMode: z.enum(['full', 'segments']).optional(),
     scenes: z.array(sceneSchema).min(1),
     copyVersions: z.array(copyVersionSchema).optional(),
     activeCopyVersionId: z.string().nullable().optional(),

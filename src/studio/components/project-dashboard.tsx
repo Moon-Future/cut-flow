@@ -67,7 +67,10 @@ export const ProjectDashboard = ({
     project.scenes.some(
       (scene) => scene.narration.trim() && !scene.narration.includes('生成视频脚本'),
     );
-  const voiceReady = Boolean(project.narrationAudio);
+  const voiceReady =
+    project.narrationMode === 'segments'
+      ? project.scenes.every((scene) => Boolean(scene.narrationAudio))
+      : Boolean(project.narrationAudio);
   const plannedShots = project.scenes.flatMap((scene) => scene.shots ?? []);
   const readyShots = plannedShots.filter(
     (shot) =>
