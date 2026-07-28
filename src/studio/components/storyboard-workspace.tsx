@@ -23,6 +23,7 @@ type Props = {
   onGoToAssets: (shotId: string) => void;
 };
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
+const videoFilePattern = /\.(mp4|mov|webm|mkv)(?:[?#].*)?$/i;
 const activeGenerationStatuses = new Set<GenerationTask['status']>(['queued', 'running']);
 const generationStatusLabel = (status: GenerationTask['status']) =>
   ({
@@ -138,6 +139,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     title: string;
   } | null>(null);
   const [previewShotId, setPreviewShotId] = useState<string | null>(null);
+  const [shotPreviewOpen, setShotPreviewOpen] = useState(false);
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
   const selectedIndex = project.scenes.findIndex((scene) => scene.id === selected.id);
@@ -145,6 +147,26 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   const previewShot =
     selected.shots?.find((shot) => shot.id === previewShotId) ?? selected.shots?.[0];
   const previewDuration = previewShot?.duration ?? selected.duration;
+  const previewAssets = previewShot
+    ? [
+        ...(previewShot.selectedAsset
+          ? [{path: previewShot.selectedAsset, role: '主素材'}]
+          : []),
+        ...(previewShot.layers ?? [])
+          .filter((layer) => Boolean(layer.assetPath))
+          .map((layer) => ({
+            path: layer.assetPath!,
+            role:
+              layer.role === 'background'
+                ? '背景'
+                : layer.position.x < 0.5
+                  ? '左侧图层'
+                  : '右侧图层',
+          })),
+      ].filter(
+        (asset, index, assets) => assets.findIndex((item) => item.path === asset.path) === index,
+      )
+    : [];
   const selectedProgress = getSceneProgress(selected);
   const projectProgress = project.scenes.reduce(
     (progress, scene) => {
@@ -477,9 +499,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         <header>
           <div>
             <strong>
-              段落 {String(selectedIndex + 1).padStart(2, '0')} · {selected.caption}
+              素材获取 · 段落 {String(selectedIndex + 1).padStart(2, '0')}
             </strong>
-            <span>编辑旁白、画面意图和镜头计划</span>
+            <span>搜索、下载或生成素材，再添加到当前镜头</span>
           </div>
         </header>
         <div className="storyboard-purpose-note">
@@ -1316,37 +1338,111 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       <aside className="board-preview">
         <section className="stage-panel">
           <header>
-            <strong>当前镜头预览</strong>
-            <span>{project.project.width < project.project.height ? '9:16' : '16:9'}</span>
+            <div>
+              <strong>当前镜头素材</strong>
+              <span>{previewAssets.length} 个已选素材</span>
+            </div>
+            <button
+              type="button"
+              disabled={!previewShot}
+              onClick={() => setShotPreviewOpen(true)}
+            >
+              预览镜头
+            </button>
           </header>
-          <div className="board-media-preview">
-            <Player
-              key={`${selected.id}-${previewShot?.id ?? 'scene'}`}
-              component={VideoComposition}
-              inputProps={{
-                project: previewProject,
-                narrationAvailable: false,
-                assetBasePath: projectId,
-              }}
-              durationInFrames={Math.max(1, Math.round(previewDuration * project.project.fps))}
-              compositionWidth={project.project.width}
-              compositionHeight={project.project.height}
-              fps={project.project.fps}
-              controls
-              style={{
-                width: '100%',
-                maxHeight: 370,
-                aspectRatio: `${project.project.width} / ${project.project.height}`,
-                margin: '0 auto',
-              }}
-            />
+          <div className="current-shot-assets">
+            {previewAssets.map((asset, index) => (
+              <button
+                type="button"
+                key={`${asset.path}-${asset.role}`}
+                onClick={() =>
+                  setMediaPreview({
+                    kind: videoFilePattern.test(asset.path) ? 'video' : 'image',
+                    src: mediaUrl(projectId, asset.path),
+                    title: `${asset.role} · ${asset.path.split('/').at(-1)}`,
+                  })
+                }
+              >
+                <i>
+                  {videoFilePattern.test(asset.path) ? (
+                    <video src={mediaUrl(projectId, asset.path)} muted preload="metadata" />
+                  ) : (
+                    <img src={mediaUrl(projectId, asset.path)} alt="" />
+                  )}
+                </i>
+                <span>
+                  <strong>{asset.role}</strong>
+                  <small>{asset.path.split('/').at(-1)}</small>
+                </span>
+                <em>{index + 1}</em>
+              </button>
+            ))}
+            {!previewAssets.length ? (
+              <div className="current-shot-assets-empty">
+                <strong>当前镜头还没有素材</strong>
+                <span>从中间的搜索或生成结果中选择素材</span>
+                {previewShot ? (
+                  <button type="button" onClick={() => onGoToAssets(previewShot.id)}>
+                    打开项目素材库
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-          <p className="board-preview-note">
-            {previewShot
-              ? `正在预览：${previewShot.visualPurpose}。这里只播放当前镜头，结束后不会自动跳到下一个。`
-              : '当前段落还没有拆分视觉镜头，暂时预览段落兜底画面。'}
-          </p>
         </section>
+        {previewShot ? (
+          <section className="stage-panel shot-effect-panel">
+            <header>
+              <div>
+                <strong>画面效果</strong>
+                <span>由 Remotion 在预览和导出时实时渲染</span>
+              </div>
+            </header>
+            <label>
+              <span>镜头运动</span>
+              <select
+                value={motionPlanFor(previewShot).preset}
+                onChange={(event) =>
+                  updateShot(previewShot, {
+                    motionPlan: {
+                      ...motionPlanFor(previewShot),
+                      preset: event.target.value as NonNullable<
+                        VisualShot['motionPlan']
+                      >['preset'],
+                    },
+                  })
+                }
+              >
+                {Object.entries(motionPresetLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>运动强度 · {Math.round(motionPlanFor(previewShot).intensity * 100)}%</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={motionPlanFor(previewShot).intensity}
+                onChange={(event) =>
+                  updateShot(previewShot, {
+                    motionPlan: {
+                      ...motionPlanFor(previewShot),
+                      intensity: Number(event.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <button type="button" onClick={() => setShotPreviewOpen(true)}>
+              查看 Remotion 效果
+            </button>
+          </section>
+        ) : null}
         <section className="stage-panel board-stats">
           <header>
             <strong>段落信息</strong>
@@ -1373,6 +1469,54 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           </dl>
         </section>
       </aside>
+      {shotPreviewOpen && previewShot ? (
+        <div
+          className="shot-preview-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="当前镜头 Remotion 预览"
+        >
+          <button
+            type="button"
+            className="shot-preview-backdrop"
+            aria-label="关闭镜头预览"
+            onClick={() => setShotPreviewOpen(false)}
+          />
+          <section>
+            <header>
+              <div>
+                <strong>当前镜头 Remotion 预览</strong>
+                <span>{previewShot?.visualPurpose}</span>
+              </div>
+              <button type="button" onClick={() => setShotPreviewOpen(false)}>
+                ×
+              </button>
+            </header>
+            <Player
+              key={`${selected.id}-${previewShot.id}-${motionPlanFor(previewShot).preset}`}
+              component={VideoComposition}
+              inputProps={{
+                project: previewProject,
+                narrationAvailable: false,
+                assetBasePath: projectId,
+              }}
+              durationInFrames={Math.max(1, Math.round(previewDuration * project.project.fps))}
+              compositionWidth={project.project.width}
+              compositionHeight={project.project.height}
+              fps={project.project.fps}
+              controls
+              autoPlay
+              loop
+              style={{
+                width: '100%',
+                maxHeight: 'calc(100vh - 150px)',
+                aspectRatio: `${project.project.width} / ${project.project.height}`,
+                margin: '0 auto',
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
       {mediaPreview ? (
         <div
           className="media-lightbox"
