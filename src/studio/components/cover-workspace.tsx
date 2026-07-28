@@ -1,4 +1,4 @@
-import {useMemo, useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent} from 'react';
 import type {ProjectFile} from '../../core/schema';
 import {useStudioStore} from '../store';
 
@@ -10,6 +10,31 @@ type Props = {
 const imagePattern = /\.(?:png|jpe?g|webp|gif|avif)(?:[?#].*)?$/iu;
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 type CoverTextLayer = NonNullable<NonNullable<ProjectFile['cover']>['textLayers']>[number];
+type CoverTemplate = {
+  id: string;
+  name: string;
+  createdAt: string;
+  settings: Pick<
+    NonNullable<ProjectFile['cover']>,
+    | 'overlayOpacity'
+    | 'backgroundScale'
+    | 'backgroundX'
+    | 'backgroundY'
+    | 'textLayers'
+  >;
+};
+
+const coverTemplatesKey = 'cutflow.coverTemplates.v1';
+const characterStyle = (layer: CoverTextLayer, index: number) => {
+  const matches = (layer.styles ?? []).filter((style) => index >= style.start && index < style.end);
+  return matches.reduce(
+    (result, style) => ({
+      fontSize: style.fontSize ?? result.fontSize,
+      color: style.color ?? result.color,
+    }),
+    {fontSize: layer.fontSize, color: layer.color},
+  );
+};
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
@@ -19,32 +44,43 @@ const loadImage = (src: string) =>
     image.src = src;
   });
 
-const drawCoverText = (
+const drawStyledCoverText = (
   context: CanvasRenderingContext2D,
-  text: string,
+  layer: CoverTextLayer,
   x: number,
   y: number,
   maximumWidth: number,
-  lineHeight: number,
-  align: CanvasTextAlign,
 ) => {
-  const characters = Array.from(text.trim());
-  const lines: string[] = [];
-  let line = '';
-  for (const character of characters) {
-    const next = `${line}${character}`;
-    if (line && context.measureText(next).width > maximumWidth) {
-      lines.push(line);
-      line = character;
-    } else {
-      line = next;
+  const lines: Array<Array<{character: string; index: number; width: number; size: number; color: string}>> = [[]];
+  let lineWidth = 0;
+  Array.from(layer.text).forEach((character, index) => {
+    const style = characterStyle(layer, index);
+    context.font = `${layer.fontWeight} ${style.fontSize}px "${layer.fontFamily}", sans-serif`;
+    const width = context.measureText(character).width;
+    if (character === '\n' || (lines.at(-1)!.length && lineWidth + width > maximumWidth)) {
+      lines.push([]);
+      lineWidth = 0;
     }
-  }
-  if (line) lines.push(line);
-  lines.slice(0, 3).forEach((value, index) => {
-    context.fillText(value, x, y + index * lineHeight, maximumWidth);
+    if (character !== '\n') {
+      lines.at(-1)!.push({character, index, width, size: style.fontSize, color: style.color});
+      lineWidth += width;
+    }
   });
-  return Math.min(lines.length, 3) * lineHeight;
+  let top = y;
+  for (const line of lines.slice(0, 5)) {
+    const width = line.reduce((sum, item) => sum + item.width, 0);
+    const lineHeight = Math.max(layer.fontSize, ...line.map((item) => item.size)) * 1.25;
+    let cursor =
+      layer.textAlign === 'center' ? x - width / 2 : layer.textAlign === 'right' ? x - width : x;
+    for (const item of line) {
+      context.font = `${layer.fontWeight} ${item.size}px "${layer.fontFamily}", sans-serif`;
+      context.fillStyle = item.color;
+      context.textAlign = 'left';
+      context.fillText(item.character, cursor, top);
+      cursor += item.width;
+    }
+    top += lineHeight;
+  }
 };
 
 export const CoverWorkspace = ({project, projectId}: Props) => {
@@ -88,7 +124,34 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
   };
   const [busy, setBusy] = useState<'upload' | 'save' | null>(null);
   const [message, setMessage] = useState('');
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(
+    cover.textLayers[0]?.id ?? null,
+  );
+  const [textSelection, setTextSelection] = useState({start: 0, end: 0});
+  const [partialFontSize, setPartialFontSize] = useState(48);
+  const [partialColor, setPartialColor] = useState('#ffcf4a');
+  const [templates, setTemplates] = useState<CoverTemplate[]>([]);
+  const [templateName, setTemplateName] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const interaction = useRef<{
+    kind: 'background' | 'text' | 'text-scale';
+    id?: string;
+    startX: number;
+    startY: number;
+    originalX: number;
+    originalY: number;
+    originalSize?: number;
+  } | null>(null);
+  useEffect(() => {
+    try {
+      setTemplates(
+        JSON.parse(window.localStorage.getItem(coverTemplatesKey) ?? '[]') as CoverTemplate[],
+      );
+    } catch {
+      setTemplates([]);
+    }
+  }, []);
   const imageOptions = useMemo(
     () =>
       [
@@ -115,6 +178,65 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       textLayers: cover.textLayers.map((layer) => (layer.id === id ? {...layer, ...patch} : layer)),
       outputPath: null,
     });
+  const persistTemplates = (next: CoverTemplate[]) => {
+    setTemplates(next);
+    window.localStorage.setItem(coverTemplatesKey, JSON.stringify(next));
+  };
+  const pointerPosition = (event: ReactPointerEvent) => {
+    const bounds = canvasRef.current!.getBoundingClientRect();
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * 100,
+      y: ((event.clientY - bounds.top) / bounds.height) * 100,
+    };
+  };
+  const handlePointerMove = (event: ReactPointerEvent) => {
+    const active = interaction.current;
+    if (!active) return;
+    const position = pointerPosition(event);
+    const deltaX = position.x - active.startX;
+    const deltaY = position.y - active.startY;
+    if (active.kind === 'background') {
+      updateCover({
+        backgroundX: Math.max(0, Math.min(100, active.originalX - deltaX)),
+        backgroundY: Math.max(0, Math.min(100, active.originalY - deltaY)),
+        outputPath: null,
+      });
+    } else if (active.kind === 'text' && active.id) {
+      updateTextLayer(active.id, {
+        x: Math.max(0, Math.min(100, active.originalX + deltaX)),
+        y: Math.max(0, Math.min(100, active.originalY + deltaY)),
+      });
+    } else if (active.kind === 'text-scale' && active.id) {
+      updateTextLayer(active.id, {
+        fontSize: Math.max(
+          20,
+          Math.min(180, Math.round((active.originalSize ?? 48) + deltaX * 2)),
+        ),
+      });
+    }
+  };
+  const endInteraction = () => {
+    interaction.current = null;
+  };
+  const applyPartialStyle = () => {
+    const layer = cover.textLayers.find((item) => item.id === selectedLayerId);
+    if (!layer || textSelection.end <= textSelection.start) {
+      setMessage('请先在左侧文字输入框中选中要单独设置的文字。');
+      return;
+    }
+    updateTextLayer(layer.id, {
+      styles: [
+        ...(layer.styles ?? []),
+        {
+          start: textSelection.start,
+          end: textSelection.end,
+          fontSize: partialFontSize,
+          color: partialColor,
+        },
+      ],
+    });
+    setMessage(`已为选中的 ${textSelection.end - textSelection.start} 个字符应用局部样式。`);
+  };
 
   const uploadSource = async (file: File) => {
     setBusy('upload');
@@ -181,23 +303,18 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       context.shadowBlur = 18;
       for (const layer of cover.textLayers) {
         if (!layer.text.trim()) continue;
-        context.textAlign = layer.textAlign;
-        context.font = `${layer.fontWeight} ${layer.fontSize}px "${layer.fontFamily}", sans-serif`;
-        context.fillStyle = layer.color;
         const maximumWidth =
           layer.textAlign === 'center'
             ? 2 * Math.min(layer.x, 100 - layer.x) * 10.8
             : layer.textAlign === 'left'
               ? (100 - layer.x) * 10.8 - 40
               : layer.x * 10.8 - 40;
-        drawCoverText(
+        drawStyledCoverText(
           context,
-          layer.text,
+          layer,
           (layer.x / 100) * canvas.width,
           (layer.y / 100) * canvas.height,
           Math.max(180, maximumWidth),
-          layer.fontSize * 1.25,
-          context.textAlign,
         );
       }
       const blob = await new Promise<Blob>((resolve, reject) =>
@@ -346,7 +463,13 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             </button>
           </header>
           {cover.textLayers.map((layer, index) => (
-            <article className="cover-text-layer-card" key={layer.id}>
+            <article
+              className={`cover-text-layer-card ${
+                selectedLayerId === layer.id ? 'selected' : ''
+              }`}
+              key={layer.id}
+              onClick={() => setSelectedLayerId(layer.id)}
+            >
               <header>
                 <strong>文字 {index + 1}</strong>
                 <button
@@ -366,6 +489,13 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                 maxLength={60}
                 value={layer.text}
                 onChange={(event) => updateTextLayer(layer.id, {text: event.target.value})}
+                onSelect={(event) => {
+                  setSelectedLayerId(layer.id);
+                  setTextSelection({
+                    start: event.currentTarget.selectionStart,
+                    end: event.currentTarget.selectionEnd,
+                  });
+                }}
               />
               <div className="cover-layer-grid">
                 <label>
@@ -462,6 +592,38 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                   />
                 </label>
               </div>
+              {selectedLayerId === layer.id ? (
+                <div className="cover-partial-style">
+                  <header>
+                    <strong>选中文字局部样式</strong>
+                    <small>
+                      当前选中 {Math.max(0, textSelection.end - textSelection.start)} 个字
+                    </small>
+                  </header>
+                  <label>
+                    <span>局部字号 {partialFontSize}px</span>
+                    <input
+                      type="range"
+                      min="20"
+                      max="180"
+                      step="2"
+                      value={partialFontSize}
+                      onChange={(event) => setPartialFontSize(Number(event.target.value))}
+                    />
+                  </label>
+                  <label>
+                    <span>局部颜色</span>
+                    <input
+                      type="color"
+                      value={partialColor}
+                      onChange={(event) => setPartialColor(event.target.value)}
+                    />
+                  </label>
+                  <button type="button" onClick={applyPartialStyle}>
+                    应用到选中文字
+                  </button>
+                </div>
+              ) : null}
             </article>
           ))}
         </section>
@@ -478,6 +640,81 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             }
           />
         </label>
+        <section className="cover-setting-group cover-template-settings">
+          <header>
+            <div>
+              <strong>封面模板</strong>
+              <small>保存布局和样式，其他项目可直接复用</small>
+            </div>
+          </header>
+          <div className="cover-template-save">
+            <input
+              value={templateName}
+              maxLength={30}
+              placeholder="输入模板名称"
+              onChange={(event) => setTemplateName(event.target.value)}
+            />
+            <button
+              type="button"
+              disabled={!templateName.trim()}
+              onClick={() => {
+                const template: CoverTemplate = {
+                  id: `cover-template-${Date.now()}`,
+                  name: templateName.trim(),
+                  createdAt: new Date().toISOString(),
+                  settings: {
+                    overlayOpacity: cover.overlayOpacity,
+                    backgroundScale: cover.backgroundScale,
+                    backgroundX: cover.backgroundX,
+                    backgroundY: cover.backgroundY,
+                    textLayers: cover.textLayers,
+                  },
+                };
+                persistTemplates([...templates, template]);
+                setTemplateName('');
+                setMessage(`模板“${template.name}”已保存，可在其他项目使用。`);
+              }}
+            >
+              保存当前模板
+            </button>
+          </div>
+          {templates.length ? (
+            <div className="cover-template-list">
+              {templates.map((template) => (
+                <article key={template.id}>
+                  <span>
+                    <strong>{template.name}</strong>
+                    <small>{template.settings.textLayers?.length ?? 0} 个文字图层</small>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateCover({
+                        ...template.settings,
+                        outputPath: null,
+                      });
+                      setSelectedLayerId(template.settings.textLayers?.[0]?.id ?? null);
+                      setMessage(`已应用模板“${template.name}”，可以更换背景和文字。`);
+                    }}
+                  >
+                    应用
+                  </button>
+                  <button
+                    type="button"
+                    className="delete"
+                    onClick={() =>
+                      persistTemplates(templates.filter((item) => item.id !== template.id))
+                    }
+                  >
+                    删除
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <small className="cover-template-empty">还没有保存封面模板</small>
+          )}
+        </section>
         <button
           type="button"
           className="primary-button cover-save-button"
@@ -503,7 +740,51 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
           </div>
         </header>
         <div className="douyin-cover-shell">
-          <div className="douyin-cover">
+          <div
+            ref={canvasRef}
+            className={`douyin-cover ${interaction.current ? 'interacting' : ''}`}
+            onPointerDown={(event) => {
+              if (event.target !== event.currentTarget &&
+                  (event.target as HTMLElement).closest('.cover-text-preview-layer')) return;
+              const position = pointerPosition(event);
+              interaction.current = {
+                kind: 'background',
+                startX: position.x,
+                startY: position.y,
+                originalX: cover.backgroundX,
+                originalY: cover.backgroundY,
+              };
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endInteraction}
+            onPointerCancel={endInteraction}
+            onWheel={(event) => {
+              event.preventDefault();
+              if (
+                (event.target as HTMLElement).closest('.cover-text-preview-layer') &&
+                selectedLayerId
+              ) {
+                const layer = cover.textLayers.find((item) => item.id === selectedLayerId);
+                if (layer) {
+                  updateTextLayer(layer.id, {
+                    fontSize: Math.max(
+                      20,
+                      Math.min(180, layer.fontSize + (event.deltaY < 0 ? 2 : -2)),
+                    ),
+                  });
+                }
+                return;
+              }
+              updateCover({
+                backgroundScale: Math.max(
+                  1,
+                  Math.min(3, cover.backgroundScale + (event.deltaY < 0 ? 0.05 : -0.05)),
+                ),
+                outputPath: null,
+              });
+            }}
+          >
             {cover.sourcePath ? (
               <img
                 className="cover-background-image"
@@ -526,12 +807,13 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             {cover.textLayers.map((layer) =>
               layer.text ? (
                 <div
-                  className="cover-text-preview-layer"
+                  className={`cover-text-preview-layer ${
+                    selectedLayerId === layer.id ? 'selected' : ''
+                  }`}
                   key={layer.id}
                   style={{
                     left: `${layer.x}%`,
                     top: `${layer.y}%`,
-                    color: layer.color,
                     fontFamily: layer.fontFamily,
                     fontSize: `${Math.max(9, layer.fontSize * 0.42)}px`,
                     fontWeight: layer.fontWeight,
@@ -543,8 +825,56 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
                           ? 'translateX(-100%)'
                           : undefined,
                   }}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    setSelectedLayerId(layer.id);
+                    const position = pointerPosition(event);
+                    interaction.current = {
+                      kind: 'text',
+                      id: layer.id,
+                      startX: position.x,
+                      startY: position.y,
+                      originalX: layer.x,
+                      originalY: layer.y,
+                    };
+                    canvasRef.current?.setPointerCapture(event.pointerId);
+                  }}
                 >
-                  {layer.text}
+                  {Array.from(layer.text).map((character, index) => {
+                    const style = characterStyle(layer, index);
+                    return (
+                      <span
+                        key={`${layer.id}-${index}`}
+                        style={{
+                          color: style.color,
+                          fontSize: `${Math.max(9, style.fontSize * 0.42)}px`,
+                        }}
+                      >
+                        {character}
+                      </span>
+                    );
+                  })}
+                  {selectedLayerId === layer.id ? (
+                    <button
+                      type="button"
+                      className="cover-text-resize-handle"
+                      title="拖动缩放文字"
+                      onPointerDown={(event) => {
+                        event.stopPropagation();
+                        const position = pointerPosition(event);
+                        interaction.current = {
+                          kind: 'text-scale',
+                          id: layer.id,
+                          startX: position.x,
+                          startY: position.y,
+                          originalX: layer.x,
+                          originalY: layer.y,
+                          originalSize: layer.fontSize,
+                        };
+                        canvasRef.current?.setPointerCapture(event.pointerId);
+                      }}
+                    />
+                  ) : null}
                 </div>
               ) : null,
             )}
