@@ -15,6 +15,7 @@ type StudioState = {
   updateContent: (patch: Partial<NonNullable<ProjectFile['content']>>) => void;
   updateProjectSettings: (patch: Partial<ProjectFile['project']>) => void;
   updateStyle: (patch: Partial<ProjectFile['style']>) => void;
+  updateCover: (patch: Partial<NonNullable<ProjectFile['cover']>>) => void;
   restoreCopyVersion: (versionId: string) => void;
   replaceSceneAsset: (id: string, assetPath: string, assetType: Scene['assetType']) => void;
   duplicateScene: (id: string) => void;
@@ -75,6 +76,26 @@ export const useStudioStore = create<StudioState>((set) => ({
   updateStyle: (patch) =>
     set((state) => ({
       project: state.project ? {...state.project, style: {...state.project.style, ...patch}} : null,
+      saveStatus: 'saving',
+    })),
+  updateCover: (patch) =>
+    set((state) => ({
+      project: state.project
+        ? {
+            ...state.project,
+            cover: {
+              sourcePath: null,
+              outputPath: null,
+              title: state.project.project.title,
+              subtitle: '',
+              textAlign: 'left',
+              overlayOpacity: 0.42,
+              accentColor: '#ffcf4a',
+              ...state.project.cover,
+              ...patch,
+            },
+          }
+        : null,
       saveStatus: 'saving',
     })),
   restoreCopyVersion: (versionId) =>

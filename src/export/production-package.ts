@@ -226,6 +226,17 @@ export const createEditingPackage = async (
     warnings.push({code: 'MISSING_NARRATION', message: '项目尚未设置旁白文件'});
   }
 
+  let coverFile: string | null = null;
+  if (project.cover?.outputPath) {
+    const source = resolveInside(projectRoot, project.cover.outputPath);
+    if (await exists(source)) {
+      const extension = path.extname(source).toLowerCase() || '.png';
+      const fileName = `douyin-cover${extension}`;
+      await copyFile(source, path.join(directories.covers, fileName));
+      coverFile = `05-covers/${fileName}`;
+    }
+  }
+
   const script = [
     `# ${project.project.title}`,
     '',
@@ -300,6 +311,7 @@ export const createEditingPackage = async (
     `画面：${project.project.width} × ${project.project.height}，${project.project.fps} FPS`,
     `镜头数：${rows.length}`,
     `配音：${narrationFile ?? '缺失'}`,
+    `封面：${coverFile ?? '缺失'}`,
     '',
     '## 建议流程',
     '',
@@ -332,6 +344,7 @@ export const createEditingPackage = async (
       editingNotes: '00-project/editing-notes.md',
       captions: '02-captions/captions.srt',
       narration: narrationFile,
+      cover: coverFile,
     },
     shots: rows,
     warnings,

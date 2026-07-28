@@ -6253,6 +6253,207 @@ select:focus {
   color: #ffc2ca;
   cursor: pointer;
 }
+.cover-maker {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.6fr);
+  gap: 14px;
+  overflow: auto;
+}
+.cover-controls,
+.cover-canvas-panel {
+  min-height: 0;
+}
+.cover-controls {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+}
+.cover-controls > header,
+.cover-canvas-panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cover-controls > header strong,
+.cover-controls > header span,
+.cover-canvas-panel > header strong,
+.cover-canvas-panel > header span {
+  display: block;
+}
+.cover-controls > header span,
+.cover-canvas-panel > header span {
+  margin-top: 3px;
+  color: #79869a;
+  font-size: 10px;
+}
+.cover-controls label {
+  display: grid;
+  gap: 6px;
+  color: #aab4c3;
+  font-size: 11px;
+}
+.cover-controls :is(input, select, textarea) {
+  min-width: 0;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #303b4e;
+  border-radius: 7px;
+  background: #0d131c;
+  color: #d7dee9;
+}
+.cover-controls textarea {
+  resize: vertical;
+}
+.cover-controls input[type='color'] {
+  height: 38px;
+  padding: 4px;
+}
+.cover-controls input[type='range'] {
+  padding: 0;
+  accent-color: #7d5bd3;
+}
+.cover-controls label > small {
+  color: #6f7b8e;
+  font-size: 9px;
+}
+.cover-form-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  gap: 10px;
+}
+.cover-upload-button {
+  padding: 9px 12px;
+  border: 1px solid #465673;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #202a3a, #18202d);
+  color: #c5d0df;
+  cursor: pointer;
+}
+.cover-save-button {
+  width: 100%;
+  min-height: 40px;
+}
+.cover-message,
+.cover-output {
+  margin: 0;
+  padding: 8px 9px;
+  border-radius: 6px;
+  background: #182030;
+  color: #aebbd0;
+  font-size: 10px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.cover-canvas-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  overflow: hidden;
+}
+.douyin-cover-shell {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 10px;
+  background:
+    linear-gradient(45deg, #151c29 25%, transparent 25%) 0 0 / 20px 20px,
+    linear-gradient(-45deg, #151c29 25%, transparent 25%) 0 10px / 20px 20px,
+    #0d121b;
+}
+.douyin-cover {
+  position: relative;
+  height: min(100%, 680px);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border: 1px solid #4a566a;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #232d3e, #101722);
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 18px 50px #0008;
+}
+.cover-dark-layer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #0004, transparent 38%, #000 100%);
+  pointer-events: none;
+}
+.douyin-safe-zone {
+  position: absolute;
+  z-index: 2;
+  inset: 12.5% 0;
+  border-block: 1px dashed #ffffffc7;
+  pointer-events: none;
+}
+.douyin-safe-zone > span {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: #0008;
+  color: #fff;
+  font-size: 8px;
+}
+.cover-copy {
+  position: absolute;
+  z-index: 3;
+  top: 56.25%;
+  right: 8.5%;
+  left: 8.5%;
+  display: grid;
+  gap: 9px;
+  transform: translateY(-8%);
+  text-shadow: 0 3px 12px #000d;
+}
+.douyin-cover.center .cover-copy {
+  text-align: center;
+}
+.cover-copy strong {
+  color: #fff;
+  font-size: clamp(21px, 3.2vw, 42px);
+  font-weight: 800;
+  line-height: 1.22;
+  white-space: pre-wrap;
+}
+.cover-copy small {
+  font-size: clamp(11px, 1.4vw, 19px);
+  font-weight: 700;
+}
+.douyin-cover > p {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  color: #8e9aab;
+  font-size: 12px;
+  text-align: center;
+}
+.cover-safe-notes {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: #7e8a9c;
+  font-size: 9px;
+}
+.cover-safe-notes b {
+  color: #bdc8d8;
+}
+@media (max-width: 980px) {
+  .cover-maker {
+    grid-template-columns: 1fr;
+  }
+  .cover-canvas-panel {
+    min-height: 680px;
+  }
+}
 .video-generation-footer button {
   flex: 0 0 auto;
   padding: 8px 12px;

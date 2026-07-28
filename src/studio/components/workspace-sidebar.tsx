@@ -1,7 +1,15 @@
 import type {ProjectFile} from '../../core/schema';
 
 export type WorkspaceSection =
-  'overview' | 'content' | 'storyboard' | 'voice' | 'assets' | 'edit' | 'export' | 'settings';
+  | 'overview'
+  | 'content'
+  | 'storyboard'
+  | 'voice'
+  | 'assets'
+  | 'edit'
+  | 'cover'
+  | 'export'
+  | 'settings';
 
 const navItems: Array<[WorkspaceSection, string, string]> = [['overview', '我的项目', '⌂']];
 

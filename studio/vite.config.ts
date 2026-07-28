@@ -438,7 +438,11 @@ const localApi = (): Plugin => ({
                         videoType: project.content?.videoType ?? 'science-explainer',
                         width: project.project.width,
                         height: project.project.height,
-                        coverPath: project.scenes[0]?.assetPath ?? null,
+                        coverPath:
+                          project.cover?.outputPath ??
+                          project.cover?.sourcePath ??
+                          project.scenes[0]?.assetPath ??
+                          null,
                         assetCount,
                         updatedAt: (await stat(file)).mtime.toISOString(),
                       };

@@ -246,6 +246,17 @@ export const projectFileSchema = z
     }),
     narrationAudio: z.string().min(1).nullable().optional(),
     narrationMode: z.enum(['full', 'segments']).optional(),
+    cover: z
+      .object({
+        sourcePath: z.string().min(1).nullable().default(null),
+        outputPath: z.string().min(1).nullable().default(null),
+        title: z.string().default(''),
+        subtitle: z.string().default(''),
+        textAlign: z.enum(['left', 'center']).default('left'),
+        overlayOpacity: z.number().min(0).max(0.85).default(0.42),
+        accentColor: z.string().regex(/^#[0-9a-f]{6}$/iu).default('#ffcf4a'),
+      })
+      .optional(),
     scenes: z.array(sceneSchema).min(1),
     copyVersions: z.array(copyVersionSchema).optional(),
     activeCopyVersionId: z.string().nullable().optional(),
