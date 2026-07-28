@@ -22,6 +22,7 @@ type Props = {
   projectId: string;
   onGoToAssets: (shotId: string) => void;
 };
+type AcquisitionMode = 'reference' | 'download' | 'ai-image' | 'ai-video' | 'library';
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 const videoFilePattern = /\.(mp4|mov|webm|mkv)(?:[?#].*)?$/i;
 const activeGenerationStatuses = new Set<GenerationTask['status']>(['queued', 'running']);
@@ -118,6 +119,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     error?: string;
   } | null>(null);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
+  const [generatingImageShotId, setGeneratingImageShotId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const generationRequestLock = useRef(new Set<string>());
   const [videoDefaultDuration, setVideoDefaultDuration] = useState<VideoTargetDuration>('～15s');
@@ -140,6 +142,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   } | null>(null);
   const [previewShotId, setPreviewShotId] = useState<string | null>(null);
   const [shotPreviewOpen, setShotPreviewOpen] = useState(false);
+  const [acquisitionMode, setAcquisitionMode] = useState<AcquisitionMode>('download');
   const selected =
     project.scenes.find((scene) => scene.id === selectedSceneId) ?? project.scenes[0]!;
   const selectedIndex = project.scenes.findIndex((scene) => scene.id === selected.id);
@@ -368,6 +371,37 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     }
   };
 
+  const generateImages = async (shot: VisualShot) => {
+    if (generatingImageShotId) return;
+    setGeneratingImageShotId(shot.id);
+    setVideoGenerationError(null);
+    try {
+      const response = await fetch('/api/shots/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          sceneId: selected.id,
+          shotId: shot.id,
+          kind: 'image',
+          provider: 'mock',
+          count: 3,
+        }),
+      });
+      const value = (await response.json()) as {shot?: VisualShot; error?: string};
+      if (!response.ok || !value.shot) {
+        throw new Error(value.error ?? '图片生成失败');
+      }
+      syncVisualShot(selected.id, shot.id, value.shot);
+    } catch (error) {
+      setVideoGenerationError({
+        shotId: shot.id,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setGeneratingImageShotId(null);
+    }
+  };
+
   const generateVideo = async (shot: VisualShot) => {
     if (
       generationRequestLock.current.has(shot.id) ||
@@ -570,7 +604,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           {(selected.shots ?? []).map((shot, index) => {
             const progress = getShotProgress(shot);
             return (
-              <article key={shot.id} className={previewShot?.id === shot.id ? 'previewing' : ''}>
+              <article
+                key={shot.id}
+                className={`${previewShot?.id === shot.id ? 'previewing' : ''} acquisition-mode-${acquisitionMode}`}
+              >
                 <header>
                   <b>镜头 {index + 1}</b>
                   <span className={progress.complete ? 'ready' : 'missing'}>{progress.label}</span>
@@ -589,50 +626,80 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     {progress.complete ? '更换素材' : '选择缺少的素材'}
                   </button>
                 </div>
-                <label>
-                  <span>画面内容</span>
-                  <input
-                    value={shot.visualPurpose}
-                    onChange={(event) => updateShot(shot, {visualPurpose: event.target.value})}
-                  />
-                </label>
-                <div className="form-pair">
-                  <label>
-                    <span>镜头类型</span>
-                    <select
-                      value={shot.shotType}
-                      onChange={(event) =>
-                        updateShot(shot, {shotType: event.target.value as VisualShot['shotType']})
-                      }
+                <nav className="acquisition-tabs" aria-label="素材获取方式">
+                  {(
+                    [
+                      ['reference', '全网参考'],
+                      ['download', '可下载素材'],
+                      ['ai-image', 'AI 图片'],
+                      ['ai-video', 'AI 视频'],
+                      ['library', '项目素材库'],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <button
+                      type="button"
+                      key={mode}
+                      className={acquisitionMode === mode ? 'active' : ''}
+                      onClick={() => setAcquisitionMode(mode)}
                     >
-                      <option value="video">视频画面（来源不限）</option>
-                      <option value="image">图片画面（来源不限）</option>
-                      <option value="science-animation">科普动画</option>
-                      <option value="digital-human">数字人</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>时长</span>
-                    <input
-                      type="number"
-                      value={shot.duration}
-                      onChange={(event) => updateShot(shot, {duration: Number(event.target.value)})}
-                    />
-                  </label>
-                </div>
-                <details className="layer-composition-panel" open={shot.composition === 'versus'}>
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+                <details className="shot-settings-panel">
                   <summary>
                     <span>
-                      <strong>画面编排</strong>
+                      <strong>镜头基础设置</strong>
                       <small>
-                        {shot.composition === 'versus'
-                          ? `左右对立 · ${shot.layers?.filter((layer) => layer.assetPath).length ?? 0}/3 个素材已就绪`
-                          : '单素材镜头'}
+                        {shot.shotType === 'image' ? '图片' : '视频'} · {shot.duration} 秒 ·{' '}
+                        {shot.composition === 'versus' ? '左右对立' : '单素材'}
                       </small>
                     </span>
-                    <b>{shot.composition === 'versus' ? '多图层' : '未启用'}</b>
                   </summary>
-                  <div className="layer-composition-content">
+                  <label>
+                    <span>画面内容</span>
+                    <input
+                      value={shot.visualPurpose}
+                      onChange={(event) => updateShot(shot, {visualPurpose: event.target.value})}
+                    />
+                  </label>
+                  <div className="form-pair">
+                    <label>
+                      <span>镜头类型</span>
+                      <select
+                        value={shot.shotType}
+                        onChange={(event) =>
+                          updateShot(shot, {shotType: event.target.value as VisualShot['shotType']})
+                        }
+                      >
+                        <option value="video">视频画面（来源不限）</option>
+                        <option value="image">图片画面（来源不限）</option>
+                        <option value="science-animation">科普动画</option>
+                        <option value="digital-human">数字人</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>时长</span>
+                      <input
+                        type="number"
+                        value={shot.duration}
+                        onChange={(event) => updateShot(shot, {duration: Number(event.target.value)})}
+                      />
+                    </label>
+                  </div>
+                  <details className="layer-composition-panel" open={shot.composition === 'versus'}>
+                    <summary>
+                      <span>
+                        <strong>画面编排</strong>
+                        <small>
+                          {shot.composition === 'versus'
+                            ? `左右对立 · ${shot.layers?.filter((layer) => layer.assetPath).length ?? 0}/3 个素材已就绪`
+                            : '单素材镜头'}
+                        </small>
+                      </span>
+                      <b>{shot.composition === 'versus' ? '多图层' : '未启用'}</b>
+                    </summary>
+                    <div className="layer-composition-content">
                     {shot.composition !== 'versus' ? (
                       <div className="composition-template-card">
                         <div>
@@ -707,9 +774,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                         </button>
                       </>
                     )}
-                  </div>
+                    </div>
+                  </details>
                 </details>
-                <label>
+                <label className="acquisition-reference">
                   <span>中文主题搜索词（用于内容平台）</span>
                   <textarea
                     rows={2}
@@ -731,7 +799,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     }
                   />
                 </label>
-                <div className="content-platform-search">
+                <div className="content-platform-search acquisition-reference">
                   <div>
                     <strong>搜索相关视频内容</strong>
                     <span>使用上面第一条中文主题词打开平台搜索结果，仅作选题和画面参考</span>
@@ -747,7 +815,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     ))}
                   </div>
                 </div>
-                <details className="online-material-search">
+                <details className="online-material-search acquisition-download" open>
                   <summary className="online-material-search-heading">
                     <div>
                       <strong>搜索可下载素材</strong>
@@ -989,7 +1057,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     </p>
                   </div>
                 </details>
-                <details className="prompt-editor">
+                <details className="prompt-editor acquisition-ai-image" open>
                   <summary>
                     <span>图片生成提示词</span>
                     <small>展开查看或编辑</small>
@@ -1004,8 +1072,45 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     placeholder="描述主体、场景、构图、光线、色彩、景别、风格和画面比例"
                     onChange={(event) => updateShot(shot, {imagePromptZh: event.target.value})}
                   />
+                  <div className="ai-image-actions">
+                    <span>生成结果会先进入候选区，确认后才会成为当前镜头素材。</span>
+                    <button
+                      type="button"
+                      disabled={Boolean(generatingImageShotId)}
+                      onClick={() => void generateImages(shot)}
+                    >
+                      {generatingImageShotId === shot.id ? '正在生成…' : '生成 3 张候选图片'}
+                    </button>
+                  </div>
+                  <div className="ai-image-candidates">
+                    {shot.candidates
+                      .filter((candidate) => candidate.kind === 'image')
+                      .map((candidate) => (
+                        <article key={candidate.id}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMediaPreview({
+                                kind: 'image',
+                                src: mediaUrl(projectId, candidate.path),
+                                title: candidate.prompt,
+                              })
+                            }
+                          >
+                            <img src={mediaUrl(projectId, candidate.path)} alt="" />
+                          </button>
+                          <span>{candidate.model}</span>
+                          <button type="button" onClick={() => applyCandidate(shot, candidate)}>
+                            {candidate.path === shot.selectedAsset ? '已选用' : '添加到当前镜头'}
+                          </button>
+                        </article>
+                      ))}
+                    {!shot.candidates.some((candidate) => candidate.kind === 'image') ? (
+                      <p>还没有图片候选，确认提示词后开始生成。</p>
+                    ) : null}
+                  </div>
                 </details>
-                <details className="prompt-editor">
+                <details className="prompt-editor acquisition-ai-video">
                   <summary>
                     <span>视频生成提示词</span>
                     <small>展开查看或编辑</small>
@@ -1021,7 +1126,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     onChange={(event) => updateShot(shot, {videoPromptZh: event.target.value})}
                   />
                 </details>
-                <details className="original-prompts">
+                <details className="original-prompts acquisition-ai-video">
                   <summary>查看英文原始提示词（实际生成使用）</summary>
                   <label>
                     <span>英文素材搜索词</span>
@@ -1057,7 +1162,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                   </label>
                 </details>
                 <details
-                  className="video-generation-panel"
+                  className="video-generation-panel acquisition-ai-video"
                   onToggle={(event) => {
                     if (!event.currentTarget.open || videoDraft?.shotId === shot.id) return;
                     setVideoDraft({
@@ -1307,7 +1412,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     )}
                   </section>
                 </details>
-                <div className="shot-assets">
+                <div className="shot-assets acquisition-library">
                   <div className="shot-assets-heading">
                     <strong>镜头素材</strong>
                     <span>

@@ -5322,6 +5322,172 @@ select:focus {
   color: #d8c8ff;
   cursor: pointer;
 }
+.acquisition-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #293244;
+  border-radius: 8px;
+  background: #0b1018;
+}
+.acquisition-tabs button {
+  min-width: 0;
+  padding: 8px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #707c90;
+  font-size: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.acquisition-tabs button:hover {
+  background: #171d28;
+  color: #c4cbd7;
+}
+.acquisition-tabs button.active {
+  background: #332551;
+  color: #d8c8ff;
+}
+.shot-settings-panel {
+  padding: 9px 10px;
+  border: 1px solid #293244;
+  border-radius: 8px;
+  background: #0d131c;
+}
+.shot-settings-panel > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+.shot-settings-panel > summary::-webkit-details-marker {
+  display: none;
+}
+.shot-settings-panel > summary::after {
+  color: #74628f;
+  content: '↓';
+}
+.shot-settings-panel[open] > summary::after {
+  content: '↑';
+}
+.shot-settings-panel > summary strong,
+.shot-settings-panel > summary small {
+  display: block;
+}
+.shot-settings-panel > summary small {
+  margin-top: 3px;
+  color: #6f7b8e;
+  font-size: 9px;
+}
+.shot-settings-panel > label,
+.shot-settings-panel > .form-pair {
+  margin-top: 10px;
+}
+.shot-settings-panel > .layer-composition-panel {
+  margin-bottom: 0;
+}
+.ai-image-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid #3a3155;
+  border-radius: 7px;
+  background: #161326;
+}
+.ai-image-actions span {
+  color: #807590;
+  font-size: 9px;
+}
+.ai-image-actions button,
+.ai-image-candidates article > button:last-child {
+  padding: 8px 10px;
+  border: 1px solid #7656c6;
+  border-radius: 7px;
+  background: #322451;
+  color: #d8c8ff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ai-image-actions button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.ai-image-candidates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.ai-image-candidates article {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #2b3445;
+  border-radius: 8px;
+  background: #10151e;
+}
+.ai-image-candidates article > button:first-child {
+  width: 100%;
+  height: 112px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: #07090d;
+  cursor: zoom-in;
+}
+.ai-image-candidates img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ai-image-candidates article > span {
+  display: block;
+  padding: 7px 8px 0;
+  overflow: hidden;
+  color: #778397;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-image-candidates article > button:last-child {
+  width: calc(100% - 16px);
+  margin: 7px 8px 8px;
+  font-size: 9px;
+}
+.ai-image-candidates > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed #343e50;
+  border-radius: 7px;
+  color: #697589;
+  text-align: center;
+}
+.shot-editor-list > article
+  :is(
+    .acquisition-reference,
+    .acquisition-download,
+    .acquisition-ai-image,
+    .acquisition-ai-video,
+    .acquisition-library
+  ) {
+  display: none;
+}
+.shot-editor-list > article.acquisition-mode-reference .acquisition-reference,
+.shot-editor-list > article.acquisition-mode-download .acquisition-download,
+.shot-editor-list > article.acquisition-mode-ai-image .acquisition-ai-image,
+.shot-editor-list > article.acquisition-mode-ai-video .acquisition-ai-video,
+.shot-editor-list > article.acquisition-mode-library .acquisition-library {
+  display: block;
+}
+.shot-editor-list > article.acquisition-mode-reference label.acquisition-reference {
+  display: grid;
+}
 .online-material-search {
   padding: 11px;
   border: 1px solid #315346;
