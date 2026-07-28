@@ -112,7 +112,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     results: PixabaySearchResult[];
     error?: string;
   } | null>(null);
-  const [downloadedSourceUrls, setDownloadedSourceUrls] = useState<string[]>([]);
+  const [downloadedAssets, setDownloadedAssets] = useState<
+    Array<{originalUrl: string; path: string}>
+  >([]);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
   const [generatingImageShotId, setGeneratingImageShotId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -331,15 +333,18 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       });
       const value = (await response.json()) as PixabaySearchResponse & {error?: string};
       if (!response.ok) throw new Error(value.error ?? '在线素材搜索失败');
-      const downloadedUrls = await fetch('/api/assets/library')
+      const downloaded = await fetch('/api/assets/library')
         .then((libraryResponse) => libraryResponse.json())
-        .then((library: {assets?: Array<{originalUrl?: string | null}>}) =>
+        .then((library: {assets?: Array<{originalUrl?: string | null; path: string}>}) =>
           (library.assets ?? [])
-            .map((asset) => asset.originalUrl)
-            .filter((url): url is string => Boolean(url)),
+            .filter(
+              (asset): asset is {originalUrl: string; path: string} =>
+                Boolean(asset.originalUrl),
+            )
+            .map((asset) => ({originalUrl: asset.originalUrl, path: asset.path})),
         )
         .catch(() => []);
-      setDownloadedSourceUrls(downloadedUrls);
+      setDownloadedAssets(downloaded);
       setOnlineSearch({
         shotId: shot.id,
         query: value.query,
@@ -375,18 +380,24 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       });
       const value = (await response.json()) as {
         assetPath?: string;
+        asset?: {originalUrl?: string | null; path: string};
         shot?: VisualShot;
         error?: string;
       };
-      if (!response.ok || !value.assetPath || !value.shot) {
+      if (!response.ok || !value.assetPath || !value.asset || !value.shot) {
         throw new Error(value.error ?? '素材下载失败');
       }
+      const assetPath = value.assetPath;
+      const downloadedAssetPath = value.asset.path;
       updateVisualShot(selected.id, shot.id, {
         ...value.shot,
-        selectedAssets: [...new Set([...(shot.selectedAssets ?? []), value.assetPath])],
+        selectedAssets: [...new Set([...(shot.selectedAssets ?? []), assetPath])],
       });
-      setDownloadedSourceUrls((current) => [...new Set([...current, result.pageUrl])]);
-      updateScene(selected.id, {assetPath: value.assetPath, assetType: result.kind});
+      setDownloadedAssets((current) => [
+        ...current.filter((asset) => asset.originalUrl !== result.pageUrl),
+        {originalUrl: result.pageUrl, path: downloadedAssetPath},
+      ]);
+      updateScene(selected.id, {assetPath, assetType: result.kind});
       setOnlineSearch({...onlineSearch, downloadingId: undefined});
     } catch (error) {
       setOnlineSearch({
@@ -570,20 +581,6 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
             <span>搜索、下载或生成素材，再添加到当前镜头</span>
           </div>
         </header>
-        <div className="storyboard-purpose-note">
-          <div>
-            <strong>当前段落素材进度</strong>
-            <span>
-              {selectedProgress.ready} / {selectedProgress.total} 个镜头已经选择素材
-            </span>
-          </div>
-          <p>为每个镜头准备一个或多个候选素材，后续可在 Premiere Pro 中决定最终使用方案。</p>
-          {firstShotId ? (
-            <button type="button" onClick={() => onGoToAssets(firstShotId)}>
-              选择镜头素材
-            </button>
-          ) : null}
-        </div>
         <div className="board-copy">
           <label>
             <span>旁白文案</span>
@@ -915,13 +912,20 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       ) : null}
                       {!onlineSearch.loading && onlineSearch.results.length ? (
                         <div className="pixabay-grid">
-                          {onlineSearch.results.map((result) => (
-                            <article
-                              className={`pixabay-card ${
-                                downloadedSourceUrls.includes(result.pageUrl) ? 'downloaded' : ''
-                              }`}
-                              key={`${result.kind}-${result.id}`}
-                            >
+                          {onlineSearch.results.map((result) => {
+                            const downloadedAsset = downloadedAssets.find(
+                              (asset) => asset.originalUrl === result.pageUrl,
+                            );
+                            const selectedForShot = downloadedAsset
+                              ? shotHasAsset(shot, downloadedAsset.path)
+                              : false;
+                            return (
+                              <article
+                                className={`pixabay-card ${
+                                  downloadedAsset ? 'downloaded' : ''
+                                } ${selectedForShot ? 'selected' : ''}`}
+                                key={`${result.kind}-${result.id}`}
+                              >
                               <button
                                 type="button"
                                 className="online-preview-button"
@@ -952,18 +956,21 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                 </a>
                                 <button
                                   type="button"
-                                  disabled={Boolean(onlineSearch.downloadingId)}
+                                  disabled={Boolean(onlineSearch.downloadingId) || selectedForShot}
                                   onClick={() => void downloadOnline(shot, result)}
                                 >
                                   {onlineSearch.downloadingId === result.id
                                     ? '下载中…'
-                                    : downloadedSourceUrls.includes(result.pageUrl)
+                                    : selectedForShot
+                                      ? '已加入当前镜头'
+                                      : downloadedAsset
                                       ? '已下载 · 添加到镜头'
                                       : '下载并添加到镜头'}
                                 </button>
                               </div>
-                            </article>
-                          ))}
+                              </article>
+                            );
+                          })}
                         </div>
                       ) : !onlineSearch.loading && !onlineSearch.error ? (
                         <div className="pixabay-empty">没有找到素材，请更换英文搜索词</div>

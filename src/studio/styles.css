@@ -5035,9 +5035,15 @@ select:focus {
 }
 .copy-analysis {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   display: grid;
   align-content: start;
   gap: 10px;
+  padding-right: 4px;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
 }
 .analysis-summary {
   display: grid;
@@ -7061,6 +7067,11 @@ select:focus {
   .workbench-mode .stage-heading {
     min-height: 32px;
     padding-block: 3px;
+  }
+  .workbench-mode .copy-analysis {
+    grid-auto-rows: max-content;
+    align-content: start;
+    overflow-y: scroll;
   }
 }
 
