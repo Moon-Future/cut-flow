@@ -6222,6 +6222,37 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.current-video-task-error {
+  display: grid;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid #733d49;
+  border-radius: 7px;
+  background: #25151b;
+}
+.current-video-task-error > strong {
+  color: #ff9eab;
+  font-size: 11px;
+}
+.current-video-task-error pre {
+  overflow: auto;
+  margin: 0;
+  color: #e7b4bb;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.current-video-task-error button {
+  justify-self: start;
+  padding: 6px 9px;
+  border: 1px solid #7a4d5a;
+  border-radius: 6px;
+  background: #3b2029;
+  color: #ffc2ca;
+  cursor: pointer;
+}
 .video-generation-footer button {
   flex: 0 0 auto;
   padding: 8px 12px;

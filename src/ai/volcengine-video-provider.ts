@@ -36,6 +36,57 @@ type VolcResponse = {
   } | null;
 };
 
+const diagnosticText = (value: unknown) => {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const parseResponseData = (value?: string) => {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+};
+
+const findVideoUrl = (value: unknown): string | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findVideoUrl(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  for (const key of ['video_url', 'videoUrl', 'url']) {
+    if (typeof record[key] === 'string' && /^https?:\/\//u.test(record[key])) {
+      return record[key];
+    }
+  }
+  for (const nested of Object.values(record)) {
+    const found = findVideoUrl(nested);
+    if (found) return found;
+  }
+  return undefined;
+};
+
+const responseDiagnostic = (value: VolcResponse) =>
+  [
+    value.code !== undefined ? `错误码：${value.code}` : '',
+    value.message ? `原因：${value.message}` : '',
+    value.request_id ? `Request ID：${value.request_id}` : '',
+    value.data?.resp_data ? `服务详情：${diagnosticText(parseResponseData(value.data.resp_data))}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
 const sha256 = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const hmac = (key: string | Buffer, value: string) =>
   createHmac('sha256', key).update(value).digest();
@@ -91,8 +142,10 @@ const requestApi = async (
   });
   const value = (await response.json()) as VolcResponse;
   if (!response.ok || value.code !== 10000) {
-    const requestId = value.request_id ? `，RequestId：${value.request_id}` : '';
-    throw new Error(`小云雀接口失败：${value.message || `HTTP ${response.status}`}${requestId}`);
+    const phase = action === 'CVSync2AsyncSubmitTask' ? '提交失败' : '查询失败';
+    throw new Error(
+      `小云雀任务${phase}\n${responseDiagnostic(value) || `HTTP 状态：${response.status}`}`,
+    );
   }
   return value;
 };
@@ -128,14 +181,26 @@ export const createVolcengineVideoProvider = (config: Config) => {
         });
         const status = result.data?.status;
         if (status === 'not_found' || status === 'expired') {
-          throw new Error(status === 'expired' ? '小云雀任务已过期' : '找不到小云雀任务');
+          throw new Error(
+            `${status === 'expired' ? '小云雀任务已过期' : '找不到小云雀任务'}\n` +
+              `${responseDiagnostic(result) || `任务 ID：${taskId}`}`,
+          );
         }
         if (status !== 'done') continue;
-        const videoUrl = result.data?.video_url;
-        if (!videoUrl) throw new Error('小云雀任务结束，但没有返回视频地址');
+        const parsedResponseData = parseResponseData(result.data?.resp_data);
+        const videoUrl = result.data?.video_url ?? findVideoUrl(parsedResponseData);
+        if (!videoUrl) {
+          throw new Error(
+            `小云雀生成失败：任务已结束，但没有返回视频地址\n${
+              responseDiagnostic(result) || '服务端未返回具体失败详情'
+            }`,
+          );
+        }
         const videoResponse = await request(videoUrl);
         if (!videoResponse.ok) {
-          throw new Error(`小云雀视频下载失败：HTTP ${videoResponse.status}`);
+          throw new Error(
+            `小云雀视频下载失败\nHTTP 状态：${videoResponse.status}\n视频地址：${videoUrl}`,
+          );
         }
         await mkdir(config.outputDirectory, {recursive: true});
         const id = `candidate-${randomUUID()}`;
@@ -156,7 +221,9 @@ export const createVolcengineVideoProvider = (config: Config) => {
           },
         ];
       }
-      throw new Error('小云雀视频生成超时，请稍后重试');
+      throw new Error(
+        `小云雀视频生成轮询超时\n任务 ID：${taskId}\n本地等待已达到上限，任务在服务端可能仍在运行，请勿立即重复提交。`,
+      );
     },
   };
 };

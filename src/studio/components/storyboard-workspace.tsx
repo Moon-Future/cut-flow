@@ -1544,6 +1544,29 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               <dd>{shot.generationTask?.model ?? 'pippit_iv2v_cvtob'}</dd>
                             </div>
                           </dl>
+                          {shot.generationTask?.status === 'failed' &&
+                          shot.generationTask.error ? (
+                            <div className="current-video-task-error">
+                              <strong>失败详情</strong>
+                              <pre>{shot.generationTask.error}</pre>
+                              {shot.generationTask.error.match(
+                                /Request\s*ID[：:]\s*([A-Za-z0-9_-]+)/iu,
+                              )?.[1] ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void navigator.clipboard.writeText(
+                                      shot.generationTask!.error!.match(
+                                        /Request\s*ID[：:]\s*([A-Za-z0-9_-]+)/iu,
+                                      )?.[1] ?? '',
+                                    )
+                                  }
+                                >
+                                  复制 Request ID
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </section>
                       ) : null}
                       <div className="video-generation-footer">
