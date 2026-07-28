@@ -103,7 +103,7 @@ export const generationCandidateSchema = z.object({
 
 export const generationTaskSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(['image', 'video', 'image-to-video', 'digital-human']),
+  kind: z.enum(['image', 'video', 'image-to-video', 'digital-human', 'voice']),
   status: z.enum(['queued', 'running', 'needs-selection', 'succeeded', 'failed', 'cancelled']),
   attempt: z.number().int().positive(),
   provider: z.string().min(1),
@@ -163,6 +163,7 @@ export const sceneSchema = z.object({
   copyRole: z.enum(['digital-human', 'voiceover', 'visual-explanation']).optional(),
   narration: z.string(),
   narrationAudio: z.string().min(1).nullable().optional(),
+  voiceGenerationTask: generationTaskSchema.nullable().optional(),
   caption: z.string().min(1),
   assetType: z.enum(['image', 'video']),
   assetPath: z.string().min(1),

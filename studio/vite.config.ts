@@ -669,6 +669,113 @@ const localApi = (): Plugin => ({
             sendJson(response, 200, {savedAt: new Date().toISOString()});
             return;
           }
+          if (url === '/api/voice/task' && request.method === 'GET') {
+            const sceneId = new URL(request.url ?? '', 'http://localhost').searchParams.get(
+              'sceneId',
+            );
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const scene = project.scenes.find((item) => item.id === sceneId);
+            if (!scene) {
+              sendJson(response, 404, {error: '找不到配音段落'});
+              return;
+            }
+            sendJson(response, 200, {
+              narrationAudio: scene.narrationAudio ?? null,
+              task: scene.voiceGenerationTask ?? null,
+            });
+            return;
+          }
+          if (url === '/api/voice/task' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              text?: string;
+              controlInstruction?: string;
+              referenceAudioPath?: string;
+              voicePreset?: 'tim';
+              promptText?: string;
+            };
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const scene = project.scenes.find((item) => item.id === input.sceneId);
+            if (!scene) {
+              sendJson(response, 404, {error: '找不到配音段落'});
+              return;
+            }
+            if (
+              scene.voiceGenerationTask &&
+              ['queued', 'running'].includes(scene.voiceGenerationTask.status)
+            ) {
+              sendJson(response, 409, {error: '当前段落已有配音任务正在生成'});
+              return;
+            }
+            const now = new Date();
+            const task = {
+              id: `voice-${randomUUID()}`,
+              kind: 'voice' as const,
+              status: 'queued' as const,
+              attempt: (scene.voiceGenerationTask?.attempt ?? 0) + 1,
+              provider: 'huggingface-space',
+              model: 'openbmb/VoxCPM2',
+              error: null,
+              startedAt: now.toISOString(),
+              estimatedCompletedAt: new Date(now.getTime() + 120_000).toISOString(),
+              updatedAt: now.toISOString(),
+            };
+            scene.voiceGenerationTask = task;
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 202, {task});
+
+            const host = request.headers.host ?? '127.0.0.1:4173';
+            void fetch(`http://${host}/api/voice/voxcpm-demo`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(input),
+            })
+              .then(async (result) => {
+                const value = (await result.json()) as {audioPath?: string; error?: string};
+                if (!result.ok || !value.audioPath) {
+                  throw new Error(value.error ?? 'VoxCPM 生成失败');
+                }
+                const latest = projectFileSchema.parse(
+                  JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+                );
+                const target = latest.scenes.find((item) => item.id === input.sceneId);
+                if (!target || target.voiceGenerationTask?.id !== task.id) return;
+                target.narrationAudio = value.audioPath;
+                target.voiceGenerationTask = {
+                  ...task,
+                  status: 'succeeded',
+                  completedAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                };
+                const nextTemporary = `${projectFile}.tmp`;
+                await writeFile(nextTemporary, `${JSON.stringify(latest, null, 2)}\n`, 'utf8');
+                await rename(nextTemporary, projectFile);
+              })
+              .catch(async (error: unknown) => {
+                const latest = projectFileSchema.parse(
+                  JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+                );
+                const target = latest.scenes.find((item) => item.id === input.sceneId);
+                if (!target || target.voiceGenerationTask?.id !== task.id) return;
+                target.voiceGenerationTask = {
+                  ...task,
+                  status: 'failed',
+                  error: error instanceof Error ? error.message : String(error),
+                  completedAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                };
+                const nextTemporary = `${projectFile}.tmp`;
+                await writeFile(nextTemporary, `${JSON.stringify(latest, null, 2)}\n`, 'utf8');
+                await rename(nextTemporary, projectFile);
+              });
+            return;
+          }
           if (url === '/api/voice/voxcpm-demo' && request.method === 'POST') {
             const input = JSON.parse((await readBody(request)).toString('utf8')) as {
               sceneId?: string;

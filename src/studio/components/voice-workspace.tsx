@@ -1,4 +1,4 @@
-import {useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import type {ProjectFile} from '../../core/schema';
 import {useStudioStore} from '../store';
 
@@ -32,6 +32,7 @@ export const VoiceWorkspace = ({
   const fullAudioInput = useRef<HTMLInputElement>(null);
   const referenceAudioInput = useRef<HTMLInputElement>(null);
   const selectedScene = project.scenes.find((scene) => scene.id === selectedSceneId);
+  const selectedVoiceTask = selectedScene?.voiceGenerationTask;
   const duration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
 
   const uploadAudio = async (file: File) => {
@@ -92,7 +93,7 @@ export const VoiceWorkspace = ({
     setBusy(`voxcpm-${selectedScene.id}`);
     setMessage('正在等待 VoxCPM 公共服务生成，请勿重复提交…');
     try {
-      const response = await fetch('/api/voice/voxcpm-demo', {
+      const response = await fetch('/api/voice/task', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -104,21 +105,51 @@ export const VoiceWorkspace = ({
           promptText,
         }),
       });
-      const value = (await response.json()) as {audioPath?: string; error?: string};
-      if (!response.ok || !value.audioPath) throw new Error(value.error ?? 'VoxCPM 生成失败');
-      onGenerated({
-        ...project,
-        scenes: project.scenes.map((scene) =>
-          scene.id === selectedScene.id ? {...scene, narrationAudio: value.audioPath} : scene,
-        ),
-      });
-      setMessage('VoxCPM 已生成当前段落配音。');
+      const value = (await response.json()) as {
+        task?: NonNullable<typeof selectedScene.voiceGenerationTask>;
+        error?: string;
+      };
+      if (!response.ok || !value.task) throw new Error(value.error ?? 'VoxCPM 任务提交失败');
+      updateScene(selectedScene.id, {voiceGenerationTask: value.task});
+      setMessage('任务已提交，可以切换段落或前往其他页面。');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(null);
     }
   };
+
+  useEffect(() => {
+    const runningScenes = project.scenes.filter((scene) =>
+      ['queued', 'running'].includes(scene.voiceGenerationTask?.status ?? ''),
+    );
+    if (!runningScenes.length) return;
+    const timer = window.setInterval(() => {
+      for (const scene of runningScenes) {
+        void fetch(`/api/voice/task?sceneId=${encodeURIComponent(scene.id)}`)
+          .then((response) => response.json())
+          .then(
+            (value: {
+              narrationAudio?: string | null;
+              task?: typeof scene.voiceGenerationTask;
+            }) => {
+              if (!value.task) return;
+              updateScene(scene.id, {
+                narrationAudio: value.narrationAudio ?? scene.narrationAudio,
+                voiceGenerationTask: value.task,
+              });
+              if (value.task.status === 'succeeded') {
+                setMessage(`${scene.caption} 配音生成完成。`);
+              } else if (value.task.status === 'failed') {
+                setMessage(value.task.error ?? `${scene.caption} 配音生成失败。`);
+              }
+            },
+          )
+          .catch(() => undefined);
+      }
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [project.scenes, updateScene]);
 
   return (
     <section className="voice-studio">
@@ -245,12 +276,17 @@ export const VoiceWorkspace = ({
               disabled={
                 !selectedScene ||
                 (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) ||
+                ['queued', 'running'].includes(selectedVoiceTask?.status ?? '') ||
                 Boolean(busy)
               }
               onClick={() => void generateVoxCpm()}
             >
               <b>◆</b>
-              <span>{busy?.startsWith('voxcpm-') ? '正在生成音频…' : '生成音频'}</span>
+              <span>
+                {['queued', 'running'].includes(selectedVoiceTask?.status ?? '')
+                  ? '音频生成中…'
+                  : '生成音频'}
+              </span>
             </button>
             <small>文本会发送到公开的 Hugging Face Demo，请勿提交敏感内容。</small>
           </section>
