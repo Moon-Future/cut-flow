@@ -7439,6 +7439,54 @@ select:focus {
   gap: 12px;
   flex-wrap: wrap;
 }
+.render-reference-button {
+  min-width: 210px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 14px;
+  border: 1px solid #46526a;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #20293a, #151c29);
+  color: #e5eaf2;
+  text-align: left;
+  box-shadow: 0 8px 22px #05080e4d;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+.render-reference-button:hover {
+  border-color: #7760ad;
+  background: linear-gradient(135deg, #292e48, #1a2031);
+  transform: translateY(-1px);
+}
+.render-reference-button:active {
+  transform: translateY(0);
+}
+.render-reference-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #7653cf, #49328b);
+  color: #fff;
+  font-size: 12px;
+  box-shadow: 0 5px 14px #5c3ba65c;
+}
+.render-reference-button > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.render-reference-button strong {
+  font-size: 12px;
+}
+.render-reference-button small {
+  color: #8692a5;
+  font-size: 10px;
+  font-weight: 500;
+}
 
 .stage-export-result {
   display: grid;

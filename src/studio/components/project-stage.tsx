@@ -186,8 +186,12 @@ export const ProjectStage = ({
             >
               {packageExport.status === 'running' ? '正在整理…' : '导出剪辑生产包'}
             </button>
-            <button className="secondary-button" onClick={onRender}>
-              生成粗剪参考 MP4
+            <button className="render-reference-button" onClick={onRender}>
+              <span className="render-reference-icon">▶</span>
+              <span>
+                <strong>生成粗剪参考</strong>
+                <small>MP4 · 用于快速检查成片</small>
+              </span>
             </button>
           </div>
           <small>生产包包含脚本、分镜表、SRT 字幕、配音、编号素材和剪辑说明。</small>
