@@ -112,6 +112,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     results: PixabaySearchResult[];
     error?: string;
   } | null>(null);
+  const [downloadedSourceUrls, setDownloadedSourceUrls] = useState<string[]>([]);
   const [generatingVideoShotId, setGeneratingVideoShotId] = useState<string | null>(null);
   const [generatingImageShotId, setGeneratingImageShotId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -219,6 +220,8 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       assetType: candidate.kind,
     });
   };
+  const shotHasAsset = (shot: VisualShot, path: string) =>
+    shot.selectedAsset === path || Boolean(shot.selectedAssets?.includes(path));
   const removePreviewAsset = (path: string) => {
     if (!previewShot) return;
     const selectedAssets = (previewShot.selectedAssets ?? []).filter((item) => item !== path);
@@ -328,6 +331,15 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       });
       const value = (await response.json()) as PixabaySearchResponse & {error?: string};
       if (!response.ok) throw new Error(value.error ?? '在线素材搜索失败');
+      const downloadedUrls = await fetch('/api/assets/library')
+        .then((libraryResponse) => libraryResponse.json())
+        .then((library: {assets?: Array<{originalUrl?: string | null}>}) =>
+          (library.assets ?? [])
+            .map((asset) => asset.originalUrl)
+            .filter((url): url is string => Boolean(url)),
+        )
+        .catch(() => []);
+      setDownloadedSourceUrls(downloadedUrls);
       setOnlineSearch({
         shotId: shot.id,
         query: value.query,
@@ -373,6 +385,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         ...value.shot,
         selectedAssets: [...new Set([...(shot.selectedAssets ?? []), value.assetPath])],
       });
+      setDownloadedSourceUrls((current) => [...new Set([...current, result.pageUrl])]);
       updateScene(selected.id, {assetPath: value.assetPath, assetType: result.kind});
       setOnlineSearch({...onlineSearch, downloadingId: undefined});
     } catch (error) {
@@ -535,7 +548,13 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                   </small>
                 </span>
                 <em className={progress.complete ? 'complete' : progress.ready ? 'partial' : ''}>
-                  {progress.total ? `${progress.ready}/${progress.total}` : '未生成'}
+                  {!progress.total
+                    ? '未生成'
+                    : progress.complete
+                      ? '已备素材'
+                      : progress.ready
+                        ? `${progress.ready} 个已备`
+                        : '待选素材'}
                 </em>
               </button>
             );
@@ -553,17 +572,12 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         </header>
         <div className="storyboard-purpose-note">
           <div>
-            <strong>完成当前段落</strong>
+            <strong>当前段落素材进度</strong>
             <span>
-              {selectedProgress.ready}/{selectedProgress.total} 个镜头素材完整
+              {selectedProgress.ready} / {selectedProgress.total} 个镜头已经选择素材
             </span>
           </div>
-          <ol>
-            <li className="done">1 设计画面</li>
-            <li className={selectedProgress.ready ? 'done' : 'active'}>2 准备素材</li>
-            <li className={previewShot ? 'active' : ''}>3 预览检查</li>
-            <li className={selectedProgress.complete ? 'done' : ''}>4 确认完成</li>
-          </ol>
+          <p>为每个镜头准备一个或多个候选素材，后续可在 Premiere Pro 中决定最终使用方案。</p>
           {firstShotId ? (
             <button type="button" onClick={() => onGoToAssets(firstShotId)}>
               选择镜头素材
@@ -902,7 +916,12 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       {!onlineSearch.loading && onlineSearch.results.length ? (
                         <div className="pixabay-grid">
                           {onlineSearch.results.map((result) => (
-                            <article className="pixabay-card" key={`${result.kind}-${result.id}`}>
+                            <article
+                              className={`pixabay-card ${
+                                downloadedSourceUrls.includes(result.pageUrl) ? 'downloaded' : ''
+                              }`}
+                              key={`${result.kind}-${result.id}`}
+                            >
                               <button
                                 type="button"
                                 className="online-preview-button"
@@ -938,7 +957,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                 >
                                   {onlineSearch.downloadingId === result.id
                                     ? '下载中…'
-                                    : '下载并使用'}
+                                    : downloadedSourceUrls.includes(result.pageUrl)
+                                      ? '已下载 · 添加到镜头'
+                                      : '下载并添加到镜头'}
                                 </button>
                               </div>
                             </article>
@@ -1120,7 +1141,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     {shot.candidates
                       .filter((candidate) => candidate.kind === 'image')
                       .map((candidate) => (
-                        <article key={candidate.id}>
+                        <article
+                          key={candidate.id}
+                          className={shotHasAsset(shot, candidate.path) ? 'selected' : ''}
+                        >
                           <button
                             type="button"
                             onClick={() =>
@@ -1134,8 +1158,14 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                             <img src={mediaUrl(projectId, candidate.path)} alt="" />
                           </button>
                           <span>{candidate.model}</span>
-                          <button type="button" onClick={() => applyCandidate(shot, candidate)}>
-                            {candidate.path === shot.selectedAsset ? '已选用' : '添加到当前镜头'}
+                          <button
+                            type="button"
+                            disabled={shotHasAsset(shot, candidate.path)}
+                            onClick={() => applyCandidate(shot, candidate)}
+                          >
+                            {shotHasAsset(shot, candidate.path)
+                              ? '已加入当前镜头'
+                              : '添加到当前镜头'}
                           </button>
                         </article>
                       ))}
@@ -1352,7 +1382,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           <button
                             type="button"
                             key={candidate.id}
-                            className={selectedVideoCandidateId === candidate.id ? 'active' : ''}
+                            className={`${selectedVideoCandidateId === candidate.id ? 'active' : ''} ${
+                              shotHasAsset(shot, candidate.path) ? 'selected' : ''
+                            }`}
                             onClick={() => setSelectedVideoCandidateId(candidate.id)}
                           >
                             <video
@@ -1364,7 +1396,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               <strong>{candidate.model}</strong>
                               <small>{formatTaskTime(candidate.createdAt)}</small>
                             </span>
-                            {candidate.path === shot.selectedAsset ? <b>已选用</b> : null}
+                            {shotHasAsset(shot, candidate.path) ? <b>已加入镜头</b> : null}
                           </button>
                         ))}
                     </div>
@@ -1416,8 +1448,8 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                 <div>
                                   <dt>状态</dt>
                                   <dd>
-                                    {candidate.path === shot.selectedAsset
-                                      ? '已选用'
+                                    {shotHasAsset(shot, candidate.path)
+                                      ? '已加入当前镜头'
                                       : taskStatus
                                         ? generationStatusLabel(taskStatus)
                                         : '生成完成'}
@@ -1438,10 +1470,11 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               <button
                                 type="button"
                                 className="primary-button"
+                                disabled={shotHasAsset(shot, candidate.path)}
                                 onClick={() => applyCandidate(shot, candidate)}
                               >
-                                {candidate.path === shot.selectedAsset
-                                  ? '当前已选用'
+                                {shotHasAsset(shot, candidate.path)
+                                  ? '已加入当前镜头'
                                   : '选用为当前镜头素材'}
                               </button>
                             </>

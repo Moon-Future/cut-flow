@@ -62,6 +62,8 @@ export const AssetsWorkspace = ({project, projectId, initialShotId, onOpenLibrar
         (asset) => asset.projectId === projectId && asset.path === selectedShot.selectedAsset,
       ) ?? assets.find((asset) => asset.path === selectedShot.selectedAsset))
     : undefined;
+  const shotHasAsset = (path: string) =>
+    selectedShot?.selectedAsset === path || Boolean(selectedShot?.selectedAssets?.includes(path));
   const applyAsset = async (asset: AssetMetadata) => {
     if (!selectedShot) {
       setMessage('请先选择一个分镜');
@@ -214,8 +216,15 @@ export const AssetsWorkspace = ({project, projectId, initialShotId, onOpenLibrar
                 {sourceLabels[asset.source]} · 来源项目：
                 {asset.originProjectTitle ?? asset.projectTitle ?? project.project.title}
               </small>
-              <button disabled={!selectedShot} onClick={() => void applyAsset(asset)}>
-                {selectedShot ? '应用到当前分镜' : '请先选择分镜'}
+              <button
+                disabled={!selectedShot || shotHasAsset(asset.path)}
+                onClick={() => void applyAsset(asset)}
+              >
+                {!selectedShot
+                  ? '请先选择分镜'
+                  : shotHasAsset(asset.path)
+                    ? '已加入当前镜头'
+                    : '添加到当前镜头'}
               </button>
             </article>
           ))}

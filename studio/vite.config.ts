@@ -1031,6 +1031,31 @@ const localApi = (): Plugin => ({
               sendJson(response, 404, {error: '找不到指定的分镜'});
               return;
             }
+            const library = await readFile(assetLibraryFile, 'utf8')
+              .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown))
+              .catch(() => assetLibrarySchema.parse({version: 1, assets: []}));
+            const existingAsset = library.assets.find(
+              (asset) => asset.type === result.kind && asset.originalUrl === result.pageUrl,
+            );
+            if (existingAsset) {
+              shot.selectedAsset = existingAsset.path;
+              shot.selectedAssets = [
+                ...new Set([...(shot.selectedAssets ?? []), existingAsset.path]),
+              ];
+              shot.status = 'ready';
+              scene.assetPath = existingAsset.path;
+              scene.assetType = result.kind;
+              const temporaryProject = `${projectFile}.tmp`;
+              await writeFile(temporaryProject, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+              await rename(temporaryProject, projectFile);
+              sendJson(response, 200, {
+                assetPath: existingAsset.path,
+                asset: existingAsset,
+                shot,
+                alreadyDownloaded: true,
+              });
+              return;
+            }
             const mediaResponse = await fetch(result.downloadUrl);
             if (!mediaResponse.ok) {
               throw new Error(`Pixabay 素材下载失败（${mediaResponse.status}）`);
@@ -1072,14 +1097,12 @@ const localApi = (): Plugin => ({
               sourceName: 'Pixabay',
               licenseUrl: 'https://pixabay.com/service/license-summary/',
             });
-            const library = await readFile(assetLibraryFile, 'utf8')
-              .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown))
-              .catch(() => ({version: 1 as const, assets: []}));
             const nextLibrary = assetLibrarySchema.parse({
               version: 1,
               assets: [...library.assets, metadata],
             });
             shot.selectedAsset = assetPath;
+            shot.selectedAssets = [...new Set([...(shot.selectedAssets ?? []), assetPath])];
             shot.status = 'ready';
             scene.assetPath = assetPath;
             scene.assetType = result.kind;

@@ -56,6 +56,17 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
       ),
     [assets],
   );
+  const targetShot = selectionTarget
+    ? project?.scenes
+        .find((scene) => scene.id === selectionTarget.sceneId)
+        ?.shots?.find((shot) => shot.id === selectionTarget.shotId)
+    : null;
+  const isSelectedForTarget = (asset: AssetMetadata) =>
+    Boolean(
+      targetShot &&
+        (!asset.projectId || asset.projectId === projectId) &&
+        (targetShot.selectedAsset === asset.path || targetShot.selectedAssets?.includes(asset.path)),
+    );
 
   const apply = async (asset: AssetMetadata) => {
     if (!canApply || (!selectedSceneId && !selectionTarget) || asset.type === 'audio') return;
@@ -292,10 +303,18 @@ export const AssetLibraryPanel = ({open, projectId, canApply, selectionTarget, o
                 </div>
                 {canApply ? (
                   <button
-                    disabled={!asset.commercialUse || (!selectedSceneId && !selectionTarget)}
+                    disabled={
+                      !asset.commercialUse ||
+                      (!selectedSceneId && !selectionTarget) ||
+                      isSelectedForTarget(asset)
+                    }
                     onClick={() => void apply(asset)}
                   >
-                    {selectionTarget ? '应用到当前分镜' : '应用到当前段落'}
+                    {selectionTarget
+                      ? isSelectedForTarget(asset)
+                        ? '已加入当前镜头'
+                        : '添加到当前镜头'
+                      : '应用到当前段落'}
                   </button>
                 ) : null}
                 <div className="asset-management-actions">
