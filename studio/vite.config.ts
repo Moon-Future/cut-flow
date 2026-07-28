@@ -1246,6 +1246,32 @@ const localApi = (): Plugin => ({
             sendJson(response, 200, {opened: true});
             return;
           }
+          if (url === '/api/files/open-location' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              filePath?: string;
+            };
+            if (!input.filePath) {
+              sendJson(response, 400, {error: '缺少文件路径'});
+              return;
+            }
+            const file = path.resolve(projectRoot, input.filePath);
+            if (!file.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
+              sendJson(response, 400, {error: '文件路径无效'});
+              return;
+            }
+            try {
+              await stat(file);
+            } catch {
+              sendJson(response, 404, {error: '文件不存在'});
+              return;
+            }
+            spawn('explorer.exe', ['/select,', file], {
+              detached: true,
+              stdio: 'ignore',
+            }).unref();
+            sendJson(response, 200, {opened: true});
+            return;
+          }
           if (url === '/api/assets/delete' && request.method === 'DELETE') {
             const input = JSON.parse((await readBody(request)).toString('utf8')) as {
               projectId?: string;

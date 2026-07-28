@@ -120,6 +120,19 @@ export const VoiceWorkspace = ({
     }
   };
 
+  const openAudioLocation = async () => {
+    if (!project.narrationAudio) return;
+    const response = await fetch('/api/files/open-location', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({filePath: project.narrationAudio}),
+    });
+    if (!response.ok) {
+      const value = (await response.json()) as {error?: string};
+      setMessage(value.error ?? '无法打开音频所在目录');
+    }
+  };
+
   const generateVoxCpm = async () => {
     if (!selectedScene) return;
     if (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) {
@@ -475,18 +488,26 @@ export const VoiceWorkspace = ({
           {audioAvailable && project.narrationAudio ? (
             <>
               <audio controls src={`/${projectId}/${project.narrationAudio}`} />
-              <button
-                className="text-action voice-remove-full"
-                onClick={() =>
-                  onGenerated({
-                    ...project,
-                    narrationAudio: null,
-                    narrationMode: 'segments',
-                  })
-                }
-              >
-                移除完整配音
-              </button>
+              <div className="voice-full-actions">
+                <button
+                  className="text-action"
+                  onClick={() => void openAudioLocation()}
+                >
+                  打开所在目录
+                </button>
+                <button
+                  className="text-action voice-remove-full"
+                  onClick={() =>
+                    onGenerated({
+                      ...project,
+                      narrationAudio: null,
+                      narrationMode: 'segments',
+                    })
+                  }
+                >
+                  移除完整配音
+                </button>
+              </div>
             </>
           ) : (
             <div className="empty-audio">

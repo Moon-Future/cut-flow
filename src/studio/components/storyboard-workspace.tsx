@@ -1680,16 +1680,31 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                 </div>
                               </dl>
                               <p>{candidate.prompt}</p>
-                              <button
-                                type="button"
-                                className="primary-button"
-                                disabled={shotHasAsset(shot, candidate.path)}
-                                onClick={() => applyCandidate(shot, candidate)}
-                              >
-                                {shotHasAsset(shot, candidate.path)
-                                  ? '已加入当前镜头'
-                                  : '选用为当前镜头素材'}
-                              </button>
+                              <div className="generated-video-actions">
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  onClick={() =>
+                                    void fetch('/api/files/open-location', {
+                                      method: 'POST',
+                                      headers: {'Content-Type': 'application/json'},
+                                      body: JSON.stringify({filePath: candidate.path}),
+                                    })
+                                  }
+                                >
+                                  打开所在目录
+                                </button>
+                                <button
+                                  type="button"
+                                  className="primary-button"
+                                  disabled={shotHasAsset(shot, candidate.path)}
+                                  onClick={() => applyCandidate(shot, candidate)}
+                                >
+                                  {shotHasAsset(shot, candidate.path)
+                                    ? '已加入当前镜头'
+                                    : '选用为当前镜头素材'}
+                                </button>
+                              </div>
                             </>
                           );
                         })()}

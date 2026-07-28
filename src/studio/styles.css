@@ -6779,6 +6779,15 @@ select:focus {
   border-color: #5f4a99;
   background: #2b2145;
 }
+.voice-full-actions,
+.generated-video-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.voice-full-actions {
+  margin-top: 8px;
+}
 .import-action {
   border-color: #7450c7;
   background: linear-gradient(135deg, #7046cf, #51319f);
