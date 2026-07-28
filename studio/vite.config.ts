@@ -955,6 +955,38 @@ const localApi = (): Plugin => ({
             });
             return;
           }
+          if (url === '/api/assets/qiniu-reference' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              assetPath?: string;
+            };
+            if (!input.assetPath) {
+              sendJson(response, 400, {error: '缺少参考图片路径'});
+              return;
+            }
+            const aiSettings = await loadAiSettings();
+            if (
+              !aiSettings.qiniu.accessKey ||
+              !aiSettings.qiniu.secretKey ||
+              !aiSettings.qiniu.bucket ||
+              !aiSettings.qiniu.cdnDomain
+            ) {
+              sendJson(response, 400, {error: '请先在设置中配置七牛云 AK、SK、Bucket 和 CDN 域名'});
+              return;
+            }
+            const localFile = path.resolve(projectRoot, input.assetPath);
+            if (!localFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
+              sendJson(response, 400, {error: '参考图片路径无效'});
+              return;
+            }
+            const fileInfo = await stat(localFile);
+            if (fileInfo.size > 20 * 1024 * 1024) {
+              sendJson(response, 400, {error: '单张参考图片不能超过 20MB'});
+              return;
+            }
+            const publicUrl = await uploadFileToQiniu(localFile, aiSettings.qiniu);
+            sendJson(response, 200, {url: publicUrl});
+            return;
+          }
           if (url === '/api/assets/library' && request.method === 'GET') {
             const scopeAll =
               new URL(request.url ?? '', 'http://localhost').searchParams.get('scope') === 'all';
@@ -1547,7 +1579,7 @@ const localApi = (): Plugin => ({
               provider?: 'volcengine-pippit';
               duration?: VideoTargetDuration;
               prompt?: string;
-              referenceImagePaths?: string[];
+              referenceImageUrls?: string[];
             };
             if (!input.sceneId || !input.shotId) {
               sendJson(response, 400, {error: '缺少场景或镜头标识'});
@@ -1599,24 +1631,7 @@ const localApi = (): Plugin => ({
                 input.duration ?? aiSettings.volcengineVideo.defaultDuration,
               ),
               enableWatermark: aiSettings.volcengineVideo.enableWatermark,
-              referenceImageUrls: input.referenceImagePaths?.length
-                ? await Promise.all(
-                    input.referenceImagePaths.map(async (referencePath) => {
-                      if (!aiSettings.qiniu.accessKey || !aiSettings.qiniu.secretKey || !aiSettings.qiniu.bucket || !aiSettings.qiniu.cdnDomain) {
-                        throw new Error('请先在设置中配置七牛云 AK、SK、Bucket 和 CDN 域名');
-                      }
-                      const localFile = path.resolve(projectRoot, referencePath);
-                      if (!localFile.startsWith(`${path.resolve(projectRoot)}${path.sep}`)) {
-                        throw new Error('参考图片路径无效');
-                      }
-                      const fileInfo = await stat(localFile);
-                      if (fileInfo.size > 20 * 1024 * 1024) {
-                        throw new Error('单张参考图片不能超过 20MB');
-                      }
-                      return uploadFileToQiniu(localFile, aiSettings.qiniu);
-                    }),
-                  )
-                : [],
+              referenceImageUrls: input.referenceImageUrls ?? [],
             });
             const targetDuration = input.duration ?? aiSettings.volcengineVideo.defaultDuration;
             const finalPrompt = limitVideoPrompt(

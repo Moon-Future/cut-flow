@@ -5302,11 +5302,11 @@ select:focus {
   background: #38291a;
   color: #e7b46c;
   font-size: 9px;
+  margin-left: 10px;
 }
 .shot-editor-list article > header span.ready {
   background: #17362e;
   color: #65d5ae;
-  margin-left: 10px;
 }
 .shot-editor-list article > header .current-shot-indicator {
   margin-left: auto;
@@ -6075,6 +6075,14 @@ select:focus {
   border: 1px solid #273143;
   border-radius: 7px;
   background: #111823;
+}
+.video-reference-images > label small {
+  grid-column: 3;
+  overflow: hidden;
+  color: #6f7d91;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .video-reference-images img {
   width: 46px;

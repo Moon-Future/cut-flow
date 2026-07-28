@@ -127,6 +127,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
     duration: VideoTargetDuration;
     prompt: string;
     referenceImagePaths: string[];
+    referenceImageUrls: Record<string, string>;
   } | null>(null);
   const [videoGenerationError, setVideoGenerationError] = useState<{
     shotId: string;
@@ -463,6 +464,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                 .filter((path): path is string => Boolean(path))
                 .filter((path) => !videoFilePattern.test(path)),
             )],
+            referenceImageUrls: {} as Record<string, string>,
           };
     setGeneratingVideoShotId(shot.id);
     setVideoGenerationError(null);
@@ -481,7 +483,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           provider: draft.provider,
           duration: draft.duration,
           prompt: limitVideoPrompt(normalizeVideoPromptDuration(visualPrompt, draft.duration)),
-          referenceImagePaths: draft.referenceImagePaths,
+          referenceImageUrls: draft.referenceImagePaths.map(
+            (path) => draft.referenceImageUrls[path],
+          ).filter((url): url is string => Boolean(url)),
         }),
       });
       const value = (await response.json()) as {
@@ -1267,6 +1271,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           .filter((path): path is string => Boolean(path))
                           .filter((path) => !videoFilePattern.test(path)),
                       )],
+                      referenceImageUrls: {} as Record<string, string>,
                     });
                   }}
                 >
@@ -1341,19 +1346,68 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                             <input
                               type="checkbox"
                               checked={videoDraft.referenceImagePaths.includes(referencePath)}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                if (!event.target.checked) {
+                                  const nextUrls = {...videoDraft.referenceImageUrls};
+                                  delete nextUrls[referencePath];
+                                  setVideoDraft({
+                                    ...videoDraft,
+                                    referenceImagePaths: videoDraft.referenceImagePaths.filter(
+                                      (path) => path !== referencePath,
+                                    ),
+                                    referenceImageUrls: nextUrls,
+                                  });
+                                  return;
+                                }
                                 setVideoDraft({
                                   ...videoDraft,
-                                  referenceImagePaths: event.target.checked
-                                    ? [...new Set([...videoDraft.referenceImagePaths, referencePath])]
-                                    : videoDraft.referenceImagePaths.filter(
-                                        (path) => path !== referencePath,
-                                      ),
+                                  referenceImagePaths: [
+                                    ...new Set([...videoDraft.referenceImagePaths, referencePath]),
+                                  ],
+                                });
+                                void fetch('/api/assets/qiniu-reference', {
+                                  method: 'POST',
+                                  headers: {'Content-Type': 'application/json'},
+                                  body: JSON.stringify({assetPath: referencePath}),
                                 })
-                              }
+                                  .then(async (response) => {
+                                    const value = (await response.json()) as {
+                                      url?: string;
+                                      error?: string;
+                                    };
+                                    if (!response.ok || !value.url) {
+                                      throw new Error(value.error ?? '参考图片上传失败');
+                                    }
+                                    setVideoDraft((current) =>
+                                      current?.shotId === shot.id
+                                        ? {
+                                            ...current,
+                                            referenceImageUrls: {
+                                              ...current.referenceImageUrls,
+                                              [referencePath]: value.url!,
+                                            },
+                                          }
+                                        : current,
+                                    );
+                                  })
+                                  .catch((error: unknown) =>
+                                    setVideoGenerationError({
+                                      shotId: shot.id,
+                                      message:
+                                        error instanceof Error ? error.message : String(error),
+                                    }),
+                                  );
+                              }}
                             />
                             <img src={mediaUrl(projectId, referencePath)} alt="" />
                             <span>{referencePath.split('/').at(-1)}</span>
+                            <small>
+                              {videoDraft.referenceImageUrls[referencePath]
+                                ? `已上传 · ${videoDraft.referenceImageUrls[referencePath]}`
+                                : videoDraft.referenceImagePaths.includes(referencePath)
+                                  ? '正在上传七牛云…'
+                                  : '勾选后立即上传'}
+                            </small>
                           </label>
                         ))}
                         {![
@@ -1409,6 +1463,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               activeGenerationStatuses.has(shot.generationTask.status),
                             ) ||
                             !videoDraft.prompt.trim()
+                            || videoDraft.referenceImagePaths.some(
+                              (path) => !videoDraft.referenceImageUrls[path],
+                            )
                           }
                           onClick={() => void generateVideo(shot)}
                         >
