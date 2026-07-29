@@ -451,7 +451,7 @@ export const VoiceWorkspace = ({
           </header>
           <div className="narration-mode-switch">
             <button
-              className={(project.narrationMode ?? 'full') === 'full' ? 'active' : ''}
+              className={project.narrationMode === 'full' ? 'active' : ''}
               onClick={() => {
                 if (!project.narrationAudio) {
                   setMessage('尚未导入完整配音，请先导入后再切换。');
@@ -464,7 +464,12 @@ export const VoiceWorkspace = ({
               完整音频
             </button>
             <button
-              className={project.narrationMode === 'segments' ? 'active' : ''}
+              className={
+                (project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments')) ===
+                'segments'
+                  ? 'active'
+                  : ''
+              }
               onClick={() => {
                 onGenerated({...project, narrationMode: 'segments'});
                 setMessage('已切换为分段音频模式。');
@@ -521,7 +526,7 @@ export const VoiceWorkspace = ({
           <ul>
             <li>✓ 文案段落完整</li>
             <li>{project.scenes.filter((scene) => scene.narrationAudio).length} / {project.scenes.length} 段已有独立配音</li>
-            <li>当前导出：{project.narrationMode === 'segments' ? '分段音频' : '完整音频'}</li>
+            <li>当前导出：{(project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments')) === 'segments' ? '分段音频' : '完整音频'}</li>
             <li>{audioAvailable ? '✓ 完整配音已就绪' : '○ 可导入完整配音作为主音轨'}</li>
             <li>○ 建议试听并检查配音与镜头时长</li>
           </ul>

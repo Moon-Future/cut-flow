@@ -182,7 +182,9 @@ export const createEditingPackage = async (
   }
 
   let narrationFile: string | null = null;
-  if (project.narrationMode === 'segments') {
+  if (
+    (project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments')) === 'segments'
+  ) {
     const segmentDirectory = path.join(directories.voice, 'segments');
     await mkdir(segmentDirectory, {recursive: true});
     for (const [index, scene] of project.scenes.entries()) {

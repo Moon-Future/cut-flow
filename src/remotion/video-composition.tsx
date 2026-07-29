@@ -18,6 +18,8 @@ export const VideoComposition = ({
   const timeline = buildTimeline(project);
   const fadeFrames = secondsToFrames(project.style.transitionDuration, project.project.fps);
   const template = getTemplate(project.style.template);
+  const narrationMode =
+    project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments');
 
   return (
     <AbsoluteFill style={{backgroundColor: template.backgroundColor}}>
@@ -35,12 +37,12 @@ export const VideoComposition = ({
           />
         </Sequence>
       ))}
-      {(project.narrationMode ?? 'full') === 'full' &&
+      {narrationMode === 'full' &&
       narrationAvailable &&
       project.narrationAudio ? (
         <Audio src={staticFile(`${assetBasePath}/${project.narrationAudio}`)} />
       ) : null}
-      {project.narrationMode === 'segments'
+      {narrationMode === 'segments'
         ? timeline.scenes.map(({scene, from, durationInFrames}) =>
             scene.narrationAudio ? (
               <Sequence
