@@ -168,6 +168,29 @@ export const VoiceWorkspace = ({
     }
   };
 
+  const stopVoxCpm = async () => {
+    if (!selectedScene || !['queued', 'running'].includes(selectedVoiceTask?.status ?? '')) return;
+    setBusy(`stop-voxcpm-${selectedScene.id}`);
+    setMessage('正在结束音频生成任务…');
+    try {
+      const response = await fetch(
+        `/api/voice/task?sceneId=${encodeURIComponent(selectedScene.id)}`,
+        {method: 'DELETE'},
+      );
+      const value = (await response.json()) as {
+        task?: NonNullable<typeof selectedScene.voiceGenerationTask>;
+        error?: string;
+      };
+      if (!response.ok || !value.task) throw new Error(value.error ?? '结束音频生成失败');
+      updateScene(selectedScene.id, {voiceGenerationTask: value.task});
+      setMessage('已结束当前段落的音频生成，可以重新生成。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   useEffect(() => {
     const runningScenes = project.scenes.filter((scene) =>
       ['queued', 'running'].includes(scene.voiceGenerationTask?.status ?? ''),
@@ -323,23 +346,34 @@ export const VoiceWorkspace = ({
                 onChange={(event) => setControlInstruction(event.target.value)}
               />
             </label>
-            <button
-              className="voice-action-button voxcpm-action"
-              disabled={
-                !selectedScene ||
-                (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) ||
-                ['queued', 'running'].includes(selectedVoiceTask?.status ?? '') ||
-                Boolean(busy)
-              }
-              onClick={() => void generateVoxCpm()}
-            >
-              <b>◆</b>
-              <span>
-                {['queued', 'running'].includes(selectedVoiceTask?.status ?? '')
-                  ? '音频生成中…'
-                  : '生成音频'}
-              </span>
-            </button>
+            <div className="voxcpm-actions">
+              <button
+                className="voice-action-button voxcpm-action"
+                disabled={
+                  !selectedScene ||
+                  (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) ||
+                  ['queued', 'running'].includes(selectedVoiceTask?.status ?? '') ||
+                  Boolean(busy)
+                }
+                onClick={() => void generateVoxCpm()}
+              >
+                <b>◆</b>
+                <span>
+                  {['queued', 'running'].includes(selectedVoiceTask?.status ?? '')
+                    ? '音频生成中…'
+                    : '生成音频'}
+                </span>
+              </button>
+              {['queued', 'running'].includes(selectedVoiceTask?.status ?? '') ? (
+                <button
+                  className="voice-action-button stop-voxcpm-action"
+                  disabled={Boolean(busy)}
+                  onClick={() => void stopVoxCpm()}
+                >
+                  {busy === `stop-voxcpm-${selectedScene?.id}` ? '正在结束…' : '结束'}
+                </button>
+              ) : null}
+            </div>
             <small>文本会发送到公开的 Hugging Face Demo，请勿提交敏感内容。</small>
           </section>
           {message ? <p className="voice-message">{message}</p> : null}

@@ -703,6 +703,37 @@ const localApi = (): Plugin => ({
             });
             return;
           }
+          if (url === '/api/voice/task' && request.method === 'DELETE') {
+            const sceneId = new URL(request.url ?? '', 'http://localhost').searchParams.get(
+              'sceneId',
+            );
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const scene = project.scenes.find((item) => item.id === sceneId);
+            if (!scene) {
+              sendJson(response, 404, {error: '找不到配音段落'});
+              return;
+            }
+            const task = scene.voiceGenerationTask;
+            if (!task || !['queued', 'running'].includes(task.status)) {
+              sendJson(response, 409, {error: '当前没有正在生成的音频任务'});
+              return;
+            }
+            const completedAt = new Date().toISOString();
+            scene.voiceGenerationTask = {
+              ...task,
+              status: 'cancelled',
+              error: null,
+              completedAt,
+              updatedAt: completedAt,
+            };
+            const temporary = `${projectFile}.tmp`;
+            await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+            await rename(temporary, projectFile);
+            sendJson(response, 200, {task: scene.voiceGenerationTask});
+            return;
+          }
           if (url === '/api/voice/merge' && request.method === 'POST') {
             const project = projectFileSchema.parse(
               JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
@@ -841,7 +872,12 @@ const localApi = (): Plugin => ({
                   JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
                 );
                 const target = latest.scenes.find((item) => item.id === input.sceneId);
-                if (!target || target.voiceGenerationTask?.id !== task.id) return;
+                if (
+                  !target ||
+                  target.voiceGenerationTask?.id !== task.id ||
+                  !['queued', 'running'].includes(target.voiceGenerationTask.status)
+                )
+                  return;
                 target.narrationAudio = value.audioPath;
                 target.narrationAudioCandidates = [
                   ...(target.narrationAudioCandidates ?? []),
@@ -868,7 +904,12 @@ const localApi = (): Plugin => ({
                   JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
                 );
                 const target = latest.scenes.find((item) => item.id === input.sceneId);
-                if (!target || target.voiceGenerationTask?.id !== task.id) return;
+                if (
+                  !target ||
+                  target.voiceGenerationTask?.id !== task.id ||
+                  !['queued', 'running'].includes(target.voiceGenerationTask.status)
+                )
+                  return;
                 target.voiceGenerationTask = {
                   ...task,
                   status: 'failed',

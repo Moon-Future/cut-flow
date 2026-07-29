@@ -7205,9 +7205,25 @@ select:focus {
   box-shadow: 0 7px 18px #4d2c8f38;
 }
 .voxcpm-action {
+  flex: 1;
   border-color: #347f73;
   background: linear-gradient(135deg, #287d70, #245b66);
   box-shadow: 0 7px 18px #1f746c32;
+}
+.voxcpm-actions {
+  display: flex;
+  gap: 8px;
+}
+.stop-voxcpm-action {
+  min-width: 76px;
+  padding: 0 16px;
+  border-color: #914b55;
+  background: linear-gradient(135deg, #72313b, #542832);
+  box-shadow: 0 7px 18px #6f28302b;
+}
+.stop-voxcpm-action:hover {
+  border-color: #bd6572;
+  background: linear-gradient(135deg, #893c48, #66303b);
 }
 .voice-reference-picker {
   min-width: 0;
