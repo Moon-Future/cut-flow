@@ -318,11 +318,11 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
       return;
     }
     setBusy('save');
-    setMessage('正在生成 1080 × 1920 封面…');
+    setMessage('正在生成 1080 × 1440 封面…');
     try {
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
-      canvas.height = 1920;
+      canvas.height = 1440;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('浏览器无法创建封面画布');
       const image = await loadImage(mediaUrl(projectId, cover.sourcePath));
@@ -340,7 +340,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         width,
         height,
       );
-      const gradient = context.createLinearGradient(0, 300, 0, 1700);
+      const gradient = context.createLinearGradient(0, 180, 0, 1300);
       gradient.addColorStop(0, `rgba(0,0,0,${cover.overlayOpacity * 0.35})`);
       gradient.addColorStop(0.45, `rgba(0,0,0,${cover.overlayOpacity * 0.15})`);
       gradient.addColorStop(1, `rgba(0,0,0,${cover.overlayOpacity})`);
@@ -399,7 +399,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         <header>
           <div>
             <strong>封面设置</strong>
-            <span>抖音竖屏 · 1080 × 1920</span>
+            <span>抖音封面 · 3:4 · 1080 × 1440</span>
           </div>
         </header>
         <label>
@@ -440,7 +440,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         <section className="cover-setting-group">
           <header>
             <strong>背景图位置</strong>
-            <small>放大后可调整主体在安全区内的位置</small>
+            <small>放大后可调整主体在封面中的位置</small>
           </header>
           <label>
             <span>横向缩放 {cover.backgroundScaleX.toFixed(2)}×</span>
@@ -828,7 +828,7 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
         <header>
           <div>
             <strong>抖音封面预览</strong>
-            <span>白色虚线内为个人主页 3:4 主要显示区域</span>
+            <span>3:4 · 1080 × 1440</span>
           </div>
         </header>
         <div className="douyin-cover-shell">
@@ -881,9 +881,6 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
               className="cover-dark-layer"
               style={{opacity: cover.overlayOpacity}}
             />
-            <div className="douyin-safe-zone">
-              <span>3:4 主页封面安全区</span>
-            </div>
             {cover.textLayers.map((layer) =>
               layer.text ? (
                 <div
@@ -943,11 +940,6 @@ export const CoverWorkspace = ({project, projectId}: Props) => {
             )}
             {!cover.sourcePath ? <p>选择项目图片或从电脑上传底图</p> : null}
           </div>
-        </div>
-        <div className="cover-safe-notes">
-          <span><b>9:16</b> 视频发布封面完整尺寸</span>
-          <span><b>3:4</b> 个人主页列表主要展示区域</span>
-          <span><b>建议</b> 标题与主体保持在白色虚线内</span>
         </div>
       </main>
     </section>

@@ -6482,7 +6482,7 @@ select:focus {
 }
 .cover-canvas-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   overflow: hidden;
 }
@@ -6501,7 +6501,7 @@ select:focus {
 .douyin-cover {
   position: relative;
   height: min(100%, 680px);
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 3 / 4;
   overflow: hidden;
   border: 1px solid #4a566a;
   border-radius: 9px;
@@ -6531,23 +6531,6 @@ select:focus {
   inset: 0;
   background: linear-gradient(180deg, #0004, transparent 38%, #000 100%);
   pointer-events: none;
-}
-.douyin-safe-zone {
-  position: absolute;
-  z-index: 2;
-  inset: 12.5% 0;
-  border-block: 1px dashed #ffffffc7;
-  pointer-events: none;
-}
-.douyin-safe-zone > span {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  padding: 3px 5px;
-  border-radius: 4px;
-  background: #0008;
-  color: #fff;
-  font-size: 8px;
 }
 .cover-copy {
   position: absolute;
@@ -6599,17 +6582,6 @@ select:focus {
   color: #8e9aab;
   font-size: 12px;
   text-align: center;
-}
-.cover-safe-notes {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  color: #7e8a9c;
-  font-size: 9px;
-}
-.cover-safe-notes b {
-  color: #bdc8d8;
 }
 @media (max-width: 980px) {
   .cover-maker {

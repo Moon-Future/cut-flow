@@ -30,7 +30,7 @@ const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]>
   storyboard: ['分镜与素材', '按每段旁白准备画面，缺什么就补什么'],
   voice: ['配音与字幕', '生成或导入配音，并检查字幕时间'],
   assets: ['素材', '按分镜统一选用、替换和移除项目素材'],
-  cover: ['封面制作', '制作适配抖音 9:16 发布和 3:4 主页展示的封面'],
+  cover: ['封面制作', '制作适配抖音主页展示的 3:4 封面'],
   export: ['交付', '整理剪辑生产包，或生成一条粗剪参考视频'],
   settings: ['设置', '配置本机 AI 服务与密钥'],
 };
