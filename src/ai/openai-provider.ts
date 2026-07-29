@@ -118,6 +118,7 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
   };
   return {
     ...script,
+    ending: String(script.ending ?? '').trim(),
     scenes: scenes.map((sceneValue) => {
       const scene =
         sceneValue && typeof sceneValue === 'object' ? (sceneValue as Record<string, unknown>) : {};
