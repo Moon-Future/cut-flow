@@ -73,6 +73,6 @@ export const videoScriptSchema = z.object({
       }),
     )
     .min(3)
-    .max(12),
+    .max(20),
   ending: z.string().min(1),
 });

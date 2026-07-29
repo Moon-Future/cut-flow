@@ -121,7 +121,7 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
     scenes: scenes.map((sceneValue) => {
       const scene =
         sceneValue && typeof sceneValue === 'object' ? (sceneValue as Record<string, unknown>) : {};
-      const shots = Array.isArray(scene.shots) ? scene.shots : [];
+      const returnedShots = Array.isArray(scene.shots) ? scene.shots : [];
       const requestedSegmentType = String(scene.segmentType ?? '');
       const segmentType = ['digital-human', 'voiceover', 'visual-explanation'].includes(
         requestedSegmentType,
@@ -134,9 +134,32 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
           : allowDigitalHuman
             ? 'digital-human'
             : 'voiceover';
+      const visualIntent =
+        String(
+          scene.visualIntent ??
+            scene.visualPrompt ??
+            scene.caption ??
+            scene.narration ??
+            '围绕本段内容呈现清晰的主题画面',
+        ).trim() || '围绕本段内容呈现清晰的主题画面';
+      const shots =
+        returnedShots.length > 0
+          ? returnedShots
+          : [
+              {
+                visualPurpose: visualIntent,
+                shotType: segmentType === 'digital-human' ? 'digital-human' : 'image',
+                assetStrategy:
+                  segmentType === 'digital-human' ? 'digital-human' : 'source-agnostic',
+                durationWeight: 1,
+                searchQueries: [visualIntent],
+                searchQueriesZh: [visualIntent],
+              },
+            ];
       return {
         ...scene,
         segmentType,
+        visualIntent,
         visualPrompt:
           String(
             scene.visualPrompt ??
