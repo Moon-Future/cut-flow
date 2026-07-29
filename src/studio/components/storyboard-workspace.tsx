@@ -26,6 +26,16 @@ type Props = {
 type AcquisitionMode = 'reference' | 'download' | 'ai-image' | 'ai-video';
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
 const videoFilePattern = /\.(mp4|mov|webm|mkv)(?:[?#].*)?$/i;
+const sceneCurrentMedia = (scene: ProjectFile['scenes'][number]) => {
+  const currentPath = (scene.shots ?? [])
+    .map((shot) => shot.selectedAsset ?? shot.selectedAssets?.at(-1))
+    .find((path): path is string => Boolean(path));
+  const path = currentPath ?? scene.assetPath;
+  return {
+    path,
+    type: videoFilePattern.test(path) ? ('video' as const) : ('image' as const),
+  };
+};
 const activeGenerationStatuses = new Set<GenerationTask['status']>(['queued', 'running']);
 const generationStatusLabel = (status: GenerationTask['status']) =>
   ({
@@ -556,6 +566,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         <div>
           {project.scenes.map((scene, index) => {
             const progress = getSceneProgress(scene);
+            const thumbnail = sceneCurrentMedia(scene);
             return (
               <button
                 key={scene.id}
@@ -564,10 +575,10 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                 onClick={() => selectScene(scene.id)}
               >
                 <i>
-                  {scene.assetType === 'video' ? (
-                    <video src={mediaUrl(projectId, scene.assetPath)} muted />
+                  {thumbnail.type === 'video' ? (
+                    <video src={mediaUrl(projectId, thumbnail.path)} muted />
                   ) : (
-                    <img src={mediaUrl(projectId, scene.assetPath)} alt="" />
+                    <img src={mediaUrl(projectId, thumbnail.path)} alt="" />
                   )}
                 </i>
                 <span>

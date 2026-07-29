@@ -40,6 +40,17 @@ type Props = {
 };
 
 const mediaUrl = (projectId: string, path: string) => `/${projectId}/${path}`;
+const editingVideoPattern = /\.(mp4|mov|webm|mkv)(?:[?#].*)?$/iu;
+const sceneCurrentMedia = (scene: Scene) => {
+  const currentPath = (scene.shots ?? [])
+    .map((shot) => shot.selectedAsset ?? shot.selectedAssets?.at(-1))
+    .find((path): path is string => Boolean(path));
+  const path = currentPath ?? scene.assetPath;
+  return {
+    path,
+    type: editingVideoPattern.test(path) ? ('video' as const) : ('image' as const),
+  };
+};
 const timelineLabelWidth = 112;
 
 const workspaceTabs: Array<{
@@ -486,7 +497,9 @@ export const EditingWorkspace = ({
                     <button onClick={() => onNavigate('storyboard')}>自动分镜</button>
                   </header>
                   <div className="edit-scene-list">
-                    {project.scenes.map((item, index) => (
+                    {project.scenes.map((item, index) => {
+                      const thumbnail = sceneCurrentMedia(item);
+                      return (
                       <article
                         key={item.id}
                         data-scene-navigator={item.id}
@@ -503,8 +516,8 @@ export const EditingWorkspace = ({
                         <div className="scene-thumb">
                           <MediaThumb
                             projectId={projectId}
-                            path={item.assetPath}
-                            type={item.assetType}
+                            path={thumbnail.path}
+                            type={thumbnail.type}
                           />
                           <b>{String(index + 1).padStart(2, '0')}</b>
                         </div>
@@ -516,7 +529,8 @@ export const EditingWorkspace = ({
                           </small>
                         </div>
                       </article>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
 
