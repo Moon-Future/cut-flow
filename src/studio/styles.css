@@ -6040,6 +6040,128 @@ select:focus {
   color: #81758e;
   font-size: 9px;
 }
+.video-prompt-records {
+  display: grid;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid #35415a;
+  border-radius: 9px;
+  background: #0d131d;
+}
+.video-prompt-records > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.video-prompt-records > header > div {
+  display: grid;
+  gap: 3px;
+}
+.video-prompt-records > header strong {
+  color: #d7ddea;
+  font-size: 12px;
+}
+.video-prompt-records > header small,
+.video-prompt-records > header > span {
+  color: #758198;
+  font-size: 9px;
+}
+.video-prompt-record-save {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.video-prompt-record-save input {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #36445c;
+  border-radius: 7px;
+  background: #090e16;
+  color: #d4dbe7;
+}
+.video-prompt-record-save button {
+  padding: 8px 12px;
+  border: 1px solid #64509a;
+  border-radius: 7px;
+  background: #4b3978;
+  color: #f0ebff;
+  cursor: pointer;
+}
+.video-prompt-record-save button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.video-prompt-record-list {
+  display: grid;
+  gap: 7px;
+  max-height: 260px;
+  overflow: auto;
+}
+.video-prompt-record-list > article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: stretch;
+}
+.video-prompt-record-load {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  padding: 9px 10px;
+  border: 1px solid #2d394e;
+  border-radius: 7px;
+  background: #121a27;
+  color: #cdd5e2;
+  text-align: left;
+  cursor: pointer;
+}
+.video-prompt-record-load:hover {
+  border-color: #6d58a4;
+  background: #171f31;
+}
+.video-prompt-record-load strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.video-prompt-record-load small {
+  color: #707d92;
+  font-size: 9px;
+}
+.video-prompt-record-load span {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: #8995a8;
+  font-size: 9px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.video-prompt-record-delete {
+  padding: 0 11px;
+  border: 1px solid #513844;
+  border-radius: 7px;
+  background: #21161c;
+  color: #c8808c;
+  cursor: pointer;
+}
+.video-prompt-record-delete:hover {
+  border-color: #875160;
+  color: #f2a2ae;
+}
+.video-prompt-record-empty {
+  margin: 0;
+  padding: 9px;
+  border-radius: 7px;
+  background: #111823;
+  color: #707d91;
+  font-size: 10px;
+  line-height: 1.5;
+}
 .video-generation-footer {
   display: flex;
   align-items: center;

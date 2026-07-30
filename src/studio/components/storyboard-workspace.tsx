@@ -133,6 +133,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   const generationRequestLock = useRef(new Set<string>());
   const [videoDefaultDuration, setVideoDefaultDuration] = useState<VideoTargetDuration>('10s');
   const [videoWatermark, setVideoWatermark] = useState(true);
+  const [videoPromptRecordName, setVideoPromptRecordName] = useState('');
   const [videoDraft, setVideoDraft] = useState<{
     shotId: string;
     provider: 'volcengine-pippit';
@@ -1506,6 +1507,98 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           字数必须不超过 2000；提示词过长可能导致接口异常或部分指令不生效。
                         </small>
                       </label>
+                      <section className="video-prompt-records">
+                        <header>
+                          <div>
+                            <strong>保存提示词版本</strong>
+                            <small>
+                              保存当前编辑稿，之后可重新载入；仅记录 AI 视频提示词
+                            </small>
+                          </div>
+                          <span>{shot.videoPromptRecords?.length ?? 0} 个版本</span>
+                        </header>
+                        <div className="video-prompt-record-save">
+                          <input
+                            value={videoPromptRecordName}
+                            placeholder="版本名称，例如：动作自然版"
+                            maxLength={40}
+                            onChange={(event) => setVideoPromptRecordName(event.target.value)}
+                          />
+                          <button
+                            type="button"
+                            disabled={!videoDraft.prompt.trim()}
+                            onClick={() => {
+                              const records = shot.videoPromptRecords ?? [];
+                              const createdAt = new Date().toISOString();
+                              const name =
+                                videoPromptRecordName.trim() ||
+                                `版本 ${records.length + 1} · ${new Date(
+                                  createdAt,
+                                ).toLocaleString('zh-CN')}`;
+                              updateShot(shot, {
+                                videoPromptRecords: [
+                                  ...records,
+                                  {
+                                    id: `video-prompt-${Date.now()}-${Math.random()
+                                      .toString(36)
+                                      .slice(2, 8)}`,
+                                    name,
+                                    prompt: videoDraft.prompt.trim(),
+                                    createdAt,
+                                  },
+                                ],
+                              });
+                              setVideoPromptRecordName('');
+                            }}
+                          >
+                            保存当前提示词
+                          </button>
+                        </div>
+                        {(shot.videoPromptRecords?.length ?? 0) > 0 ? (
+                          <div className="video-prompt-record-list">
+                            {[...(shot.videoPromptRecords ?? [])].reverse().map((record) => (
+                              <article key={record.id}>
+                                <button
+                                  type="button"
+                                  className="video-prompt-record-load"
+                                  title="载入此版本"
+                                  onClick={() =>
+                                    setVideoDraft({
+                                      ...videoDraft,
+                                      prompt: limitVideoPrompt(record.prompt),
+                                    })
+                                  }
+                                >
+                                  <strong>{record.name}</strong>
+                                  <small>{new Date(record.createdAt).toLocaleString('zh-CN')}</small>
+                                  <span>{record.prompt}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="video-prompt-record-delete"
+                                  title="删除此版本"
+                                  onClick={() => {
+                                    if (!window.confirm(`确认删除提示词版本“${record.name}”？`)) {
+                                      return;
+                                    }
+                                    updateShot(shot, {
+                                      videoPromptRecords: (shot.videoPromptRecords ?? []).filter(
+                                        (item) => item.id !== record.id,
+                                      ),
+                                    });
+                                  }}
+                                >
+                                  删除
+                                </button>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="video-prompt-record-empty">
+                            暂无保存记录。手动完善提示词后，可以在生成视频前保存一个版本。
+                          </p>
+                        )}
+                      </section>
                       {generatingVideoShotId === shot.id || shot.generationTask ? (
                         <section
                           className={`current-video-task ${

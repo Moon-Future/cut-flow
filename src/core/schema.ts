@@ -143,6 +143,16 @@ export const visualShotSchema = z.object({
   videoPrompt: z.string().optional(),
   imagePromptZh: z.string().optional(),
   videoPromptZh: z.string().optional(),
+  videoPromptRecords: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        prompt: z.string().min(1).max(2000),
+        createdAt: z.string().min(1),
+      }),
+    )
+    .optional(),
   motionPlan: shotMotionPlanSchema.optional(),
   composition: z
     .enum(['single', 'versus', 'subject-center', 'before-after', 'three-layer-depth', 'custom'])
