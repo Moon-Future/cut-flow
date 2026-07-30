@@ -224,6 +224,44 @@ export const VoiceWorkspace = ({
     }
   };
 
+  const stopAllVoxCpm = async () => {
+    const runningScenes = project.scenes.filter((scene) =>
+      ['queued', 'running'].includes(scene.voiceGenerationTask?.status ?? ''),
+    );
+    if (!runningScenes.length) return;
+    setBusy('stop-voxcpm-all');
+    setMessage(`正在结束 ${runningScenes.length} 个音频生成任务…`);
+    let stopped = 0;
+    const failed: string[] = [];
+    try {
+      for (const scene of runningScenes) {
+        const response = await fetch(
+          `/api/voice/task?sceneId=${encodeURIComponent(scene.id)}`,
+          {method: 'DELETE'},
+        );
+        const value = (await response.json()) as {
+          task?: NonNullable<typeof scene.voiceGenerationTask>;
+          error?: string;
+        };
+        if (!response.ok || !value.task) {
+          failed.push(`${scene.caption}：${value.error ?? '结束失败'}`);
+          continue;
+        }
+        updateScene(scene.id, {voiceGenerationTask: value.task});
+        stopped += 1;
+      }
+      setMessage(
+        failed.length
+          ? `已结束 ${stopped} 个任务，${failed.length} 个结束失败：${failed.join('；')}`
+          : `已结束全部 ${stopped} 个音频生成任务。`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const stopVoxCpm = async () => {
     if (!selectedScene || !['queued', 'running'].includes(selectedVoiceTask?.status ?? '')) return;
     setBusy(`stop-voxcpm-${selectedScene.id}`);
@@ -263,10 +301,30 @@ export const VoiceWorkspace = ({
               task?: typeof scene.voiceGenerationTask;
             }) => {
               if (!value.task) return;
+              const currentScene = useStudioStore
+                .getState()
+                .project?.scenes.find((item) => item.id === scene.id);
+              const currentTask = currentScene?.voiceGenerationTask;
+              const nextCandidates =
+                value.narrationAudioCandidates ?? currentScene?.narrationAudioCandidates;
+              const taskUnchanged =
+                currentTask?.id === value.task.id &&
+                currentTask.status === value.task.status &&
+                currentTask.updatedAt === value.task.updatedAt &&
+                currentTask.error === value.task.error;
+              const audioUnchanged =
+                (value.narrationAudio ?? currentScene?.narrationAudio) ===
+                currentScene?.narrationAudio;
+              const candidatesUnchanged =
+                (nextCandidates?.length ?? 0) ===
+                  (currentScene?.narrationAudioCandidates?.length ?? 0) &&
+                nextCandidates?.at(-1)?.path ===
+                  currentScene?.narrationAudioCandidates?.at(-1)?.path;
+              if (taskUnchanged && audioUnchanged && candidatesUnchanged) return;
               updateScene(scene.id, {
-                narrationAudio: value.narrationAudio ?? scene.narrationAudio,
+                narrationAudio: value.narrationAudio ?? currentScene?.narrationAudio,
                 narrationAudioCandidates:
-                  value.narrationAudioCandidates ?? scene.narrationAudioCandidates,
+                  nextCandidates,
                 voiceGenerationTask: value.task,
               });
               if (value.task.status === 'succeeded') {
@@ -430,25 +488,36 @@ export const VoiceWorkspace = ({
                 </button>
               ) : null}
             </div>
-            <button
-              className="voice-action-button batch-voxcpm-action"
-              disabled={
-                Boolean(busy) ||
-                !project.scenes.length ||
-                runningVoiceCount === project.scenes.length ||
-                (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim()))
-              }
-              onClick={() => void generateAllVoxCpm()}
-            >
-              <b>◆◆</b>
-              <span>
-                {busy === 'voxcpm-all'
-                  ? '正在提交全部段落…'
-                  : runningVoiceCount > 0
-                    ? `继续生成其余段落（${runningVoiceCount} 个进行中）`
-                    : '一键生成所有段落'}
-              </span>
-            </button>
+            <div className="batch-voxcpm-actions">
+              <button
+                className="voice-action-button batch-voxcpm-action"
+                disabled={
+                  Boolean(busy) ||
+                  !project.scenes.length ||
+                  runningVoiceCount === project.scenes.length ||
+                  (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim()))
+                }
+                onClick={() => void generateAllVoxCpm()}
+              >
+                <b>◆◆</b>
+                <span>
+                  {busy === 'voxcpm-all'
+                    ? '正在提交全部段落…'
+                    : runningVoiceCount > 0
+                      ? `继续生成其余段落（${runningVoiceCount} 个进行中）`
+                      : '一键生成所有段落'}
+                </span>
+              </button>
+              {runningVoiceCount > 0 ? (
+                <button
+                  className="voice-action-button stop-all-voxcpm-action"
+                  disabled={Boolean(busy)}
+                  onClick={() => void stopAllVoxCpm()}
+                >
+                  {busy === 'stop-voxcpm-all' ? '正在结束…' : '结束全部'}
+                </button>
+              ) : null}
+            </div>
             <small>文本会发送到公开的 Hugging Face Demo，请勿提交敏感内容。</small>
           </section>
           {message ? <p className="voice-message">{message}</p> : null}

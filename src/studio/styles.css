@@ -7226,6 +7226,7 @@ select:focus {
   background: linear-gradient(135deg, #893c48, #66303b);
 }
 .batch-voxcpm-action {
+  flex: 1;
   width: 100%;
   border-color: #536aa1;
   background: linear-gradient(135deg, #405b96, #344776);
@@ -7234,6 +7235,20 @@ select:focus {
 .batch-voxcpm-action:hover {
   border-color: #728bc5;
   background: linear-gradient(135deg, #4c69a8, #3d5488);
+}
+.batch-voxcpm-actions {
+  display: flex;
+  gap: 8px;
+}
+.stop-all-voxcpm-action {
+  min-width: 92px;
+  padding: 0 14px;
+  border-color: #914b55;
+  background: linear-gradient(135deg, #72313b, #542832);
+}
+.stop-all-voxcpm-action:hover {
+  border-color: #bd6572;
+  background: linear-gradient(135deg, #893c48, #66303b);
 }
 .voice-reference-picker {
   min-width: 0;

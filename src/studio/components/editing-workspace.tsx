@@ -135,6 +135,7 @@ export const EditingWorkspace = ({
   } | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const timeline = useMemo(() => buildTimeline(project), [project]);
+  const sceneNavigationKey = project.scenes.map((item) => item.id).join('|');
   const selectedIndex = Math.max(
     0,
     project.scenes.findIndex((scene) => scene.id === selectedSceneId),
@@ -194,7 +195,7 @@ export const EditingWorkspace = ({
       setCurrentFrame(item.from);
       playerRef.current?.seekTo(item.from);
     }
-  }, [section, selectedSceneId, timeline.scenes]);
+  }, [section, selectedSceneId, sceneNavigationKey]);
 
   useEffect(() => {
     const player = playerRef.current;
