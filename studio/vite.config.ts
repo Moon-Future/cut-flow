@@ -696,6 +696,25 @@ const localApi = (): Plugin => ({
               sendJson(response, 404, {error: '找不到配音段落'});
               return;
             }
+            const task = scene.voiceGenerationTask;
+            if (
+              task &&
+              ['queued', 'running'].includes(task.status) &&
+              task.startedAt &&
+              Date.now() - new Date(task.startedAt).getTime() >= 300_000
+            ) {
+              const completedAt = new Date().toISOString();
+              scene.voiceGenerationTask = {
+                ...task,
+                status: 'failed',
+                error: '生成超过 5 分钟仍未返回，已自动结束',
+                completedAt,
+                updatedAt: completedAt,
+              };
+              const temporary = `${projectFile}.tmp`;
+              await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+              await rename(temporary, projectFile);
+            }
             sendJson(response, 200, {
               narrationAudio: scene.narrationAudio ?? null,
               narrationAudioCandidates: scene.narrationAudioCandidates ?? [],
@@ -848,7 +867,7 @@ const localApi = (): Plugin => ({
               model: 'openbmb/VoxCPM2',
               error: null,
               startedAt: now.toISOString(),
-              estimatedCompletedAt: new Date(now.getTime() + 120_000).toISOString(),
+              estimatedCompletedAt: new Date(now.getTime() + 300_000).toISOString(),
               updatedAt: now.toISOString(),
             };
             scene.voiceGenerationTask = task;
@@ -862,6 +881,7 @@ const localApi = (): Plugin => ({
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify(input),
+              signal: AbortSignal.timeout(300_000),
             })
               .then(async (result) => {
                 const value = (await result.json()) as {audioPath?: string; error?: string};
@@ -913,7 +933,14 @@ const localApi = (): Plugin => ({
                 target.voiceGenerationTask = {
                   ...task,
                   status: 'failed',
-                  error: error instanceof Error ? error.message : String(error),
+                  error:
+                    Date.now() - now.getTime() >= 299_000 ||
+                    (error instanceof Error &&
+                      ['AbortError', 'TimeoutError'].includes(error.name))
+                      ? '生成超过 5 分钟仍未返回，已自动结束'
+                      : error instanceof Error
+                        ? error.message
+                        : String(error),
                   completedAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                 };
@@ -1014,7 +1041,7 @@ const localApi = (): Plugin => ({
             }
             const result = await fetch(
               `${demoBase}/gradio_api/call/generate/${submitted.event_id}`,
-              {headers: {Accept: 'text/event-stream'}, signal: AbortSignal.timeout(135_000)},
+              {headers: {Accept: 'text/event-stream'}, signal: AbortSignal.timeout(270_000)},
             );
             const events = await result.text();
             const complete = [...events.matchAll(/^data: (.+)$/gmu)]

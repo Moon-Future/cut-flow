@@ -33,6 +33,9 @@ export const VoiceWorkspace = ({
   const referenceAudioInput = useRef<HTMLInputElement>(null);
   const selectedScene = project.scenes.find((scene) => scene.id === selectedSceneId);
   const selectedVoiceTask = selectedScene?.voiceGenerationTask;
+  const runningVoiceCount = project.scenes.filter((scene) =>
+    ['queued', 'running'].includes(scene.voiceGenerationTask?.status ?? ''),
+  ).length;
   const duration = project.scenes.reduce((sum, scene) => sum + scene.duration, 0);
 
   const uploadAudio = async (file: File) => {
@@ -161,6 +164,59 @@ export const VoiceWorkspace = ({
       if (!response.ok || !value.task) throw new Error(value.error ?? 'VoxCPM 任务提交失败');
       updateScene(selectedScene.id, {voiceGenerationTask: value.task});
       setMessage('任务已提交，可以切换段落或前往其他页面。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const generateAllVoxCpm = async () => {
+    if (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) {
+      setMessage('请上传参考音频并填写参考音频原文。');
+      return;
+    }
+    const pendingScenes = project.scenes.filter(
+      (scene) => !['queued', 'running'].includes(scene.voiceGenerationTask?.status ?? ''),
+    );
+    if (!pendingScenes.length) {
+      setMessage('所有段落都已有音频生成任务正在进行。');
+      return;
+    }
+    setBusy('voxcpm-all');
+    setMessage(`正在批量提交 ${pendingScenes.length} 个段落…`);
+    let submitted = 0;
+    const failed: string[] = [];
+    try {
+      for (const scene of pendingScenes) {
+        const response = await fetch('/api/voice/task', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            sceneId: scene.id,
+            text: scene.narration,
+            controlInstruction,
+            referenceAudioPath: voicePreset === 'custom' ? referenceAudioPath : undefined,
+            voicePreset: voicePreset === 'tim' ? 'tim' : undefined,
+            promptText,
+          }),
+        });
+        const value = (await response.json()) as {
+          task?: NonNullable<typeof scene.voiceGenerationTask>;
+          error?: string;
+        };
+        if (!response.ok || !value.task) {
+          failed.push(`${scene.caption}：${value.error ?? '提交失败'}`);
+          continue;
+        }
+        updateScene(scene.id, {voiceGenerationTask: value.task});
+        submitted += 1;
+      }
+      setMessage(
+        failed.length
+          ? `已提交 ${submitted} 个段落，${failed.length} 个提交失败：${failed.join('；')}`
+          : `已提交全部 ${submitted} 个段落。生成结果会逐段返回，超过 5 分钟的任务将自动失败。`,
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -374,6 +430,25 @@ export const VoiceWorkspace = ({
                 </button>
               ) : null}
             </div>
+            <button
+              className="voice-action-button batch-voxcpm-action"
+              disabled={
+                Boolean(busy) ||
+                !project.scenes.length ||
+                runningVoiceCount === project.scenes.length ||
+                (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim()))
+              }
+              onClick={() => void generateAllVoxCpm()}
+            >
+              <b>◆◆</b>
+              <span>
+                {busy === 'voxcpm-all'
+                  ? '正在提交全部段落…'
+                  : runningVoiceCount > 0
+                    ? `继续生成其余段落（${runningVoiceCount} 个进行中）`
+                    : '一键生成所有段落'}
+              </span>
+            </button>
             <small>文本会发送到公开的 Hugging Face Demo，请勿提交敏感内容。</small>
           </section>
           {message ? <p className="voice-message">{message}</p> : null}

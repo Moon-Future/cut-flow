@@ -7225,6 +7225,16 @@ select:focus {
   border-color: #bd6572;
   background: linear-gradient(135deg, #893c48, #66303b);
 }
+.batch-voxcpm-action {
+  width: 100%;
+  border-color: #536aa1;
+  background: linear-gradient(135deg, #405b96, #344776);
+  box-shadow: 0 7px 18px #304e8b2e;
+}
+.batch-voxcpm-action:hover {
+  border-color: #728bc5;
+  background: linear-gradient(135deg, #4c69a8, #3d5488);
+}
 .voice-reference-picker {
   min-width: 0;
   display: grid;
