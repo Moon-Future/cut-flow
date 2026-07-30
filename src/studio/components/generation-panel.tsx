@@ -71,6 +71,12 @@ export const GenerationPanel = ({
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    setTargetWordCount(
+      String(recommendedWordsForDuration(generationContext?.durationTarget)),
+    );
+  }, [generationContext?.durationTarget]);
+
+  useEffect(() => {
     fetch('/api/settings/ai')
       .then((response) => response.json())
       .then(
