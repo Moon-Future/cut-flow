@@ -25,8 +25,7 @@ type Props = {
 };
 
 const defaultPrompt = '';
-const recommendedWordsForDuration = (seconds = 60) =>
-  Math.max(100, Math.min(5000, Math.round(seconds * 5)));
+const DEFAULT_TARGET_WORD_COUNT = 500;
 
 const videoTypeLabels: Record<VideoType, string> = {
   'science-explainer': '科普讲解',
@@ -62,7 +61,7 @@ export const GenerationPanel = ({
     {id: 'doubao', name: '豆包', enabled: false, configured: false},
   ]);
   const [targetWordCount, setTargetWordCount] = useState(() =>
-    String(recommendedWordsForDuration(generationContext?.durationTarget)),
+    String(DEFAULT_TARGET_WORD_COUNT),
   );
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [referenceText, setReferenceText] = useState('');
@@ -71,10 +70,8 @@ export const GenerationPanel = ({
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    setTargetWordCount(
-      String(recommendedWordsForDuration(generationContext?.durationTarget)),
-    );
-  }, [generationContext?.durationTarget]);
+    setTargetWordCount(String(DEFAULT_TARGET_WORD_COUNT));
+  }, []);
 
   useEffect(() => {
     fetch('/api/settings/ai')
@@ -113,7 +110,7 @@ export const GenerationPanel = ({
       Math.min(
         5000,
         Number(targetWordCount) ||
-          recommendedWordsForDuration(generationContext?.durationTarget),
+          DEFAULT_TARGET_WORD_COUNT,
       ),
     );
     setTargetWordCount(String(effectiveWordCount));
@@ -246,17 +243,14 @@ export const GenerationPanel = ({
                       Math.min(
                         5000,
                         Number(targetWordCount) ||
-                          recommendedWordsForDuration(generationContext?.durationTarget),
+                          DEFAULT_TARGET_WORD_COUNT,
                       ),
                     ),
                   ),
                 )
               }
             />
-            <small className="word-count-help">
-              按 {generationContext?.durationTarget ?? 60} 秒推荐约{' '}
-              {recommendedWordsForDuration(generationContext?.durationTarget)} 字，可自行调整
-            </small>
+            <small className="word-count-help">默认 500 字，可自行调整</small>
           </label>
           {!generationContext ? (
             <div className="field-row">
