@@ -184,6 +184,7 @@ export const ContentWorkspace = ({project, onGenerated, onAudioReady}: Props) =>
               sourceMaterial: project.content?.sourceText?.trim() ?? '',
               visualStyle: project.content?.visualStyle?.trim() || '电影级写实',
               aspectRatio: project.project.width < project.project.height ? '9:16' : '16:9',
+              durationTarget: project.project.durationTarget ?? 60,
               platformLabel: platformLabels[project.project.platform ?? 'douyin'] ?? '自定义平台',
             }}
             onGenerated={onGenerated}

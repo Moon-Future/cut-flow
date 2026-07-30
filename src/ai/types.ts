@@ -12,6 +12,7 @@ export type GenerateInput = {
   aspectRatio: string;
   tone: string;
   targetWordCount: number;
+  durationTarget?: number;
   videoType: VideoType;
 };
 

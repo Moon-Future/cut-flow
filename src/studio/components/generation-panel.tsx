@@ -20,10 +20,13 @@ type Props = {
     sourceMaterial: string;
     visualStyle: string;
     aspectRatio: string;
+    durationTarget?: number;
   };
 };
 
 const defaultPrompt = '';
+const recommendedWordsForDuration = (seconds = 60) =>
+  Math.max(100, Math.min(5000, Math.round(seconds * 5)));
 
 const videoTypeLabels: Record<VideoType, string> = {
   'science-explainer': '科普讲解',
@@ -58,7 +61,9 @@ export const GenerationPanel = ({
     {id: 'deepseek', name: 'DeepSeek', enabled: false, configured: false},
     {id: 'doubao', name: '豆包', enabled: false, configured: false},
   ]);
-  const [targetWordCount, setTargetWordCount] = useState('500');
+  const [targetWordCount, setTargetWordCount] = useState(() =>
+    String(recommendedWordsForDuration(generationContext?.durationTarget)),
+  );
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [referenceText, setReferenceText] = useState('');
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
@@ -99,7 +104,11 @@ export const GenerationPanel = ({
     const effectiveVideoType = generationContext?.videoType ?? videoType;
     const effectiveWordCount = Math.max(
       100,
-      Math.min(5000, Number(targetWordCount) || 500),
+      Math.min(
+        5000,
+        Number(targetWordCount) ||
+          recommendedWordsForDuration(generationContext?.durationTarget),
+      ),
     );
     setTargetWordCount(String(effectiveWordCount));
     setStatus('running');
@@ -114,6 +123,7 @@ export const GenerationPanel = ({
           customPrompt,
           provider,
           targetWordCount: effectiveWordCount,
+          durationTarget: generationContext?.durationTarget,
           videoType: effectiveVideoType,
           audience: generationContext?.audience ?? '短视频平台的普通观众',
           purpose: generationContext?.purpose ?? '科普与引发讨论',
@@ -224,11 +234,23 @@ export const GenerationPanel = ({
               onChange={(event) => setTargetWordCount(event.target.value.replace(/[^\d]/g, ''))}
               onBlur={() =>
                 setTargetWordCount(
-                  String(Math.max(100, Math.min(5000, Number(targetWordCount) || 500))),
+                  String(
+                    Math.max(
+                      100,
+                      Math.min(
+                        5000,
+                        Number(targetWordCount) ||
+                          recommendedWordsForDuration(generationContext?.durationTarget),
+                      ),
+                    ),
+                  ),
                 )
               }
             />
-            <small className="word-count-help">默认约 500 字，AI 可在目标值上下浮动 10%</small>
+            <small className="word-count-help">
+              按 {generationContext?.durationTarget ?? 60} 秒推荐约{' '}
+              {recommendedWordsForDuration(generationContext?.durationTarget)} 字，可自行调整
+            </small>
           </label>
           {!generationContext ? (
             <div className="field-row">

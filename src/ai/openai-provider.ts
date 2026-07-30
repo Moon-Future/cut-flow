@@ -289,8 +289,6 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
       const minimumNarrationChars = Math.floor(input.targetWordCount * 0.9);
       const maximumNarrationChars = Math.ceil(input.targetWordCount * 1.1);
       const requiredSceneCount = input.targetWordCount > 500 ? 9 : 7;
-      const minimumCharsPerScene = Math.floor(minimumNarrationChars / requiredSceneCount);
-      const maximumCharsPerScene = Math.ceil(maximumNarrationChars / requiredSceneCount);
       const prompt = `请根据以下信息创作一篇专业的短视频文案。
 
 【视频主题】
@@ -326,13 +324,15 @@ ${input.aspectRatio}
 【目标字数】
 所有 scenes[].narration 拼接后的文案总字数约 ${input.targetWordCount} 个汉字。
 合格范围：${minimumNarrationChars}-${maximumNarrationChars} 个汉字。
-必须生成 ${requiredSceneCount} 段，每段 narration 控制在 ${minimumCharsPerScene}-${maximumCharsPerScene} 个汉字；不得用一句短句代替完整段落。
+【目标时长】
+约 ${input.durationTarget ?? 60} 秒。以自然讲完和留出必要停顿为优先，不要为了凑字数重复解释。
+必须生成 ${requiredSceneCount} 段，但各段长短应服从叙事节奏，不要求平均分配字数。
 只统计 narration 中的汉字；title、hook、ending、caption、画面描述、搜索词以及图片/视频提示词均不计入目标字数。
 
 【额外创作要求】
 ${input.customPrompt?.trim() || '无'}
 
-必须严格遵守系统提示词中的文案质量、段落交替和 JSON 输出要求。`;
+必须严格遵守系统提示词中的文案质量、叙事节奏和 JSON 输出要求。`;
       const useChatCompletions = config.apiMode === 'chat-completions';
       const isDigitalHuman = input.videoType === 'digital-human';
       const digitalHumanDirection = isDigitalHuman
@@ -360,17 +360,19 @@ ${input.customPrompt?.trim() || '无'}
       const jsonSystemPrompt = `你是一名专业的抖音短视频文案策划、视觉导演和 AI 视频提示词设计师，擅长创作“${isDigitalHuman ? '数字人口播' : '普通旁白'} + 画面讲解”交替呈现的短视频内容。
 
 文案质量要求：
-1. 前 3 秒对应的第一段必须使用冲突、痛点、结果或反常识形成强钩子。
-2. 全文口语化、短句化，像真人自然说话；每句话只表达一个重点。
-3. 禁止使用“随着时代发展”“众所周知”“在当今社会”等空洞开场。
-4. 不堆砌形容词，不写没有信息量的正确废话。
-5. 不编造补充资料中没有的数据、案例、经历或用户反馈。
-6. 结尾给出明确结论，并自然引导评论、收藏或关注。
-7. 全文必须恰好安排 ${requiredSceneCount} 个段落，${speakerType} 与 visual-explanation 交替出现。
-8. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；每段 narration 必须写成 ${minimumCharsPerScene}-${maximumCharsPerScene} 个汉字的完整内容。
-9. visual-explanation 负责原因、案例、步骤、对比、产品功能、数据和过程，语言必须具体到后期人员能判断该配什么画面。
-10. ${isDigitalHuman ? '数字人口播' : '普通旁白'}负责“说观点”，画面讲解负责“给证据”，两者不得重复相同信息。
-11. 字数目标只针对所有 scenes[].narration 的汉字合计。生成后必须在内部逐段统计并补充或精简 narration，使总数达到 ${minimumNarrationChars}-${maximumNarrationChars} 个汉字；不要把其他 JSON 字段计入文案字数。
+1. 你不是在写百科或课堂讲稿，而是在讲一个由日常困惑引出的科学小故事。观众应先认出熟悉现象，再产生疑问，最后得到可信、意外且容易转述的答案。
+2. 写作前先在内部确定“核心问题、核心答案、必要的辅助信息、记忆点”，不要输出分析过程。
+3. 从具体生活场景、反常现象或情绪瞬间切入，前两句内让观众理解问题，但不要第一句话直接解释原因。
+4. 文案整体完成“生活现象—提出疑问—逐步揭秘—改变理解—回到生活”的认知变化，不要机械输出结构标签，也不要逐项套模板。
+5. 只保留支撑核心答案所必需的 1～3 个信息点。没有三个可靠原因时不得强行凑数；先讲最主要原因，再补充真正有助于理解的因素。
+6. 优先寻找误解纠正、反常识细节或视角转换；没有可靠反转时，用一个具体、易复述的事实作为记忆点，禁止为了戏剧效果编造冲突。
+7. 全文口语化、短句化，像朋友分享一个有趣发现。多使用具体人物、动作、物体和场景，减少抽象概念，每句话只表达一个重点。
+8. 禁止使用“今天我们来讲”“科学研究发现”“随着时代发展”“众所周知”“综上所述”“你学会了吗”等课堂式或空洞表达；不堆形容词，不重复问题和结论。
+9. 避免绝对化，按证据合理使用“通常”“可能”“更容易”“主要原因之一”。不虚构研究、数据、专家、案例或因果关系，不把相关性写成确定因果。
+10. 结尾重新解释开头现象，给出新的理解，并提出一个与观众真实经历有关、能够产生不同回答的问题；不要使用空泛的“你怎么看”，也不要生硬索要关注收藏。
+11. 全文必须恰好安排 ${requiredSceneCount} 个段落。${speakerType} 与 visual-explanation 根据叙事需要合理穿插，不强制机械地逐段交替；各段长短服从口播节奏。
+12. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；visual-explanation 负责原因、案例、步骤、对比、证据和过程。两者共同推进内容，不得重复相同信息。
+13. 字数目标只针对所有 scenes[].narration 的汉字合计。生成后在内部精简或补充，使总数达到 ${minimumNarrationChars}-${maximumNarrationChars} 个汉字；不要把其他 JSON 字段计入文案字数。
 ${digitalHumanDirection}
 
 只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须恰好有 ${requiredSceneCount} 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh、motionPlan。
