@@ -33,6 +33,7 @@ import {
   limitVideoPrompt,
   normalizeVideoPromptDuration,
   removeNarrationFromVideoPrompt,
+  removeReferenceImageInstructions,
   type VideoTargetDuration,
   videoTargetMaximumSeconds,
   volcengineApiDuration,
@@ -1838,16 +1839,17 @@ const localApi = (): Plugin => ({
               referenceImageUrls: input.referenceImageUrls ?? [],
             });
             const targetDuration = input.duration ?? aiSettings.volcengineVideo.defaultDuration;
+            const referenceImageUrls = (input.referenceImageUrls ?? []).filter(Boolean);
+            const visualPrompt = removeNarrationFromVideoPrompt(
+              input.prompt?.trim() || shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
+              project.scenes.find((scene) => scene.id === input.sceneId)?.narration ?? '',
+              shot.visualPurpose,
+            );
             const finalPrompt = limitVideoPrompt(
               normalizeVideoPromptDuration(
-                removeNarrationFromVideoPrompt(
-                  input.prompt?.trim() ||
-                    shot.videoPromptZh ||
-                    shot.videoPrompt ||
-                    shot.visualPurpose,
-                  project.scenes.find((scene) => scene.id === input.sceneId)?.narration ?? '',
-                  shot.visualPurpose,
-                ),
+                referenceImageUrls.length
+                  ? visualPrompt
+                  : removeReferenceImageInstructions(visualPrompt),
                 targetDuration,
               ),
             );

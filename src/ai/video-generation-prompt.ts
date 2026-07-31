@@ -39,6 +39,20 @@ export const removeNarrationFromVideoPrompt = (
     .replace(/本段旁白(?:内容|重点)?[：:]\s*/gu, '画面叙事重点：');
 };
 
+export const removeReferenceImageInstructions = (prompt: string) =>
+  prompt
+    .replace(
+      /[^，,；;。！？\n]*(?:对应图片|对应的图片|对应 AI 图片|参考图片|参考图像|上传图片|所附图片)[^，,；;。！？\n]*[，,；;。！？]?/giu,
+      '',
+    )
+    .replace(
+      /[^,;.!?，；。！？\n]*(?:corresponding|reference|provided|uploaded) image[^,;.!?，；。！？\n]*[,;.!?]?/giu,
+      '',
+    )
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+
 export const normalizeVideoPromptDuration = (
   prompt: string,
   duration: VideoTargetDuration,

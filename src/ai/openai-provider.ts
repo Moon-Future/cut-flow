@@ -241,7 +241,7 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
           const videoPrompt =
             rawVideoPrompt.length > 0
               ? rawVideoPrompt
-              : `Vertical ${input.aspectRatio} cinematic video, approximately ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} seconds, telling a concise visual story about "${sceneDescription}" with a clear beginning, change, and result. Use the corresponding image as the first frame and preserve the exact subject identity, facial features, clothing, props, object positions, background layout, lighting direction, and color palette. During the opening second, hold a stable establishing view so the relationship between the subject, people, and environment is readable. In the middle, let the characters perform scene-specific visible actions in a logical sequence, including natural gaze changes, hand movements, facial reactions, and body posture, while key objects respond according to real-world physics. In the final one to two seconds, settle on the most informative emotional contrast, transformation, or outcome. Begin with a stable camera, then use a restrained slow push-in, subtle lateral track, or gentle subject follow; avoid large rotations and abrupt scene changes. Keep motion continuous, pacing deliberate, environmental movement subtle, and all anatomy, fingers, clothing colors, object structures, and spatial relationships consistent. Do not introduce unrelated people or make objects appear or disappear. ${input.visualStyle}, cinematic lighting, realistic high detail, no abstract effects, illegible interface text, text, subtitles, logos, or watermarks.`;
+              : `Vertical ${input.aspectRatio} cinematic video, approximately ${Math.max(3, Math.min(8, Number(scene.suggestedDuration) || 5))} seconds. Build a self-contained visible scene that concretely depicts "${sceneDescription}" instead of displaying or paraphrasing those words. Open on the core subject, relevant people or objects, and a specific environment with appearance, materials, positions, lighting direction, and color palette fully established. During the opening second, hold a stable establishing view so their relationship is readable. In the middle, perform scene-specific visible actions in a logical sequence, including natural gaze changes, hand movements, facial reactions, body posture, and physically accurate object changes. In the final one to two seconds, settle on the most informative emotional contrast, transformation, or outcome. Begin with a stable camera, then use a restrained slow push-in, subtle lateral track, or gentle subject follow; avoid large rotations and abrupt scene changes. Keep motion continuous, pacing deliberate, environmental movement subtle, and all anatomy, clothing colors, object structures, and spatial relationships consistent. Do not introduce unrelated people or make objects appear or disappear. ${input.visualStyle}, cinematic lighting, realistic high detail, no abstract effects, illegible interface text, text, subtitles, logos, or watermarks.`;
           const imagePromptZh =
             rawImagePromptZh.length > 0
               ? rawImagePromptZh
@@ -344,7 +344,7 @@ ${input.customPrompt?.trim() || '无'}
 4. 每个 visual-explanation 段必须同时提供完整 imagePrompt 和 videoPrompt，不能留空；后续可按需要选择真实素材或 AI 生成素材。
 5. imagePrompt 必须包含主体、环境、构图、人物或物体特征、动作定格、光线、色彩、景别、视觉风格、${input.aspectRatio}，并明确不要文字、字幕、Logo、水印。
 6. videoPrompt 不能复制 imagePrompt；必须描述初始画面、动作顺序、场景变化、镜头运动、节奏、建议时长、光线、色彩、风格和 ${input.aspectRatio}。
-7. videoPrompt 结尾必须追加：以对应 AI 图片作为首帧，保持主体外貌、服装、场景布局、物体位置和色彩风格一致，只增加自然动作、镜头运动和环境动态，不改变主体结构。
+7. videoPrompt 必须独立、完整地描述开场画面，不得假设存在对应图片、参考图片或预设首帧；保持主体外貌、服装、场景布局、物体位置和色彩风格在视频全过程一致。
 8. 所有图片与视频提示词重复使用一致的主角特征、服装、主场景、核心物体、主色调、光线、视觉风格和镜头语言。
 9. 避免变脸、异常手指、服装变色、场景突变、物体消失、大幅旋转、违反物理的动作、无关人物和无法辨认的界面文字。
 10. visual-explanation 段填写具体 soundEffect，没有则写“无”。`
@@ -388,6 +388,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
 每个 shot 的 motionPlan 必须给出可由 Remotion 执行的图片动态化方案：preset 只能是 none、slow-zoom-in、slow-zoom-out、pan-left、pan-right、pan-up、pan-down、ken-burns-left、ken-burns-right、gentle-float；intensity 为 0～1；focusStart 和 focusEnd 用中文描述运镜开始和结束关注的画面区域；requiresLayering 表示是否需要抠图分层；requiresAiVideo 仅在静态图片无法表达关键动作时为 true。优先让 requiresAiVideo 为 false，不得把人物表情变化、转头、抬手等静态图片无法实现的动作伪装成普通 Ken Burns。
 
 图片提示词必须达到可直接执行的视觉导演稿质量，中文不少于 280 个汉字，禁止使用一段“主体清晰、构图稳定、光线统一”式的通用镜头规范敷衍。按以下顺序具体设计：
+0. visualPurpose、visualPrompt 和四条生成提示词不得复制 narration、caption、标题或只罗列其中的关键词。必须先把抽象文案转译为摄像机能拍到的具体人物、物体、动作、环境、空间关系和可见结果；提示词中不得出现“围绕这段文案”“表现这个主题”“对应图片”“参考图片”等元描述。
 1. 先说明本镜头的主题、叙事重点，以及要让观众一眼理解的关系、变化、反差或情绪；没有冲突的主题则明确知识过程、因果关系或视觉发现。
 2. 分别描述前景、中景、背景。写清核心主体占画面的位置和比例、材质纹理与状态；人物镜头要明确合理的人数、身份、外貌特征、服装、站位或座位。
 3. 每位关键人物都要有与内容对应且彼此不重复的表情、视线、手部动作和身体姿态。没有人物时，要同等详细地描述物体状态、变化阶段、空间关系和可见现象。
@@ -403,7 +404,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
 2. 每位人物的视线、表情、手势、身体动作，以及关键物体如何随动作变化；无人物镜头则描述现象或过程的连续变化。
 3. 镜头从何处开始，何时推近、横移、跟随或保持稳定，运镜必须服务叙事且幅度克制。
 4. 节奏、环境动态和光线变化；视频只生成无声画面，不要音乐、配音、旁白、对白或人声。
-5. 明确以对应图片为首帧，保持人物外貌、服装、道具、物体位置、场景布局、光线、色彩和镜头方向一致。
+5. 独立写清开场第一帧中人物或物体的外观、服装、道具、位置、场景布局、光线、色彩和镜头方向；不得假设存在对应图片或参考图片。
 6. 避免变脸、异常手指、物体消失、无关人物、突然换景、违反物理规律和无法辨认的文字。
 
 四条提示词必须针对当前镜头逐条重新设计，不能在不同镜头间只替换主题名。英文版本必须完整保留中文版本中的人物、动作、构图和时间信息。
@@ -438,7 +439,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                 }
               : {
                   model: config.textModel ?? 'gpt-5.6-luna',
-                  input: prompt,
+                  input: `${jsonSystemPrompt}\n\n${prompt}`,
                   text: {
                     format: {
                       type: 'json_schema',

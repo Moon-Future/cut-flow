@@ -11,6 +11,7 @@ import {
   limitVideoPrompt,
   normalizeVideoPromptDuration,
   removeNarrationFromVideoPrompt,
+  removeReferenceImageInstructions,
   type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
 import {buildFallbackVideoPromptZh} from '../../ai/video-prompt-fallback';
@@ -92,9 +93,10 @@ const contentSearchLinks = (query: string) => {
 };
 
 const getShotProgress = (shot: VisualShot) => {
-  const selectedCount = new Set(
-    [...(shot.selectedAssets ?? []), ...(shot.selectedAsset ? [shot.selectedAsset] : [])],
-  ).size;
+  const selectedCount = new Set([
+    ...(shot.selectedAssets ?? []),
+    ...(shot.selectedAsset ? [shot.selectedAsset] : []),
+  ]).size;
   const complete = selectedCount > 0;
   return {
     ready: complete ? 1 : 0,
@@ -168,9 +170,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   const previewDuration = previewShot?.duration ?? selected.duration;
   const previewAssets = previewShot
     ? [
-        ...(previewShot.selectedAsset
-          ? [{path: previewShot.selectedAsset, role: '主素材'}]
-          : []),
+        ...(previewShot.selectedAsset ? [{path: previewShot.selectedAsset, role: '主素材'}] : []),
         ...(previewShot.selectedAssets ?? []).map((path) => ({path, role: '候选素材'})),
         ...(previewShot.layers ?? [])
           .filter((layer) => Boolean(layer.assetPath))
@@ -359,9 +359,8 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         .then((libraryResponse) => libraryResponse.json())
         .then((library: {assets?: Array<{originalUrl?: string | null; path: string}>}) =>
           (library.assets ?? [])
-            .filter(
-              (asset): asset is {originalUrl: string; path: string} =>
-                Boolean(asset.originalUrl),
+            .filter((asset): asset is {originalUrl: string; path: string} =>
+              Boolean(asset.originalUrl),
             )
             .map((asset) => ({originalUrl: asset.originalUrl, path: asset.path})),
         )
@@ -502,10 +501,17 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           shotId: shot.id,
           provider: draft.provider,
           duration: draft.duration,
-          prompt: limitVideoPrompt(normalizeVideoPromptDuration(visualPrompt, draft.duration)),
-          referenceImageUrls: draft.referenceImagePaths.map(
-            (path) => draft.referenceImageUrls[path],
-          ).filter((url): url is string => Boolean(url)),
+          prompt: limitVideoPrompt(
+            normalizeVideoPromptDuration(
+              draft.referenceImagePaths.length
+                ? visualPrompt
+                : removeReferenceImageInstructions(visualPrompt),
+              draft.duration,
+            ),
+          ),
+          referenceImageUrls: draft.referenceImagePaths
+            .map((path) => draft.referenceImageUrls[path])
+            .filter((url): url is string => Boolean(url)),
         }),
       });
       const value = (await response.json()) as {
@@ -607,9 +613,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
       <main className="board-editor stage-panel">
         <header>
           <div>
-            <strong>
-              素材获取 · 段落 {String(selectedIndex + 1).padStart(2, '0')}
-            </strong>
+            <strong>素材获取 · 段落 {String(selectedIndex + 1).padStart(2, '0')}</strong>
             <span>搜索、下载或生成素材，再添加到当前镜头</span>
           </div>
         </header>
@@ -740,7 +744,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       <input
                         type="number"
                         value={shot.duration}
-                        onChange={(event) => updateShot(shot, {duration: Number(event.target.value)})}
+                        onChange={(event) =>
+                          updateShot(shot, {duration: Number(event.target.value)})
+                        }
                       />
                     </label>
                   </div>
@@ -757,80 +763,80 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       <b>{shot.composition === 'versus' ? '多图层' : '未启用'}</b>
                     </summary>
                     <div className="layer-composition-content">
-                    {shot.composition !== 'versus' ? (
-                      <div className="composition-template-card">
-                        <div>
-                          <strong>左右对立模板</strong>
-                          <span>背景 + 左人物 + 右人物，适合观点、喜恶和前后对比。</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => updateShot(shot, applyVersusComposition(shot))}
-                        >
-                          应用模板
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="composition-template-card active">
+                      {shot.composition !== 'versus' ? (
+                        <div className="composition-template-card">
                           <div>
                             <strong>左右对立模板</strong>
-                            <span>人物素材建议使用透明背景 PNG。</span>
+                            <span>背景 + 左人物 + 右人物，适合观点、喜恶和前后对比。</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => updateShot(shot, applyVersusComposition(shot))}
                           >
-                            重置布局
+                            应用模板
                           </button>
                         </div>
-                        <div className="layer-slot-list">
-                          {(shot.layers ?? []).map((layer) => (
-                            <label key={layer.id} className="layer-slot">
-                              <span>
-                                {layer.role === 'background'
-                                  ? '背景'
-                                  : layer.position.x < 0.5
-                                    ? '左侧人物'
-                                    : '右侧人物'}
-                              </span>
-                              <input
-                                value={layer.assetPath ?? ''}
-                                placeholder="assets/example.png"
-                                onChange={(event) =>
-                                  updateLayer(shot, layer.id, {
-                                    assetPath: event.target.value.trim() || null,
-                                  })
-                                }
-                              />
-                              {layer.role === 'background' && shot.selectedAsset ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    updateLayer(shot, layer.id, {assetPath: shot.selectedAsset})
+                      ) : (
+                        <>
+                          <div className="composition-template-card active">
+                            <div>
+                              <strong>左右对立模板</strong>
+                              <span>人物素材建议使用透明背景 PNG。</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => updateShot(shot, applyVersusComposition(shot))}
+                            >
+                              重置布局
+                            </button>
+                          </div>
+                          <div className="layer-slot-list">
+                            {(shot.layers ?? []).map((layer) => (
+                              <label key={layer.id} className="layer-slot">
+                                <span>
+                                  {layer.role === 'background'
+                                    ? '背景'
+                                    : layer.position.x < 0.5
+                                      ? '左侧人物'
+                                      : '右侧人物'}
+                                </span>
+                                <input
+                                  value={layer.assetPath ?? ''}
+                                  placeholder="assets/example.png"
+                                  onChange={(event) =>
+                                    updateLayer(shot, layer.id, {
+                                      assetPath: event.target.value.trim() || null,
+                                    })
                                   }
-                                >
-                                  使用当前素材
-                                </button>
-                              ) : null}
-                            </label>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          className="remove-composition-button"
-                          onClick={() =>
-                            updateShot(shot, {
-                              composition: 'single',
-                              layers: [],
-                              motionPlan: {...motionPlanFor(shot), requiresLayering: false},
-                            })
-                          }
-                        >
-                          恢复为单素材镜头
-                        </button>
-                      </>
-                    )}
+                                />
+                                {layer.role === 'background' && shot.selectedAsset ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      updateLayer(shot, layer.id, {assetPath: shot.selectedAsset})
+                                    }
+                                  >
+                                    使用当前素材
+                                  </button>
+                                ) : null}
+                              </label>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="remove-composition-button"
+                            onClick={() =>
+                              updateShot(shot, {
+                                composition: 'single',
+                                layers: [],
+                                motionPlan: {...motionPlanFor(shot), requiresLayering: false},
+                              })
+                            }
+                          >
+                            恢复为单素材镜头
+                          </button>
+                        </>
+                      )}
                     </div>
                   </details>
                 </details>
@@ -958,48 +964,53 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                 } ${selectedForShot ? 'selected' : ''}`}
                                 key={`${result.kind}-${result.id}`}
                               >
-                              <button
-                                type="button"
-                                className="online-preview-button"
-                                onClick={() =>
-                                  setMediaPreview({
-                                    kind: result.kind,
-                                    src:
-                                      result.kind === 'video'
-                                        ? result.downloadUrl
-                                        : result.previewUrl,
-                                    title: `${result.author} 的素材`,
-                                  })
-                                }
-                              >
-                                <img src={result.previewUrl} alt={`${result.author} 的素材预览`} />
-                                <span>{result.kind === 'video' ? '▶ 点击播放' : '点击放大'}</span>
-                              </button>
-                              <div>
-                                <strong>
-                                  {result.kind === 'image' ? '图片' : '视频'} · {result.width}×
-                                  {result.height}
-                                </strong>
-                                <span>{result.author}</span>
-                              </div>
-                              <div className="pixabay-card-actions">
-                                <a href={result.pageUrl} target="_blank" rel="noreferrer">
-                                  查看来源
-                                </a>
                                 <button
                                   type="button"
-                                  disabled={Boolean(onlineSearch.downloadingId) || selectedForShot}
-                                  onClick={() => void downloadOnline(shot, result)}
+                                  className="online-preview-button"
+                                  onClick={() =>
+                                    setMediaPreview({
+                                      kind: result.kind,
+                                      src:
+                                        result.kind === 'video'
+                                          ? result.downloadUrl
+                                          : result.previewUrl,
+                                      title: `${result.author} 的素材`,
+                                    })
+                                  }
                                 >
-                                  {onlineSearch.downloadingId === result.id
-                                    ? '下载中…'
-                                    : selectedForShot
-                                      ? '已加入当前镜头'
-                                      : downloadedAsset
-                                      ? '已下载 · 添加到镜头'
-                                      : '下载并添加到镜头'}
+                                  <img
+                                    src={result.previewUrl}
+                                    alt={`${result.author} 的素材预览`}
+                                  />
+                                  <span>{result.kind === 'video' ? '▶ 点击播放' : '点击放大'}</span>
                                 </button>
-                              </div>
+                                <div>
+                                  <strong>
+                                    {result.kind === 'image' ? '图片' : '视频'} · {result.width}×
+                                    {result.height}
+                                  </strong>
+                                  <span>{result.author}</span>
+                                </div>
+                                <div className="pixabay-card-actions">
+                                  <a href={result.pageUrl} target="_blank" rel="noreferrer">
+                                    查看来源
+                                  </a>
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      Boolean(onlineSearch.downloadingId) || selectedForShot
+                                    }
+                                    onClick={() => void downloadOnline(shot, result)}
+                                  >
+                                    {onlineSearch.downloadingId === result.id
+                                      ? '下载中…'
+                                      : selectedForShot
+                                        ? '已加入当前镜头'
+                                        : downloadedAsset
+                                          ? '已下载 · 添加到镜头'
+                                          : '下载并添加到镜头'}
+                                  </button>
+                                </div>
                               </article>
                             );
                           })}
@@ -1230,7 +1241,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     rows={11}
                     value={
                       Boolean(shot.videoPromptZh?.trim())
-                        ? shot.videoPromptZh
+                        ? removeReferenceImageInstructions(shot.videoPromptZh ?? '')
                         : fallbackVideoPromptZh(shot)
                     }
                     placeholder="描述初始画面、动作顺序、场景变化、运镜、节奏、时长及一致性"
@@ -1283,7 +1294,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                       duration: videoDefaultDuration,
                       prompt: normalizeVideoPromptDuration(
                         Boolean(shot.videoPromptZh?.trim())
-                          ? shot.videoPromptZh!
+                          ? removeReferenceImageInstructions(shot.videoPromptZh!)
                           : fallbackVideoPromptZh(shot),
                         videoDefaultDuration,
                       ),
@@ -1407,10 +1418,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                       current?.shotId === shot.id
                                         ? {
                                             ...current,
-                                            referenceImagePaths:
-                                              current.referenceImagePaths.filter(
-                                                (item) => item !== referenceId,
-                                              ),
+                                            referenceImagePaths: current.referenceImagePaths.filter(
+                                              (item) => item !== referenceId,
+                                            ),
                                           }
                                         : current,
                                     );
@@ -1474,9 +1484,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                           </div>
                         ))}
                         {referenceUploadError?.shotId === shot.id ? (
-                          <p className="reference-upload-error">
-                            {referenceUploadError.message}
-                          </p>
+                          <p className="reference-upload-error">{referenceUploadError.message}</p>
                         ) : null}
                       </section>
                       <label className="final-video-prompt">
@@ -1511,9 +1519,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                         <header>
                           <div>
                             <strong>保存提示词版本</strong>
-                            <small>
-                              保存当前编辑稿，之后可重新载入；仅记录 AI 视频提示词
-                            </small>
+                            <small>保存当前编辑稿，之后可重新载入；仅记录 AI 视频提示词</small>
                           </div>
                           <span>{shot.videoPromptRecords?.length ?? 0} 个版本</span>
                         </header>
@@ -1532,9 +1538,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               const createdAt = new Date().toISOString();
                               const name =
                                 videoPromptRecordName.trim() ||
-                                `版本 ${records.length + 1} · ${new Date(
-                                  createdAt,
-                                ).toLocaleString('zh-CN')}`;
+                                `版本 ${records.length + 1} · ${new Date(createdAt).toLocaleString(
+                                  'zh-CN',
+                                )}`;
                               updateShot(shot, {
                                 videoPromptRecords: [
                                   ...records,
@@ -1570,7 +1576,9 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                                   }
                                 >
                                   <strong>{record.name}</strong>
-                                  <small>{new Date(record.createdAt).toLocaleString('zh-CN')}</small>
+                                  <small>
+                                    {new Date(record.createdAt).toLocaleString('zh-CN')}
+                                  </small>
                                   <span>{record.prompt}</span>
                                 </button>
                                 <button
@@ -1623,8 +1631,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               <dt>开始时间</dt>
                               <dd>
                                 {formatTaskTime(
-                                  shot.generationTask?.startedAt ??
-                                    videoRequestStartedAt[shot.id],
+                                  shot.generationTask?.startedAt ?? videoRequestStartedAt[shot.id],
                                 )}
                               </dd>
                             </div>
@@ -1632,8 +1639,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               <dt>已经用时</dt>
                               <dd>
                                 {formatTaskDuration(
-                                  shot.generationTask?.startedAt ??
-                                    videoRequestStartedAt[shot.id],
+                                  shot.generationTask?.startedAt ?? videoRequestStartedAt[shot.id],
                                   shot.generationTask?.completedAt,
                                   currentTime,
                                 )}
@@ -1648,8 +1654,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               <dd>{shot.generationTask?.model ?? 'pippit_iv2v_cvtob'}</dd>
                             </div>
                           </dl>
-                          {shot.generationTask?.status === 'failed' &&
-                          shot.generationTask.error ? (
+                          {shot.generationTask?.status === 'failed' && shot.generationTask.error ? (
                             <div className="current-video-task-error">
                               <strong>失败详情</strong>
                               <pre>{shot.generationTask.error}</pre>
@@ -1687,8 +1692,8 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                               shot.generationTask &&
                               activeGenerationStatuses.has(shot.generationTask.status),
                             ) ||
-                            !videoDraft.prompt.trim()
-                            || videoDraft.referenceImagePaths.some(
+                            !videoDraft.prompt.trim() ||
+                            videoDraft.referenceImagePaths.some(
                               (path) => !videoDraft.referenceImageUrls[path],
                             )
                           }
@@ -1865,11 +1870,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
               <strong>当前镜头素材</strong>
               <span>{previewAssets.length} 个已选素材</span>
             </div>
-            <button
-              type="button"
-              disabled={!previewShot}
-              onClick={() => setShotPreviewOpen(true)}
-            >
+            <button type="button" disabled={!previewShot} onClick={() => setShotPreviewOpen(true)}>
               预览镜头
             </button>
           </header>
@@ -1937,9 +1938,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                   updateShot(previewShot, {
                     motionPlan: {
                       ...motionPlanFor(previewShot),
-                      preset: event.target.value as NonNullable<
-                        VisualShot['motionPlan']
-                      >['preset'],
+                      preset: event.target.value as NonNullable<VisualShot['motionPlan']>['preset'],
                     },
                   })
                 }

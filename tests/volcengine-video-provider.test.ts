@@ -6,9 +6,11 @@ import {
   limitVideoPrompt,
   normalizeVideoPromptDuration,
   removeNarrationFromVideoPrompt,
+  removeReferenceImageInstructions,
   videoTargetMaximumSeconds,
   volcengineApiDuration,
 } from '../src/ai/video-generation-prompt';
+import {buildFallbackVideoPromptZh} from '../src/ai/video-prompt-fallback';
 
 describe('火山引擎视频接口签名', () => {
   it('生成固定日期、载荷哈希和授权范围', () => {
@@ -32,6 +34,25 @@ describe('火山引擎视频接口签名', () => {
 });
 
 describe('视频生成提示词', () => {
+  it('没有参考图片时移除依赖图片和首帧的描述', () => {
+    const prompt = removeReferenceImageInstructions(
+      '开场展示厨房，以对应图片作为首帧，保持人物服装一致。随后人物拿起杯子。Open on a kitchen, use the reference image as the first frame. End on the result.',
+    );
+    expect(prompt).toContain('开场展示厨房');
+    expect(prompt).toContain('随后人物拿起杯子');
+    expect(prompt).not.toMatch(/对应图片|参考图片|reference image/iu);
+  });
+
+  it('兜底提示词直接描绘可见主体和环境，不依赖对应图片', () => {
+    const prompt = buildFallbackVideoPromptZh({
+      aspectRatio: '9:16',
+      subject: '水滴落进热油后快速汽化并推动油滴飞溅',
+      duration: 5,
+    });
+    expect(prompt).toMatch(/核心物体|材质|表面纹理|真实发生地点/u);
+    expect(prompt).not.toMatch(/对应图片|参考图片/u);
+  });
+
   it('使用外层目标时长替换提示词中的旧总时长', () => {
     const result = normalizeVideoPromptDuration(
       '9:16 竖屏视频，时长约 8 秒。开始 0—1 秒建立场景，最后 2 秒定格。',
