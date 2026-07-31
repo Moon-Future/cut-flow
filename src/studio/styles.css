@@ -3378,6 +3378,15 @@ select:focus {
   cursor: wait;
   opacity: 0.55;
 }
+.topic-recommendation-actions {
+  display: flex;
+  gap: 7px;
+}
+.topic-recommendations > header button.secondary {
+  border-color: #303a4c;
+  background: #151b25;
+  color: #8d98aa;
+}
 .topic-recommendation-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3466,6 +3475,32 @@ select:focus {
   color: #7d899c;
   font-size: 9px;
   text-align: center;
+}
+.topic-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.topic-pagination button {
+  min-width: 30px;
+  padding: 6px 9px;
+  border: 1px solid #30394a;
+  border-radius: 6px;
+  background: #131923;
+  color: #8591a4;
+  font-size: 8px;
+  cursor: pointer;
+}
+.topic-pagination button.current {
+  border-color: #8058e6;
+  background: #251b3c;
+  color: #c4b0f4;
+}
+.topic-pagination button:disabled {
+  cursor: default;
+  opacity: 0.35;
 }
 .topic-recommendations > p {
   margin: 10px 0 0;
@@ -5518,13 +5553,9 @@ select:focus {
   width: 100%;
   margin-top: 8px;
 }
-.shot-editor-list > article
-  :is(
-    .acquisition-reference,
-    .acquisition-download,
-    .acquisition-ai-image,
-    .acquisition-ai-video
-  ) {
+.shot-editor-list
+  > article
+  :is(.acquisition-reference, .acquisition-download, .acquisition-ai-image, .acquisition-ai-video) {
   display: none;
 }
 .shot-editor-list > article.acquisition-mode-reference .acquisition-reference,
@@ -8212,7 +8243,10 @@ select:focus {
   text-align: left;
   box-shadow: 0 8px 22px #05080e4d;
   cursor: pointer;
-  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
 }
 .render-reference-button:hover {
   border-color: #7760ad;

@@ -371,6 +371,10 @@ const localApi = (): Plugin => ({
             return;
           }
           if (url === '/api/topic-recommendations' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8') || '{}') as {
+              mode?: 'append' | 'reset';
+            };
+            const mode = input.mode === 'reset' ? 'reset' : 'append';
             const {projectFile} = activeProjectPaths();
             const project = projectFileSchema.parse(
               JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
@@ -388,14 +392,26 @@ const localApi = (): Plugin => ({
               });
               return;
             }
-            const topics = await generateTopicRecommendations(provider, providerSetting, project);
+            const saved = await loadTopicRecommendations();
+            const pages = mode === 'append' ? (saved?.pages ?? []) : [];
+            const excludedTitles = pages.flatMap((page) => page.map((topic) => topic.title));
+            const topics = await generateTopicRecommendations(
+              provider,
+              providerSetting,
+              project,
+              excludedTitles,
+            );
             const result = {
-              topics,
+              pages: [...pages, topics],
               provider,
               generatedAt: new Date().toISOString(),
             };
             await saveTopicRecommendations(result);
-            sendJson(response, 200, {...result, heatBasis: 'ai-estimate'});
+            sendJson(response, 200, {
+              ...result,
+              currentPage: result.pages.length - 1,
+              heatBasis: 'ai-estimate',
+            });
             return;
           }
           if (url === '/api/topic-recommendations' && request.method === 'GET') {

@@ -30,7 +30,8 @@ export const ProjectDashboard = ({
 }: Props) => {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState(currentProjectId);
-  const [recommendedTopics, setRecommendedTopics] = useState<TopicRecommendation[]>([]);
+  const [topicPages, setTopicPages] = useState<TopicRecommendation[][]>([]);
+  const [currentTopicPage, setCurrentTopicPage] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState('');
   const [topicStatus, setTopicStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [topicMessage, setTopicMessage] = useState('');
@@ -48,10 +49,15 @@ export const ProjectDashboard = ({
   useEffect(() => {
     fetch('/api/topic-recommendations')
       .then((response) => response.json())
-      .then((value: {topics?: TopicRecommendation[]}) => setRecommendedTopics(value.topics ?? []))
-      .catch(() => setRecommendedTopics([]));
+      .then((value: {pages?: TopicRecommendation[][]}) => {
+        const pages = value.pages ?? [];
+        setTopicPages(pages);
+        setCurrentTopicPage(Math.max(0, pages.length - 1));
+      })
+      .catch(() => setTopicPages([]));
   }, []);
 
+  const recommendedTopics = topicPages[currentTopicPage] ?? [];
   const stats = useMemo(
     () => ({
       projects: projects.length,
@@ -149,19 +155,37 @@ export const ProjectDashboard = ({
         : `“${deletedTitle}”及其文案、素材和缓存已永久删除`,
     );
   };
-  const refreshTopics = async () => {
+  const refreshTopics = async (mode: 'append' | 'reset') => {
+    if (
+      mode === 'reset' &&
+      topicPages.length > 0 &&
+      !window.confirm('将清除当前所有推荐主题和历史分页，并重新生成第 1 页。是否继续？')
+    ) {
+      return;
+    }
     setTopicStatus('loading');
-    setTopicMessage('正在分析选题热度…');
+    setTopicMessage(mode === 'reset' ? '正在重新生成全部推荐…' : '正在生成不重复的新一批…');
     try {
-      const response = await fetch('/api/topic-recommendations', {method: 'POST'});
+      const response = await fetch('/api/topic-recommendations', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mode}),
+      });
       const value = (await response.json()) as {
-        topics?: TopicRecommendation[];
+        pages?: TopicRecommendation[][];
+        currentPage?: number;
         error?: string;
       };
-      if (!response.ok || !value.topics) throw new Error(value.error ?? '选题推荐失败');
-      setRecommendedTopics(value.topics);
+      if (!response.ok || !value.pages) throw new Error(value.error ?? '选题推荐失败');
+      setTopicPages(value.pages);
+      setCurrentTopicPage(value.currentPage ?? Math.max(0, value.pages.length - 1));
+      setSelectedTopic('');
       setTopicStatus('idle');
-      setTopicMessage('已生成并保存最新的 10 条本地推荐');
+      setTopicMessage(
+        mode === 'reset'
+          ? '已清除旧推荐并重新生成第 1 页'
+          : `已去重生成第 ${value.pages.length} 页`,
+      );
     } catch (error) {
       setTopicStatus('error');
       setTopicMessage(error instanceof Error ? error.message : String(error));
@@ -332,15 +356,32 @@ export const ProjectDashboard = ({
         <header>
           <div>
             <strong>推荐视频主题</strong>
-            <span>AI 热度判断 · 单击选择，双击创建项目并进入</span>
+            <span>
+              AI 热度判断 · {topicPages.length ? `共 ${topicPages.length * 10} 条` : '尚未生成'} ·
+              单击选择，双击创建项目并进入
+            </span>
           </div>
-          <button disabled={topicStatus === 'loading'} onClick={() => void refreshTopics()}>
-            {topicStatus === 'loading'
-              ? '正在分析…'
-              : recommendedTopics.length
-                ? '↻ 刷新推荐'
-                : '生成 10 条推荐'}
-          </button>
+          <div className="topic-recommendation-actions">
+            {topicPages.length ? (
+              <button
+                className="secondary"
+                disabled={topicStatus === 'loading'}
+                onClick={() => void refreshTopics('reset')}
+              >
+                全部重新生成
+              </button>
+            ) : null}
+            <button
+              disabled={topicStatus === 'loading'}
+              onClick={() => void refreshTopics(topicPages.length ? 'append' : 'reset')}
+            >
+              {topicStatus === 'loading'
+                ? '正在分析…'
+                : topicPages.length
+                  ? '＋ 生成下一批'
+                  : '生成 10 条推荐'}
+            </button>
+          </div>
         </header>
         {recommendedTopics.length ? (
           <div className="topic-recommendation-list">
@@ -374,6 +415,34 @@ export const ProjectDashboard = ({
             <span>点击“生成 10 条推荐”才会调用默认 AI 服务，不会在进入页面时自动消耗 Token。</span>
           </div>
         )}
+        {topicPages.length > 1 ? (
+          <nav className="topic-pagination" aria-label="推荐主题分页">
+            <button
+              disabled={currentTopicPage === 0}
+              onClick={() => setCurrentTopicPage((page) => Math.max(0, page - 1))}
+            >
+              上一页
+            </button>
+            {topicPages.map((_, index) => (
+              <button
+                className={currentTopicPage === index ? 'current' : ''}
+                key={index}
+                onClick={() => setCurrentTopicPage(index)}
+                aria-label={`第 ${index + 1} 页`}
+              >
+                {index + 1}
+              </button>
+            ))}
+            <button
+              disabled={currentTopicPage === topicPages.length - 1}
+              onClick={() =>
+                setCurrentTopicPage((page) => Math.min(topicPages.length - 1, page + 1))
+              }
+            >
+              下一页
+            </button>
+          </nav>
+        ) : null}
         {topicMessage ? (
           <p className={topicStatus === 'error' ? 'error' : ''}>{topicMessage}</p>
         ) : null}

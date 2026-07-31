@@ -13,25 +13,51 @@ export type TopicRecommendation = {
 };
 
 export type SavedTopicRecommendations = {
-  topics: TopicRecommendation[];
+  pages: TopicRecommendation[][];
   provider: AiProviderId;
   generatedAt: string;
+};
+
+type LegacySavedTopicRecommendations = Omit<SavedTopicRecommendations, 'pages'> & {
+  topics?: TopicRecommendation[];
+  pages?: TopicRecommendation[][];
 };
 
 const topicRecommendationsFile = () =>
   path.join(path.dirname(aiSettingsFile()), 'topic-recommendations.json');
 
+const normalizeSavedTopicRecommendations = (
+  value: LegacySavedTopicRecommendations,
+): SavedTopicRecommendations | null => {
+  const pages = Array.isArray(value.pages)
+    ? value.pages
+        .filter((page): page is TopicRecommendation[] => Array.isArray(page) && page.length > 0)
+        .map((page) => page.slice(0, 10))
+    : Array.isArray(value.topics) && value.topics.length
+      ? [value.topics.slice(0, 10)]
+      : [];
+  return pages.length
+    ? {
+        pages,
+        provider: value.provider,
+        generatedAt: value.generatedAt,
+      }
+    : null;
+};
+
 export const loadTopicRecommendations = async (): Promise<SavedTopicRecommendations | null> => {
   try {
     const value = JSON.parse(
       await readFile(topicRecommendationsFile(), 'utf8'),
-    ) as SavedTopicRecommendations;
-    return Array.isArray(value.topics) && value.topics.length
-      ? {...value, topics: value.topics.slice(0, 10)}
-      : null;
+    ) as LegacySavedTopicRecommendations;
+    return normalizeSavedTopicRecommendations(value);
   } catch {
     const legacyFiles = [
-      path.join(path.dirname(path.dirname(topicRecommendationsFile())), '.cut-flow', 'topic-recommendations.json'),
+      path.join(
+        path.dirname(path.dirname(topicRecommendationsFile())),
+        '.cut-flow',
+        'topic-recommendations.json',
+      ),
       path.join(os.homedir(), '.cut-flow', 'topic-recommendations.json'),
     ];
     for (const legacyFile of legacyFiles) {
@@ -39,9 +65,9 @@ export const loadTopicRecommendations = async (): Promise<SavedTopicRecommendati
         if (path.resolve(legacyFile) === path.resolve(topicRecommendationsFile())) continue;
         const value = JSON.parse(
           await readFile(legacyFile, 'utf8'),
-        ) as SavedTopicRecommendations;
-        if (!Array.isArray(value.topics) || !value.topics.length) continue;
-        const migrated = {...value, topics: value.topics.slice(0, 10)};
+        ) as LegacySavedTopicRecommendations;
+        const migrated = normalizeSavedTopicRecommendations(value);
+        if (!migrated) continue;
         await saveTopicRecommendations(migrated);
         return migrated;
       } catch {
@@ -52,9 +78,7 @@ export const loadTopicRecommendations = async (): Promise<SavedTopicRecommendati
   }
 };
 
-export const saveTopicRecommendations = async (
-  value: SavedTopicRecommendations,
-): Promise<void> => {
+export const saveTopicRecommendations = async (value: SavedTopicRecommendations): Promise<void> => {
   const file = topicRecommendationsFile();
   await mkdir(path.dirname(file), {recursive: true});
   await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, {encoding: 'utf8', mode: 0o600});
@@ -86,10 +110,23 @@ const topicSchema = {
   },
 } as const;
 
+export const normalizeTopicTitle = (title: string) =>
+  title
+    .trim()
+    .toLocaleLowerCase('zh-CN')
+    .replace(/^为什么/u, '')
+    .replace(/[\s，。！？、：；,.!?:;'"“”‘’（）()《》【】[\]-]/gu, '');
+
+const recommendationTitle = (value: unknown) => {
+  if (!value || typeof value !== 'object' || !('title' in value)) return '';
+  return typeof value.title === 'string' ? value.title : '';
+};
+
 export const generateTopicRecommendations = async (
   provider: AiProviderId,
   setting: AiProviderSetting,
   project: ProjectFile,
+  excludedTitles: string[] = [],
 ): Promise<TopicRecommendation[]> => {
   const system = `你是一名擅长“十万个为什么”系列的中文短视频选题策划，请严格推荐恰好 10 条“为什么”主题。
 
@@ -112,7 +149,8 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
 视频类型：${project.content?.videoType || '未指定'}
 目标观众：${project.content?.audience || '短视频平台普通观众'}
 视频目的：${project.content?.purpose || '提升内容传播和互动'}
-请避免与已有主题完全重复，并兼顾时效性、实用性、争议讨论度和长期价值。`;
+${excludedTitles.length ? `以下主题已经推荐过，本次不得重复，也不能只改写措辞或标点：\n${excludedTitles.map((title) => `- ${title}`).join('\n')}` : ''}
+请避免与已有主题和同批其他主题重复，并兼顾时效性、实用性、争议讨论度和长期价值。`;
   const apiKey = setting.apiKey || setting.secretKey;
   if (!apiKey) throw new Error('请先在设置中配置 AI 服务密钥');
   const isOpenAI = provider === 'openai';
@@ -120,7 +158,7 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
     `${setting.baseUrl.replace(/\/$/, '')}/${isOpenAI ? 'responses' : 'chat/completions'}`,
     {
       method: 'POST',
-      headers: {'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json'},
+      headers: {Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json'},
       body: JSON.stringify(
         isOpenAI
           ? {
@@ -149,7 +187,8 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
       ),
     },
   );
-  if (!response.ok) throw new Error(`AI 选题推荐失败（${response.status}）：${await response.text()}`);
+  if (!response.ok)
+    throw new Error(`AI 选题推荐失败（${response.status}）：${await response.text()}`);
   const result = (await response.json()) as {
     output_text?: string;
     choices?: Array<{message?: {content?: string}}>;
@@ -159,8 +198,7 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
   let parsed: {topics?: unknown; recommendations?: unknown} | unknown[];
   try {
     parsed = JSON.parse(output.replace(/^```json\s*|\s*```$/g, '')) as
-      | {topics?: unknown; recommendations?: unknown}
-      | unknown[];
+      {topics?: unknown; recommendations?: unknown} | unknown[];
   } catch {
     throw new Error('AI 返回的选题推荐格式不正确，请刷新重试');
   }
@@ -184,10 +222,25 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
     '为什么人们明知道是套路，还是会被悬念吸引？',
     '为什么真正流行的内容总能说中普通人的情绪？',
   ];
-  const completed = [...received];
+  const excludedKeys = new Set(excludedTitles.map(normalizeTopicTitle));
+  const completed = received.filter((value, index, values) => {
+    const title = recommendationTitle(value);
+    const key = normalizeTopicTitle(title);
+    return (
+      key.length > 0 &&
+      !excludedKeys.has(key) &&
+      values.findIndex(
+        (candidate) => normalizeTopicTitle(recommendationTitle(candidate)) === key,
+      ) === index
+    );
+  });
   for (const title of fallbackTitles) {
     if (completed.length >= 10) break;
-    if (!completed.some((value) => String((value as {title?: unknown})?.title ?? '') === title)) {
+    const key = normalizeTopicTitle(title);
+    if (
+      !excludedKeys.has(key) &&
+      !completed.some((value) => normalizeTopicTitle(recommendationTitle(value)) === key)
+    ) {
       completed.push({
         title,
         category: '常青知识',
@@ -196,6 +249,9 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
         angle: '从常见误解切入，用具体场景解释背后的原因',
       });
     }
+  }
+  if (completed.length < 10) {
+    throw new Error(`本批只有 ${completed.length} 条不重复主题，请再次生成下一批`);
   }
   return completed.slice(0, 10).map((value, index) => {
     const item = value as Partial<TopicRecommendation>;
