@@ -74,7 +74,7 @@ const formatScriptValidationError = (
   return `AI 返回的文案结构不完整：${details.slice(0, 4).join('；') || '存在缺失字段'}。请重新生成，或调整补充要求后再试。`;
 };
 
-const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknown => {
+export const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknown => {
   const allowDigitalHuman = input.videoType === 'digital-human';
   if (!value || typeof value !== 'object') return value;
   const script = value as Record<string, unknown>;
@@ -97,6 +97,10 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
     'programmatic',
     'digital-human',
   ]);
+  const firstNonEmptyString = (...values: unknown[]) =>
+    values
+      .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      ?.trim() ?? '';
   const normalizeShotType = (input: unknown) => {
     const text = String(input ?? '').toLowerCase();
     if (['stock-video', 'generated-video', 'real-footage'].includes(text)) return 'video';
@@ -124,6 +128,28 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
         sceneValue && typeof sceneValue === 'object' ? (sceneValue as Record<string, unknown>) : {};
       const returnedShots = Array.isArray(scene.shots) ? scene.shots : [];
       const requestedSegmentType = String(scene.segmentType ?? '');
+      const narration = firstNonEmptyString(
+        scene.narration,
+        scene.narrationText,
+        scene.voiceover,
+        scene.script,
+        scene.content,
+        scene.text,
+      );
+      const caption =
+        firstNonEmptyString(scene.caption, scene.heading, scene.subtitle, scene.title) ||
+        (narration
+          ? `${Array.from(narration).slice(0, 18).join('')}${Array.from(narration).length > 18 ? '…' : ''}`
+          : '');
+      const requestedDuration = Number(
+        scene.suggestedDuration ?? scene.duration ?? scene.estimatedDuration,
+      );
+      const suggestedDuration =
+        Number.isFinite(requestedDuration) && requestedDuration > 0
+          ? Math.min(30, requestedDuration)
+          : narration
+            ? Math.max(3, Math.min(30, Array.from(narration).length / 4))
+            : 0;
       const segmentType = ['digital-human', 'voiceover', 'visual-explanation'].includes(
         requestedSegmentType,
       )
@@ -159,6 +185,9 @@ const normalizeCompatibleScript = (value: unknown, input: GenerateInput): unknow
             ];
       return {
         ...scene,
+        narration,
+        caption,
+        suggestedDuration,
         segmentType,
         visualIntent,
         visualPrompt:
@@ -376,6 +405,7 @@ ${input.customPrompt?.trim() || '无'}
 ${digitalHumanDirection}
 
 只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须恰好有 ${requiredSceneCount} 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh、motionPlan。
+每一段都必须一次性写完整：narration、caption、visualPrompt、visualIntent 不得为空字符串，suggestedDuration 必须是 0 到 30 之间的正数，禁止先放空字段或占位符等待后续补充。
 输出 JSON 前再次检查：仅将 scenes 中每个 narration 的汉字数量相加，结果必须在 ${minimumNarrationChars}-${maximumNarrationChars} 之间。
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
 assetStrategy 统一使用 source-agnostic；只有数字人口播段可使用 digital-human。是否为 AI 生成素材由素材库元数据标记，不在分镜中预设。
@@ -450,8 +480,8 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                         additionalProperties: false,
                         required: ['title', 'hook', 'scenes', 'ending'],
                         properties: {
-                          title: {type: 'string'},
-                          hook: {type: 'string'},
+                          title: {type: 'string', minLength: 1},
+                          hook: {type: 'string', minLength: 1},
                           ending: {type: 'string'},
                           scenes: {
                             type: 'array',
@@ -478,11 +508,15 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                                   type: 'string',
                                   enum: ['digital-human', 'voiceover', 'visual-explanation'],
                                 },
-                                narration: {type: 'string'},
-                                caption: {type: 'string'},
-                                visualPrompt: {type: 'string'},
-                                suggestedDuration: {type: 'number'},
-                                visualIntent: {type: 'string'},
+                                narration: {type: 'string', minLength: 1},
+                                caption: {type: 'string', minLength: 1},
+                                visualPrompt: {type: 'string', minLength: 1},
+                                suggestedDuration: {
+                                  type: 'number',
+                                  exclusiveMinimum: 0,
+                                  maximum: 30,
+                                },
+                                visualIntent: {type: 'string', minLength: 1},
                                 digitalHumanEmotion: {type: 'string'},
                                 digitalHumanAction: {type: 'string'},
                                 digitalHumanBackground: {type: 'string'},
@@ -508,7 +542,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                                       'motionPlan',
                                     ],
                                     properties: {
-                                      visualPurpose: {type: 'string'},
+                                      visualPurpose: {type: 'string', minLength: 1},
                                       shotType: {
                                         type: 'string',
                                         enum: [
@@ -533,7 +567,7 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                                           'digital-human',
                                         ],
                                       },
-                                      durationWeight: {type: 'number'},
+                                      durationWeight: {type: 'number', exclusiveMinimum: 0},
                                       searchQueries: {type: 'array', items: {type: 'string'}},
                                       searchQueriesZh: {type: 'array', items: {type: 'string'}},
                                       imagePrompt: {type: 'string'},
