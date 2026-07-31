@@ -36,6 +36,7 @@ export const ProjectDashboard = ({
   const [topicMessage, setTopicMessage] = useState('');
   const [projectToDelete, setProjectToDelete] = useState<ProjectSummary | null>(null);
   const [projectActionMessage, setProjectActionMessage] = useState('');
+  const [showAllProjects, setShowAllProjects] = useState(false);
 
   useEffect(() => {
     fetch('/api/projects')
@@ -67,8 +68,7 @@ export const ProjectDashboard = ({
     project.scenes.some(
       (scene) => scene.narration.trim() && !scene.narration.includes('生成视频脚本'),
     );
-  const narrationMode =
-    project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments');
+  const narrationMode = project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments');
   const voiceReady =
     narrationMode === 'segments'
       ? project.scenes.every((scene) => Boolean(scene.narrationAudio))
@@ -274,12 +274,17 @@ export const ProjectDashboard = ({
             <span>{projects.length} 个本地项目 · 单击选择，双击进入</span>
           </div>
           <div className="project-management-actions">
+            {projects.length > 5 ? (
+              <button onClick={() => setShowAllProjects((value) => !value)}>
+                {showAllProjects ? '收起项目' : `查看全部 ${projects.length} 个`}
+              </button>
+            ) : null}
             <button onClick={() => void importProject()}>导入项目</button>
             <button onClick={onNewProject}>新建项目</button>
           </div>
         </header>
         <div>
-          {projects.slice(0, 5).map((item) => (
+          {(showAllProjects ? projects : projects.slice(0, 5)).map((item) => (
             <article className="recent-project-entry" key={item.id}>
               <button
                 className={`project-open-button ${item.id === selectedProjectId ? 'current' : ''}`}
