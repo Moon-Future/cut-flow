@@ -25,7 +25,7 @@ type Props = {
 };
 
 const defaultPrompt = '';
-const DEFAULT_TARGET_WORD_COUNT = 500;
+const DEFAULT_TARGET_WORD_COUNT = 800;
 
 const videoTypeLabels: Record<VideoType, string> = {
   'science-explainer': '科普讲解',
@@ -60,9 +60,7 @@ export const GenerationPanel = ({
     {id: 'deepseek', name: 'DeepSeek', enabled: false, configured: false},
     {id: 'doubao', name: '豆包', enabled: false, configured: false},
   ]);
-  const [targetWordCount, setTargetWordCount] = useState(() =>
-    String(DEFAULT_TARGET_WORD_COUNT),
-  );
+  const [targetWordCount, setTargetWordCount] = useState(() => String(DEFAULT_TARGET_WORD_COUNT));
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [referenceText, setReferenceText] = useState('');
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
@@ -91,8 +89,7 @@ export const GenerationPanel = ({
           setAvailableProviders(providers);
           if (
             providers.some(
-              (item) =>
-                item.id === value.activeProvider && item.enabled && item.configured,
+              (item) => item.id === value.activeProvider && item.enabled && item.configured,
             )
           ) {
             setProvider(value.activeProvider);
@@ -107,11 +104,7 @@ export const GenerationPanel = ({
     const effectiveVideoType = generationContext?.videoType ?? videoType;
     const effectiveWordCount = Math.max(
       100,
-      Math.min(
-        5000,
-        Number(targetWordCount) ||
-          DEFAULT_TARGET_WORD_COUNT,
-      ),
+      Math.min(5000, Number(targetWordCount) || DEFAULT_TARGET_WORD_COUNT),
     );
     setTargetWordCount(String(effectiveWordCount));
     setStatus('running');
@@ -126,14 +119,14 @@ export const GenerationPanel = ({
           customPrompt,
           provider,
           targetWordCount: effectiveWordCount,
-          durationTarget: generationContext?.durationTarget,
+          durationTarget: generationContext?.durationTarget ?? 120,
           videoType: effectiveVideoType,
           audience: generationContext?.audience ?? '短视频平台的普通观众',
           purpose: generationContext?.purpose ?? '科普与引发讨论',
           coreViewpoint: generationContext?.coreViewpoint ?? effectiveTopic,
           sourceMaterial: generationContext?.sourceMaterial ?? '',
           visualStyle: generationContext?.visualStyle ?? '电影级写实',
-          aspectRatio: generationContext?.aspectRatio ?? '9:16',
+          aspectRatio: generationContext?.aspectRatio ?? '16:9',
           tone: generationContext?.tone ?? '清晰、有画面感、节奏紧凑',
           forceRegenerate: status === 'success',
         }),
@@ -196,7 +189,9 @@ export const GenerationPanel = ({
                 <em>{videoTypeLabels[generationContext.videoType]}</em>
                 <em>{generationContext.tone}</em>
                 <em>{generationContext.purpose}</em>
-                {generationContext.platformLabel ? <em>{generationContext.platformLabel}</em> : null}
+                {generationContext.platformLabel ? (
+                  <em>{generationContext.platformLabel}</em>
+                ) : null}
               </div>
               <small>如需修改主题、类型或语气，请在左侧“内容设定”中调整。</small>
             </div>
@@ -215,7 +210,9 @@ export const GenerationPanel = ({
               onChange={(event) => setReferenceText(event.target.value)}
               placeholder="粘贴已有文案、文章或口播稿。填写后，AI 会保留原文事实与核心观点，重点优化钩子、结构、节奏和口语表达。"
             />
-            <small className="word-count-help">留空则从主题开始创作；有内容时按原文优化改写。</small>
+            <small className="word-count-help">
+              留空则从主题开始创作；有内容时按原文优化改写。
+            </small>
           </label>
           <label>
             <span>补充创作要求（可选）</span>
@@ -240,34 +237,32 @@ export const GenerationPanel = ({
                   String(
                     Math.max(
                       100,
-                      Math.min(
-                        5000,
-                        Number(targetWordCount) ||
-                          DEFAULT_TARGET_WORD_COUNT,
-                      ),
+                      Math.min(5000, Number(targetWordCount) || DEFAULT_TARGET_WORD_COUNT),
                     ),
                   ),
                 )
               }
             />
-            <small className="word-count-help">默认 500 字，可自行调整</small>
+            <small className="word-count-help">
+              默认 800 字，适合 1～2 分钟横屏视频，可自行调整
+            </small>
           </label>
           {!generationContext ? (
             <div className="field-row">
-            <label>
-              <span>视频类型</span>
-              <select
-                value={videoType}
-                onChange={(event) => setVideoType(event.target.value as VideoType)}
-              >
-                <option value="science-explainer">科普讲解</option>
-                <option value="knowledge-narration">知识口播</option>
-                <option value="digital-human">数字人口播</option>
-                <option value="product-showcase">产品展示</option>
-                <option value="storytelling">故事叙事</option>
-              </select>
-            </label>
-          </div>
+              <label>
+                <span>视频类型</span>
+                <select
+                  value={videoType}
+                  onChange={(event) => setVideoType(event.target.value as VideoType)}
+                >
+                  <option value="science-explainer">科普讲解</option>
+                  <option value="knowledge-narration">知识口播</option>
+                  <option value="digital-human">数字人口播</option>
+                  <option value="product-showcase">产品展示</option>
+                  <option value="storytelling">故事叙事</option>
+                </select>
+              </label>
+            </div>
           ) : null}
           <label className="provider-field">
             <span>生成方式</span>
@@ -277,11 +272,7 @@ export const GenerationPanel = ({
             >
               <option value="mock">本地演示（不消耗 Token）</option>
               {availableProviders.map((item) => (
-                <option
-                  value={item.id}
-                  key={item.id}
-                  disabled={!item.enabled || !item.configured}
-                >
+                <option value={item.id} key={item.id} disabled={!item.enabled || !item.configured}>
                   {item.name}
                   {!item.configured ? '（未配置）' : !item.enabled ? '（未启用）' : ' 正式生成'}
                 </option>

@@ -53,9 +53,9 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
   const [description, setDescription] = useState('');
   const [sourceText, setSourceText] = useState('');
   const [keywords, setKeywords] = useState('');
-  const [platform, setPlatform] = useState<Platform>('douyin');
-  const [ratio, setRatio] = useState<(typeof ratios)[number]>(ratios[0]);
-  const [durationTarget, setDurationTarget] = useState(60);
+  const [platform, setPlatform] = useState<Platform>('bilibili');
+  const [ratio, setRatio] = useState<(typeof ratios)[number]>(ratios[3]);
+  const [durationTarget, setDurationTarget] = useState(120);
   const [fps, setFps] = useState(30);
   const [videoType, setVideoType] = useState<VideoType>('science-explainer');
   const [tone, setTone] = useState('自然清晰');
@@ -348,6 +348,7 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
                     <option value={30}>30 秒左右</option>
                     <option value={60}>60 秒左右</option>
                     <option value={90}>90 秒左右</option>
+                    <option value={120}>2 分钟左右</option>
                     <option value={180}>3 分钟左右</option>
                     <option value={300}>5 分钟左右</option>
                   </select>

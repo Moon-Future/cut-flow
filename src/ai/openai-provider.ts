@@ -354,7 +354,7 @@ ${input.aspectRatio}
 所有 scenes[].narration 拼接后的文案总字数约 ${input.targetWordCount} 个汉字。
 合格范围：${minimumNarrationChars}-${maximumNarrationChars} 个汉字。
 【目标时长】
-约 ${input.durationTarget ?? 60} 秒。以自然讲完和留出必要停顿为优先，不要为了凑字数重复解释。
+约 ${input.durationTarget ?? 120} 秒。以自然讲完和留出必要停顿为优先，不要为了凑字数重复解释。
 必须生成 ${requiredSceneCount} 段，但各段长短应服从叙事节奏，不要求平均分配字数。
 只统计 narration 中的汉字；title、hook、ending、caption、画面描述、搜索词以及图片/视频提示词均不计入目标字数。
 

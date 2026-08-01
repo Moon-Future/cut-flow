@@ -583,18 +583,18 @@ const localApi = (): Plugin => ({
               'custom',
             ].includes(input.platform ?? '')
               ? input.platform
-              : 'douyin';
-            const width = Math.max(320, Math.min(7680, Math.round(input.width ?? 1080)));
-            const height = Math.max(320, Math.min(7680, Math.round(input.height ?? 1920)));
+              : 'bilibili';
+            const width = Math.max(320, Math.min(7680, Math.round(input.width ?? 1920)));
+            const height = Math.max(320, Math.min(7680, Math.round(input.height ?? 1080)));
             const fps = Math.max(1, Math.min(120, Math.round(input.fps ?? 30)));
-            const durationTarget = Math.max(5, Math.min(3600, input.durationTarget ?? 60));
+            const durationTarget = Math.max(5, Math.min(3600, input.durationTarget ?? 120));
             const id = `project-${Date.now()}-${randomUUID().slice(0, 6)}`;
             const projectRoot = path.join(projectsRoot, id);
             await mkdir(path.join(projectRoot, 'assets'), {recursive: true});
             const placeholder = 'assets/placeholder.svg';
             await writeFile(
               path.join(projectRoot, placeholder),
-              `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920"><rect width="100%" height="100%" fill="#111827"/><text x="50%" y="50%" fill="#6de8c5" font-size="54" text-anchor="middle">CUT FLOW</text></svg>`,
+              `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#111827"/><text x="50%" y="50%" fill="#6de8c5" font-size="54" text-anchor="middle">CUT FLOW</text></svg>`,
               'utf8',
             );
             const project = projectFileSchema.parse({
