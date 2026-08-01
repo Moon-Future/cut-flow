@@ -128,15 +128,16 @@ export const generateTopicRecommendations = async (
   project: ProjectFile,
   excludedTitles: string[] = [],
 ): Promise<TopicRecommendation[]> => {
-  const system = `你是一名擅长“十万个为什么”系列的中文短视频选题策划，请严格推荐恰好 10 条“为什么”主题。
+  const system = `你是一名擅长大众科普系列的中文视频选题策划，请严格推荐恰好 10 条有知识增量和传播潜力的主题。
 
 选题配比：
-1. 6 条常青有趣知识：从自然科学、生活现象、人体心理、动物植物、历史文化、科技原理中选择观众熟悉但说不清原因的问题。
-2. 4 条热点变体：结合当前受到关注的电影、明星、社会话题、科技产品或文化现象，改写成有解释空间的“为什么”问题。例如某位电影人近期受到关注时，可以设计“为什么他能持续影响几代观众”，但不得编造新电影上映、数据或事件。
+1. 7 条“为什么”主系列：从自然科学、生活现象、人体心理、动物植物、历史文化、科技原理中选择观众熟悉但说不清原因的问题。
+2. 3 条其他有趣科普系列，可以采用“民间说法 + 科学纠正”“反常识结论”“现象揭秘”“真假判断”“身体发出的信号”等结构。例如“左眼跳财，右眼跳灾？其实你的眼皮在抗议。”标题仍要落到可验证的科学解释，不能只做情绪或猎奇表达。
+3. 10 条中兼顾常青知识和近期受关注的电影、社会话题、科技产品或文化现象，但不得编造上映信息、数据或事件。
 
 标题规则：
-1. 每条标题必须以“为什么”开头，像观众真的会问的问题。
-2. 标题要具体、有悬念、有认知反差，读完让人想立刻知道答案。
+1. 恰好 7 条标题以“为什么”开头；另外 3 条不得以“为什么”开头，题型和句式也要彼此不同。
+2. 标题要具体、有悬念、有认知反差，读完让人想立刻知道答案；非“为什么”标题优先使用观众熟悉的说法或现象开场，再用后半句给出意外但不过度剧透的科学方向。
 3. 10 条不能只是替换同义词，题材和解释角度必须明显不同。
 4. 避免低俗、虚假夸张和无法验证的标题党。
 
@@ -218,9 +219,9 @@ ${excludedTitles.length ? `以下主题已经推荐过，本次不得重复，�
     '为什么有些旋律听一遍就忘不掉？',
     '为什么同样睡八小时，有人醒来还是很累？',
     '为什么越简单的视频反而越容易传播？',
-    '为什么经典电影过了很多年依然有人看？',
-    '为什么人们明知道是套路，还是会被悬念吸引？',
-    '为什么真正流行的内容总能说中普通人的情绪？',
+    '左眼跳财，右眼跳灾？其实你的眼皮在抗议。',
+    '憋住的喷嚏会消失吗？身体其实换了一条出口。',
+    '手机越用越卡，不一定是存储空间惹的祸。',
   ];
   const excludedKeys = new Set(excludedTitles.map(normalizeTopicTitle));
   const completed = received.filter((value, index, values) => {
@@ -255,9 +256,9 @@ ${excludedTitles.length ? `以下主题已经推荐过，本次不得重复，�
   }
   return completed.slice(0, 10).map((value, index) => {
     const item = value as Partial<TopicRecommendation>;
-    const rawTitle = String(item.title || fallbackTitles[index]);
+    const rawTitle = String(item.title || fallbackTitles[index]).trim();
     return {
-      title: rawTitle.startsWith('为什么') ? rawTitle : `为什么${rawTitle.replace(/[？?]$/, '')}？`,
+      title: rawTitle,
       category: String(item.category || '综合'),
       heatScore: Math.max(0, Math.min(100, Number(item.heatScore) || 0)),
       reason: String(item.reason || '具备一定内容传播潜力'),
