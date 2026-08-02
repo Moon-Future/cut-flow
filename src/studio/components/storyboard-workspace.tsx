@@ -9,9 +9,11 @@ import type {
 import {
   countVideoPromptCharacters,
   limitVideoPrompt,
+  normalizeVideoPromptAspectRatio,
   normalizeVideoPromptDuration,
   removeNarrationFromVideoPrompt,
   removeReferenceImageInstructions,
+  type VideoAspectRatio,
   type VideoTargetDuration,
 } from '../../ai/video-generation-prompt';
 import {buildFallbackVideoPromptZh} from '../../ai/video-prompt-fallback';
@@ -139,6 +141,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
   const [videoDraft, setVideoDraft] = useState<{
     shotId: string;
     provider: 'volcengine-pippit';
+    ratio: VideoAspectRatio;
     duration: VideoTargetDuration;
     prompt: string;
     referenceImagePaths: string[];
@@ -477,10 +480,14 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
         ? videoDraft
         : {
             provider: 'volcengine-pippit' as const,
+            ratio: '16:9' as const,
             duration: videoDefaultDuration,
-            prompt: normalizeVideoPromptDuration(
-              shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
-              videoDefaultDuration,
+            prompt: normalizeVideoPromptAspectRatio(
+              normalizeVideoPromptDuration(
+                shot.videoPromptZh || shot.videoPrompt || shot.visualPurpose,
+                videoDefaultDuration,
+              ),
+              '16:9',
             ),
             referenceImagePaths: [],
             referenceImageUrls: {} as Record<string, string>,
@@ -500,6 +507,7 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
           sceneId: selected.id,
           shotId: shot.id,
           provider: draft.provider,
+          ratio: draft.ratio,
           duration: draft.duration,
           prompt: limitVideoPrompt(
             normalizeVideoPromptDuration(
@@ -1291,12 +1299,16 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                     setVideoDraft({
                       shotId: shot.id,
                       provider: 'volcengine-pippit',
+                      ratio: '16:9',
                       duration: videoDefaultDuration,
-                      prompt: normalizeVideoPromptDuration(
-                        Boolean(shot.videoPromptZh?.trim())
-                          ? removeReferenceImageInstructions(shot.videoPromptZh!)
-                          : fallbackVideoPromptZh(shot),
-                        videoDefaultDuration,
+                      prompt: normalizeVideoPromptAspectRatio(
+                        normalizeVideoPromptDuration(
+                          Boolean(shot.videoPromptZh?.trim())
+                            ? removeReferenceImageInstructions(shot.videoPromptZh!)
+                            : fallbackVideoPromptZh(shot),
+                          videoDefaultDuration,
+                        ),
+                        '16:9',
                       ),
                       referenceImagePaths: [],
                       referenceImageUrls: {} as Record<string, string>,
@@ -1331,6 +1343,25 @@ export const StoryboardWorkspace = ({project, projectId, onGoToAssets}: Props) =
                             }
                           >
                             <option value="volcengine-pippit">火山引擎 · 小云雀智能生视频</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span>视频比例</span>
+                          <select
+                            value={videoDraft.ratio}
+                            onChange={(event) => {
+                              const ratio = event.target.value as VideoAspectRatio;
+                              setVideoDraft({
+                                ...videoDraft,
+                                ratio,
+                                prompt: normalizeVideoPromptAspectRatio(videoDraft.prompt, ratio),
+                              });
+                            }}
+                          >
+                            <option value="16:9">16:9 横屏（默认）</option>
+                            <option value="9:16">9:16 竖屏</option>
+                            <option value="4:3">4:3 横屏</option>
+                            <option value="3:4">3:4 竖屏</option>
                           </select>
                         </label>
                         <label>

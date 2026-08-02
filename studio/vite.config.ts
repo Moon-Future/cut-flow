@@ -31,9 +31,11 @@ import {
 import {createVolcengineVideoProvider} from '../src/ai/volcengine-video-provider';
 import {
   limitVideoPrompt,
+  normalizeVideoPromptAspectRatio,
   normalizeVideoPromptDuration,
   removeNarrationFromVideoPrompt,
   removeReferenceImageInstructions,
+  type VideoAspectRatio,
   type VideoTargetDuration,
   videoTargetMaximumSeconds,
   volcengineApiDuration,
@@ -1782,6 +1784,7 @@ const localApi = (): Plugin => ({
               sceneId?: string;
               shotId?: string;
               provider?: 'volcengine-pippit';
+              ratio?: VideoAspectRatio;
               duration?: VideoTargetDuration;
               prompt?: string;
               referenceImageUrls?: string[];
@@ -1826,12 +1829,14 @@ const localApi = (): Plugin => ({
               });
               return;
             }
+            const supportedRatios = new Set<VideoAspectRatio>(['16:9', '9:16', '4:3', '3:4']);
+            const ratio = input.ratio && supportedRatios.has(input.ratio) ? input.ratio : '16:9';
             const provider = createVolcengineVideoProvider({
               accessKey: aiSettings.volcengineVideo.accessKey,
               secretKey: aiSettings.volcengineVideo.secretKey,
               outputDirectory: path.join(assetsRoot, 'generated'),
               projectRelativeDirectory: 'assets/generated',
-              ratio: project.project.width < project.project.height ? '9:16' : '16:9',
+              ratio,
               duration: volcengineApiDuration(
                 input.duration ?? aiSettings.volcengineVideo.defaultDuration,
               ),
@@ -1846,11 +1851,14 @@ const localApi = (): Plugin => ({
               shot.visualPurpose,
             );
             const finalPrompt = limitVideoPrompt(
-              normalizeVideoPromptDuration(
-                referenceImageUrls.length
-                  ? visualPrompt
-                  : removeReferenceImageInstructions(visualPrompt),
-                targetDuration,
+              normalizeVideoPromptAspectRatio(
+                normalizeVideoPromptDuration(
+                  referenceImageUrls.length
+                    ? visualPrompt
+                    : removeReferenceImageInstructions(visualPrompt),
+                  targetDuration,
+                ),
+                ratio,
               ),
             );
             const startedAt = new Date();

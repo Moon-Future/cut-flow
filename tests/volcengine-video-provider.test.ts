@@ -4,6 +4,7 @@ import {createVolcengineSignedHeaders} from '../src/ai/volcengine-video-provider
 import {
   countVideoPromptCharacters,
   limitVideoPrompt,
+  normalizeVideoPromptAspectRatio,
   normalizeVideoPromptDuration,
   removeNarrationFromVideoPrompt,
   removeReferenceImageInstructions,
@@ -34,6 +35,17 @@ describe('火山引擎视频接口签名', () => {
 });
 
 describe('视频生成提示词', () => {
+  it('切换视频比例时同步改写提示词并避免重复比例指令', () => {
+    const horizontal = normalizeVideoPromptAspectRatio('9:16 竖屏电影感画面。', '16:9');
+    expect(horizontal).toContain('【画面比例】16:9 横屏');
+    expect(horizontal).not.toMatch(/9:16|竖屏/u);
+
+    const vertical = normalizeVideoPromptAspectRatio(horizontal, '3:4');
+    expect(vertical.match(/【画面比例】/gu)).toHaveLength(1);
+    expect(vertical).toContain('【画面比例】3:4 竖屏');
+    expect(vertical).not.toMatch(/16:9|横屏/u);
+  });
+
   it('没有参考图片时移除依赖图片和首帧的描述', () => {
     const prompt = removeReferenceImageInstructions(
       '开场展示厨房，以对应图片作为首帧，保持人物服装一致。随后人物拿起杯子。Open on a kitchen, use the reference image as the first frame. End on the result.',

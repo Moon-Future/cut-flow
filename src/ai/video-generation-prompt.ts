@@ -1,4 +1,18 @@
 export type VideoTargetDuration = '5s' | '10s' | '～15s' | '～30s' | '40～60s';
+export type VideoAspectRatio = '16:9' | '9:16' | '4:3' | '3:4';
+
+export const normalizeVideoPromptAspectRatio = (
+  prompt: string,
+  ratio: VideoAspectRatio,
+): string => {
+  const orientation = ratio === '16:9' || ratio === '4:3' ? '横屏' : '竖屏';
+  const cleaned = prompt
+    .replace(/【画面比例】[^\n]*\n?/gu, '')
+    .replace(/(?:16\s*:\s*9|9\s*:\s*16|4\s*:\s*3|3\s*:\s*4)/gu, ratio)
+    .replace(/(?:横屏|竖屏)/gu, orientation)
+    .trim();
+  return `【画面比例】${ratio} ${orientation}，所有构图、主体位置和镜头运动均以此比例为准。\n${cleaned}`;
+};
 
 export const videoDurationLabel = (duration: VideoTargetDuration) =>
   duration === '5s'
