@@ -42,7 +42,10 @@ describe('可移植文案提示词', () => {
     expect(prompt).toContain('画面演变描述（时间轴）');
     expect(prompt).toContain('Narrative purpose');
     expect(prompt).toContain('Camera movement');
-    expect(prompt).toContain('Markdown 表格');
+    expect(prompt).toContain('不要输出表格');
+    expect(prompt).toContain('按“分镜 1、分镜 2……”依次输出');
+    expect(prompt).toContain('AI中文视频提示词：');
+    expect(prompt).toContain('AI英文视频提示词：');
     expect(prompt).not.toMatch(/json/iu);
   });
   it('随参考原文和补充要求更新', () => {
