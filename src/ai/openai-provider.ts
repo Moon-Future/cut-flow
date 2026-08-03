@@ -316,7 +316,10 @@ export const normalizeCompatibleScript = (value: unknown, input: GenerateInput):
 export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
   text: {
     generateScript: async (input: GenerateInput) => {
-      const desiredSceneCount = input.targetWordCount > 500 ? 9 : 7;
+      const desiredSceneCount = Math.max(
+        3,
+        Math.min(20, Math.ceil((input.durationTarget ?? 120) / 10)),
+      );
       const fixedNarrations = input.storyboardOnly
         ? splitFullScript(input.fullScript ?? '', desiredSceneCount)
         : [];
@@ -330,6 +333,8 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
         ? narrationTarget
         : Math.ceil(narrationTarget * 1.1);
       const requiredSceneCount = fixedNarrations.length || desiredSceneCount;
+      const minimumSceneCount = fixedNarrations.length ? requiredSceneCount : 3;
+      const maximumSceneCount = fixedNarrations.length ? requiredSceneCount : 20;
       const prompt = `请根据以下信息创作一篇专业的短视频文案。
 
 【视频主题】
@@ -367,7 +372,11 @@ ${input.aspectRatio}
 合格范围：${minimumNarrationChars}-${maximumNarrationChars} 个汉字。
 【目标时长】
 约 ${input.durationTarget ?? 120} 秒。以自然讲完和留出必要停顿为优先，不要为了凑字数重复解释。
-必须生成 ${requiredSceneCount} 段，但各段长短应服从叙事节奏，不要求平均分配字数。
+${
+  fixedNarrations.length
+    ? `必须生成 ${requiredSceneCount} 段，并逐段保留锁定旁白。`
+    : '段落数量由知识传播逻辑决定，不按字数或句子机械切分；总段落数控制在 3-20 段。'
+}
 只统计 narration 中的汉字；title、hook、ending、caption、画面描述、搜索词以及图片/视频提示词均不计入目标字数。
 
 【额外创作要求】
@@ -419,12 +428,16 @@ ${fixedNarrations.map((narration, index) => `第 ${index + 1} 段固定旁白：
 8. 禁止使用“今天我们来讲”“科学研究发现”“随着时代发展”“众所周知”“综上所述”“你学会了吗”等课堂式或空洞表达；不堆形容词，不重复问题和结论。
 9. 避免绝对化，按证据合理使用“通常”“可能”“更容易”“主要原因之一”。不虚构研究、数据、专家、案例或因果关系，不把相关性写成确定因果。
 10. 结尾重新解释开头现象，给出新的理解，并提出一个与观众真实经历有关、能够产生不同回答的问题；不要使用空泛的“你怎么看”，也不要生硬索要关注收藏。
-11. 全文必须恰好安排 ${requiredSceneCount} 个段落。${speakerType} 与 visual-explanation 根据叙事需要合理穿插，不强制机械地逐段交替；各段长短服从口播节奏。
+11. ${
+        fixedNarrations.length
+          ? `全文必须恰好安排 ${requiredSceneCount} 个段落，并与锁定旁白逐段对应。`
+          : '先分析核心问题、知识解释过程、关键转折点和最终结论，再按知识传播逻辑安排 3-20 个段落，不得按句子或字数机械切割。'
+      }${speakerType} 与 visual-explanation 根据叙事需要合理穿插，不强制机械地逐段交替；各段长短服从口播节奏。
 12. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；visual-explanation 负责原因、案例、步骤、对比、证据和过程。两者共同推进内容，不得重复相同信息。
 13. 字数目标只针对所有 scenes[].narration 的汉字合计。生成后在内部精简或补充，使总数达到 ${minimumNarrationChars}-${maximumNarrationChars} 个汉字；不要把其他 JSON 字段计入文案字数。
 ${digitalHumanDirection}
 
-只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes 必须恰好有 ${requiredSceneCount} 项，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh、motionPlan。
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes ${fixedNarrations.length ? `必须恰好有 ${requiredSceneCount} 项` : '应有 3-20 项，数量服从知识传播逻辑'}，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh、motionPlan。
 每一段都必须一次性写完整：narration、caption、visualPrompt、visualIntent 不得为空字符串，suggestedDuration 必须是 0 到 30 之间的正数，禁止先放空字段或占位符等待后续补充。
 输出 JSON 前再次检查：仅将 scenes 中每个 narration 的汉字数量相加，结果必须在 ${minimumNarrationChars}-${maximumNarrationChars} 之间。
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
@@ -436,6 +449,15 @@ searchQueries 必须是字符串数组，不能是单个字符串。
 同一镜头的多个搜索词要覆盖“主题解释、人物行为、具体场景或过程”，不能只是同义词替换。
 每个 shot 同时提供 imagePrompt、videoPrompt、imagePromptZh、videoPromptZh。imagePrompt 和 videoPrompt 使用专业英文撰写，供图片和视频模型直接调用；imagePromptZh 和 videoPromptZh 是准确完整的中文翻译，供页面展示。
 每个 shot 的 motionPlan 必须给出可由 Remotion 执行的图片动态化方案：preset 只能是 none、slow-zoom-in、slow-zoom-out、pan-left、pan-right、pan-up、pan-down、ken-burns-left、ken-burns-right、gentle-float；intensity 为 0～1；focusStart 和 focusEnd 用中文描述运镜开始和结束关注的画面区域；requiresLayering 表示是否需要抠图分层；requiresAiVideo 仅在静态图片无法表达关键动作时为 true。优先让 requiresAiVideo 为 false，不得把人物表情变化、转头、抬手等静态图片无法实现的动作伪装成普通 Ken Burns。
+
+分镜拆解总要求：
+1. 先在内部识别核心问题、知识解释过程、关键转折点和最终结论，再按知识传播逻辑拆镜，不得按句子或字数机械切割。
+2. 全片所有 shots 合计不得超过 20 个；每个 shot 最长 10 秒，并必须对应明确的旁白内容和明确的 visualPurpose。visualPurpose 要回答“这个画面为什么出现、要让观众理解什么”。
+3. 禁止只生成漂亮但无信息的背景、只展示旁白提到的物体、堆放与知识点无关的装饰。画面必须可视化因果、对比、变化过程或信息关系。
+4. videoPromptZh 必须按镜头实际时长精确标注连续时间段。每个时间段都要同时写明主体变化、动作变化和摄影机运动变化，并采用“视觉目的 + 场景 + 主体 + 动作 + 信息关系 + 运镜 + 视觉风格”的完整结构。
+5. videoPrompt 必须与中文时间轴逐段对应，并明确使用 Narrative purpose、Scene、Subject、Action、Camera movement、Style 标签；不得省略信息关系或只翻译物体名称。
+6. 整体采用电影级纪录片风格、真实摄影质感、自然光影、真实材质、丰富景深和 ${input.aspectRatio} 横屏构图。避免卡通风、PPT 展示感、简单插画感和无意义特效。
+7. 最终画面应做到：即使没有字幕和旁白，观众也能从主体行为、空间关系与变化过程理解正在解释的知识。
 
 图片提示词必须达到可直接执行的视觉导演稿质量，中文不少于 280 个汉字，禁止使用一段“主体清晰、构图稳定、光线统一”式的通用镜头规范敷衍。按以下顺序具体设计：
 0. visualPurpose、visualPrompt 和四条生成提示词不得复制 narration、caption、标题或只罗列其中的关键词。必须先把抽象文案转译为摄像机能拍到的具体人物、物体、动作、环境、空间关系和可见结果；提示词中不得出现“围绕这段文案”“表现这个主题”“对应图片”“参考图片”等元描述。
@@ -505,8 +527,8 @@ searchQueries 必须是字符串数组，不能是单个字符串。
                           ending: {type: 'string'},
                           scenes: {
                             type: 'array',
-                            minItems: requiredSceneCount,
-                            maxItems: requiredSceneCount,
+                            minItems: minimumSceneCount,
+                            maxItems: maximumSceneCount,
                             items: {
                               type: 'object',
                               additionalProperties: false,

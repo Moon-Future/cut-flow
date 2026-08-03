@@ -35,7 +35,15 @@ describe('可移植文案提示词', () => {
     });
     expect(prompt).toContain('这是已经定稿的全文文案。');
     expect(prompt).toContain('不要改写、润色、纠错、删减或补充');
-    expect(prompt).toContain('只执行分段和分镜设计');
+    expect(prompt).toContain('按知识传播逻辑拆镜');
+    expect(prompt).toContain('单个镜头最长 10 秒');
+    expect(prompt).toContain('全片最多 20 个分镜');
+    expect(prompt).toContain('本镜头视觉目的');
+    expect(prompt).toContain('画面演变描述（时间轴）');
+    expect(prompt).toContain('Narrative purpose');
+    expect(prompt).toContain('Camera movement');
+    expect(prompt).toContain('Markdown 表格');
+    expect(prompt).not.toMatch(/json/iu);
   });
   it('随参考原文和补充要求更新', () => {
     const prompt = buildPortableScriptPrompt({
