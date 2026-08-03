@@ -43,6 +43,29 @@ describe('projectFileSchema', () => {
     const scenes = [{...valid.scenes[0], motion: 'spin'}];
     expect(projectFileSchema.safeParse({...valid, scenes}).success).toBe(false);
   });
+  it('accepts long-form visual shots longer than thirty seconds', () => {
+    const longShot = {
+      id: 'long-shot',
+      visualPurpose: '长视频讲解镜头',
+      shotType: 'image',
+      assetStrategy: 'source-agnostic',
+      duration: 45,
+    };
+    const scenes = [{...valid.scenes[0], duration: 45, shots: [longShot]}];
+    const copyVersions = [
+      {
+        id: 'copy-long',
+        createdAt: new Date().toISOString(),
+        provider: 'mock',
+        title: '长视频',
+        topic: '长视频',
+        hook: '',
+        ending: '',
+        scenes,
+      },
+    ];
+    expect(projectFileSchema.safeParse({...valid, scenes, copyVersions}).success).toBe(true);
+  });
   it('upgrades legacy visual shots with generation defaults', () => {
     const scenes = [
       {

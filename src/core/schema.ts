@@ -136,7 +136,7 @@ export const visualShotSchema = z.object({
     'programmatic',
     'digital-human',
   ]),
-  duration: z.number().positive().max(30),
+  duration: z.number().positive().max(300),
   searchQueries: z.array(z.string().min(1)).max(8).default([]),
   searchQueriesZh: z.array(z.string().min(1)).max(8).optional(),
   imagePrompt: z.string().optional(),
@@ -264,7 +264,10 @@ export const projectFileSchema = z
         subtitle: z.string().default(''),
         textAlign: z.enum(['left', 'center']).default('left'),
         overlayOpacity: z.number().min(0).max(0.85).default(0.42),
-        accentColor: z.string().regex(/^#[0-9a-f]{6}$/iu).default('#ffcf4a'),
+        accentColor: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/iu)
+          .default('#ffcf4a'),
         backgroundScale: z.number().min(1).max(3).default(1),
         backgroundScaleX: z.number().min(0.5).max(3).optional(),
         backgroundScaleY: z.number().min(0.5).max(3).optional(),
@@ -279,7 +282,10 @@ export const projectFileSchema = z
               y: z.number().min(0).max(100).default(60),
               fontFamily: z.string().default('Microsoft YaHei'),
               fontSize: z.number().min(20).max(180).default(72),
-              color: z.string().regex(/^#[0-9a-f]{6}$/iu).default('#ffffff'),
+              color: z
+                .string()
+                .regex(/^#[0-9a-f]{6}$/iu)
+                .default('#ffffff'),
               fontWeight: z.enum(['400', '600', '700', '800', '900']).default('800'),
               textAlign: z.enum(['left', 'center', 'right']).default('center'),
               canvasAlign: z.enum(['left', 'center', 'right', 'custom']).default('custom'),
@@ -289,7 +295,10 @@ export const projectFileSchema = z
                     start: z.number().int().min(0),
                     end: z.number().int().positive(),
                     fontSize: z.number().min(20).max(180).optional(),
-                    color: z.string().regex(/^#[0-9a-f]{6}$/iu).optional(),
+                    color: z
+                      .string()
+                      .regex(/^#[0-9a-f]{6}$/iu)
+                      .optional(),
                   }),
                 )
                 .optional(),
