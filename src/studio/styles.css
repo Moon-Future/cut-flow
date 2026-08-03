@@ -724,8 +724,7 @@ select {
   font-size: 10px;
   cursor: pointer;
 }
-.copy-prompt-preview > summary button,
-.copy-prompt-preview label > button {
+.copy-prompt-preview > summary button {
   padding: 5px 8px;
   border: 1px solid #465673;
   border-radius: 6px;
@@ -733,18 +732,6 @@ select {
   color: #8fdcc8;
   font-size: 8px;
   cursor: pointer;
-}
-.copy-prompt-preview label {
-  position: relative;
-  margin-top: 12px;
-}
-.copy-prompt-preview label > span {
-  padding-right: 56px;
-}
-.copy-prompt-preview label > button {
-  position: absolute;
-  top: -3px;
-  right: 0;
 }
 .copy-prompt-preview textarea {
   min-height: 180px;
@@ -754,8 +741,7 @@ select {
   line-height: 1.55;
   resize: vertical;
 }
-.copy-prompt-preview > small,
-.prompt-preview-empty {
+.copy-prompt-preview > small {
   display: block;
   margin: 8px 0 0;
   color: #718097;

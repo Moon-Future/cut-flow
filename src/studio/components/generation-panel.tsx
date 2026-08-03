@@ -1,5 +1,6 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import type {ProjectFile, VideoType} from '../../core/schema';
+import {buildPortableScriptPrompt} from '../../ai/portable-script-prompt';
 
 type Props = {
   onGenerated: (project: ProjectFile) => void;
@@ -66,7 +67,6 @@ export const GenerationPanel = ({
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
-  const [debugPrompt, setDebugPrompt] = useState<{system: string; user: string} | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
 
   useEffect(() => {
@@ -111,7 +111,6 @@ export const GenerationPanel = ({
     setTargetWordCount(String(effectiveWordCount));
     setStatus('running');
     setMessage('正在生成文案…');
-    setDebugPrompt(null);
     setCopyMessage('');
     try {
       const response = await fetch('/api/generate', {
@@ -138,16 +137,8 @@ export const GenerationPanel = ({
       const value = (await response.json()) as {
         project?: ProjectFile;
         cacheHit?: boolean;
-        debugPrompt?: {system: string; user: string};
         error?: string;
       };
-      setDebugPrompt(value.debugPrompt ?? null);
-      if (value.debugPrompt) {
-        console.groupCollapsed(`[CutFlow AI] 最终 Prompt · ${provider}`);
-        console.log('System Prompt:\n', value.debugPrompt.system);
-        console.log('User Prompt:\n', value.debugPrompt.user);
-        console.groupEnd();
-      }
       if (!response.ok || !value.project) throw new Error(value.error ?? '生成失败');
       onGenerated(value.project);
       setStatus('success');
@@ -174,6 +165,30 @@ export const GenerationPanel = ({
     }
   };
 
+  const portablePrompt = useMemo(() => {
+    const effectiveTopic = generationContext?.topic ?? topic;
+    const effectiveVideoType = generationContext?.videoType ?? videoType;
+    const effectiveWordCount = Math.max(
+      100,
+      Math.min(5000, Number(targetWordCount) || DEFAULT_TARGET_WORD_COUNT),
+    );
+    return buildPortableScriptPrompt({
+      topic: effectiveTopic,
+      referenceText,
+      customPrompt,
+      targetWordCount: effectiveWordCount,
+      durationTarget: generationContext?.durationTarget ?? 120,
+      videoType: effectiveVideoType,
+      audience: generationContext?.audience ?? '短视频平台的普通观众',
+      purpose: generationContext?.purpose ?? '科普与引发讨论',
+      coreViewpoint: generationContext?.coreViewpoint ?? effectiveTopic,
+      sourceMaterial: generationContext?.sourceMaterial ?? '',
+      visualStyle: generationContext?.visualStyle ?? '电影级写实',
+      aspectRatio: generationContext?.aspectRatio ?? '16:9',
+      tone: generationContext?.tone ?? '清晰、有画面感、节奏紧凑',
+      platformLabel: generationContext?.platformLabel,
+    });
+  }, [customPrompt, generationContext, referenceText, targetWordCount, topic, videoType]);
   const copyPrompt = async (label: string, content: string) => {
     try {
       await navigator.clipboard.writeText(content);
@@ -296,6 +311,22 @@ export const GenerationPanel = ({
           {availableProviders.every((item) => !item.enabled || !item.configured) ? (
             <p className="ai-config-hint">尚无可用 AI，请先到左下角“设置”中配置并启用服务。</p>
           ) : null}
+          <details className="copy-prompt-preview" open>
+            <summary>
+              <span>可复制到其他 AI 使用的文案 Prompt</span>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  void copyPrompt('文案 Prompt', portablePrompt);
+                }}
+              >
+                复制 Prompt
+              </button>
+            </summary>
+            <textarea rows={16} readOnly value={portablePrompt} />
+            {copyMessage ? <small>{copyMessage}</small> : null}
+          </details>
           <button
             className="generate-button"
             disabled={
@@ -314,50 +345,6 @@ export const GenerationPanel = ({
                 : '按提示词生成'}
           </button>
           {message ? <p className={`generation-message ${status}`}>{message}</p> : null}
-          {debugPrompt ? (
-            <details className="copy-prompt-preview" open>
-              <summary>
-                <span>本次生成实际使用的完整提示词</span>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    void copyPrompt(
-                      '完整提示词',
-                      `【System Prompt】\n${debugPrompt.system}\n\n【User Prompt】\n${debugPrompt.user}`,
-                    );
-                  }}
-                >
-                  复制全部
-                </button>
-              </summary>
-              <label>
-                <span>System Prompt</span>
-                <button
-                  type="button"
-                  onClick={() => void copyPrompt('系统提示词', debugPrompt.system)}
-                >
-                  复制
-                </button>
-                <textarea rows={12} readOnly value={debugPrompt.system} />
-              </label>
-              <label>
-                <span>User Prompt</span>
-                <button
-                  type="button"
-                  onClick={() => void copyPrompt('用户提示词', debugPrompt.user)}
-                >
-                  复制
-                </button>
-                <textarea rows={12} readOnly value={debugPrompt.user} />
-              </label>
-              {copyMessage ? <small>{copyMessage}</small> : null}
-            </details>
-          ) : status === 'success' ? (
-            <p className="prompt-preview-empty">
-              本次使用本地演示或旧缓存，没有可展示的远程 AI 提示词。
-            </p>
-          ) : null}
           <small className="provider-note">
             只有点击按钮才会调用 AI。每次结果都会保留为历史版本；本地演示模式不会消耗 Token。
           </small>

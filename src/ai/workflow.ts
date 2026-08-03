@@ -88,19 +88,6 @@ export const runGenerationWorkflow = async (
   await mkdir(cacheRoot, {recursive: true});
 
   const {script, cacheHit} = await loadOrGenerateScript(input, providers, cacheRoot);
-  const promptCacheFile = path.join(cacheRoot, `${cacheKey(input)}-prompt.json`);
-  if (cacheHit) {
-    debugPrompt = await readFile(promptCacheFile, 'utf8')
-      .then((value) => {
-        const prompt = JSON.parse(value) as {system?: unknown; user?: unknown};
-        return typeof prompt.system === 'string' && typeof prompt.user === 'string'
-          ? {system: prompt.system, user: prompt.user}
-          : undefined;
-      })
-      .catch(() => undefined);
-  } else if (debugPrompt) {
-    await writeFile(promptCacheFile, `${JSON.stringify(debugPrompt, null, 2)}\n`, 'utf8');
-  }
   const assetLibrary = await readFile(path.join(projectRoot, 'assets.json'), 'utf8')
     .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown).assets)
     .catch(() => []);
