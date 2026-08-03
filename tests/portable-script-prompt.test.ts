@@ -1,4 +1,4 @@
-﻿import {describe, expect, it} from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {buildPortableScriptPrompt} from '../src/ai/portable-script-prompt';
 
 const baseInput = {
@@ -27,6 +27,16 @@ describe('可移植文案提示词', () => {
     expect(prompt).not.toMatch(/json|system prompt|user prompt/iu);
   });
 
+  it('仅生成分镜模式明确锁定全文原文', () => {
+    const prompt = buildPortableScriptPrompt({
+      ...baseInput,
+      storyboardOnly: true,
+      fullScript: '这是已经定稿的全文文案。',
+    });
+    expect(prompt).toContain('这是已经定稿的全文文案。');
+    expect(prompt).toContain('不要改写、润色、纠错、删减或补充');
+    expect(prompt).toContain('只执行分段和分镜设计');
+  });
   it('随参考原文和补充要求更新', () => {
     const prompt = buildPortableScriptPrompt({
       ...baseInput,

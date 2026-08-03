@@ -1,4 +1,4 @@
-﻿import type {GenerateInput} from './types';
+import type {GenerateInput} from './types';
 
 const videoTypeLabels: Record<GenerateInput['videoType'], string> = {
   'science-explainer': '科普讲解',
@@ -20,6 +20,33 @@ export const buildPortableScriptPrompt = (input: PortableScriptPromptInput) => {
   const sourceMaterial = input.sourceMaterial.trim() || '无';
   const customPrompt = input.customPrompt?.trim() || '无';
 
+  if (input.storyboardOnly) {
+    return `你是一名专业的视频分镜导演。下面提供的是已经定稿的完整旁白文案，不要改写、润色、纠错、删减或补充任何原文，只执行分段和分镜设计。
+
+【视频主题】
+${input.topic.trim() || '请根据全文概括主题'}
+
+【定稿全文】
+${input.fullScript?.trim() || input.referenceText?.trim() || '请粘贴全文文案'}
+
+【制作配置】
+- 视频类型：${videoTypeLabels[input.videoType]}
+- 画面比例：${input.aspectRatio}
+- 整体视觉风格：${input.visualStyle}
+- 目标时长：约 ${duration} 秒
+
+【补充分镜要求】
+${customPrompt}
+
+【分镜任务】
+1. 按原文叙事顺序自然拆段，每段旁白必须逐字保留原文，不得改变文字和顺序。
+2. 为每段提供简短标题、建议时长和具体画面意图。
+3. 每段设计一个或多个镜头，写清可见主体、人物或物体动作、真实环境、构图、景别、光线和色彩。
+4. 同时提供适合素材检索的中英文搜索词，以及可以直接用于图片生成和视频生成的详细提示词。
+5. 画面必须把旁白含义转译成可以拍摄或生成的具体场景，不能只复述旁白关键词。
+6. 没有参考图片时，不得出现“对应图片”“参考图片”或依赖预设首帧的描述。
+7. 只输出分段后的原文旁白及其分镜方案，不要重新创作文案。`;
+  }
   return `你是一名专业的中文视频文案策划，请围绕下面的选题创作一篇可以直接口播的完整文案。
 
 【选题】

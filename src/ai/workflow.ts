@@ -8,6 +8,7 @@ import {createOpenAIProviders} from './openai-provider';
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, VideoScript} from './types';
 import type {AiProviderId, AiProviderSetting} from './settings';
+import {splitFullScript} from './full-script-segments';
 
 export type WorkflowInput = GenerateInput & {
   provider: 'mock' | AiProviderId;
@@ -87,7 +88,30 @@ export const runGenerationWorkflow = async (
   const cacheRoot = path.join(projectRoot, 'cache');
   await mkdir(cacheRoot, {recursive: true});
 
-  const {script, cacheHit} = await loadOrGenerateScript(input, providers, cacheRoot);
+  const {script: generatedScript, cacheHit} = await loadOrGenerateScript(
+    input,
+    providers,
+    cacheRoot,
+  );
+  const fixedNarrations = input.storyboardOnly
+    ? splitFullScript(input.fullScript ?? '', input.targetWordCount > 500 ? 9 : 7)
+    : [];
+  const script = fixedNarrations.length
+    ? {
+        ...generatedScript,
+        title: input.topic,
+        hook: fixedNarrations[0] ?? '',
+        ending: fixedNarrations.at(-1) ?? '',
+        scenes: fixedNarrations.map((narration, index) => ({
+          ...generatedScript.scenes[index % generatedScript.scenes.length]!,
+          narration,
+          caption:
+            generatedScript.scenes[index % generatedScript.scenes.length]?.caption ||
+            `第 ${index + 1} 段`,
+          suggestedDuration: Math.max(3, Math.min(30, Array.from(narration).length / 4)),
+        })),
+      }
+    : generatedScript;
   const assetLibrary = await readFile(path.join(projectRoot, 'assets.json'), 'utf8')
     .then((value) => assetLibrarySchema.parse(JSON.parse(value) as unknown).assets)
     .catch(() => []);

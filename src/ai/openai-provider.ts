@@ -1,6 +1,7 @@
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, TranscriptWord} from './types';
 import {buildFallbackVideoPromptZh} from './video-prompt-fallback';
+import {splitFullScript} from './full-script-segments';
 
 const videoTypeLabels: Record<GenerateInput['videoType'], string> = {
   'science-explainer': '科普讲解',
@@ -315,9 +316,20 @@ export const normalizeCompatibleScript = (value: unknown, input: GenerateInput):
 export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
   text: {
     generateScript: async (input: GenerateInput) => {
-      const minimumNarrationChars = Math.floor(input.targetWordCount * 0.9);
-      const maximumNarrationChars = Math.ceil(input.targetWordCount * 1.1);
-      const requiredSceneCount = input.targetWordCount > 500 ? 9 : 7;
+      const desiredSceneCount = input.targetWordCount > 500 ? 9 : 7;
+      const fixedNarrations = input.storyboardOnly
+        ? splitFullScript(input.fullScript ?? '', desiredSceneCount)
+        : [];
+      const narrationTarget = fixedNarrations.length
+        ? fixedNarrations.reduce((sum, narration) => sum + Array.from(narration).length, 0)
+        : input.targetWordCount;
+      const minimumNarrationChars = fixedNarrations.length
+        ? narrationTarget
+        : Math.floor(narrationTarget * 0.9);
+      const maximumNarrationChars = fixedNarrations.length
+        ? narrationTarget
+        : Math.ceil(narrationTarget * 1.1);
+      const requiredSceneCount = fixedNarrations.length || desiredSceneCount;
       const prompt = `请根据以下信息创作一篇专业的短视频文案。
 
 【视频主题】
@@ -360,6 +372,14 @@ ${input.aspectRatio}
 
 【额外创作要求】
 ${input.customPrompt?.trim() || '无'}
+
+${
+  fixedNarrations.length
+    ? `【仅生成分镜模式】
+下面 ${fixedNarrations.length} 段旁白已经由用户最终确认。必须逐段原样填写 narration，不得增删、改写、纠错、润色或交换顺序；你的任务只是在每段原文基础上设计段落标题、画面意图、镜头与素材提示。
+${fixedNarrations.map((narration, index) => `第 ${index + 1} 段固定旁白：${narration}`).join('\n')}`
+    : ''
+}
 
 必须严格遵守系统提示词中的文案质量、叙事节奏和 JSON 输出要求。`;
       const useChatCompletions = config.apiMode === 'chat-completions';
@@ -635,7 +655,35 @@ searchQueries 必须是字符串数组，不能是单个字符串。
         console.error('[AI 文案 JSON 解析失败]', error, output);
         throw new Error('AI 返回的内容不是有效的文案结构，请重新生成一次。');
       }
-      const parsedScript = videoScriptSchema.safeParse(normalizeCompatibleScript(rawScript, input));
+      const compatibleScript = normalizeCompatibleScript(rawScript, input) as Record<
+        string,
+        unknown
+      >;
+      const compatibleScenes = Array.isArray(compatibleScript.scenes)
+        ? (compatibleScript.scenes as Array<Record<string, unknown>>)
+        : [];
+      const protectedScript = fixedNarrations.length
+        ? {
+            ...compatibleScript,
+            title: input.topic,
+            hook: fixedNarrations[0],
+            ending: fixedNarrations.at(-1) ?? '',
+            scenes: compatibleScenes.map((scene, index) => ({
+              ...scene,
+              narration: fixedNarrations[index] ?? '',
+              caption:
+                String(scene.caption ?? '').trim() ||
+                `第 ${index + 1} 段：${Array.from(fixedNarrations[index] ?? '')
+                  .slice(0, 12)
+                  .join('')}`,
+              suggestedDuration: Math.max(
+                3,
+                Math.min(30, Array.from(fixedNarrations[index] ?? '').length / 4),
+              ),
+            })),
+          }
+        : compatibleScript;
+      const parsedScript = videoScriptSchema.safeParse(protectedScript);
       if (!parsedScript.success) {
         console.error('[AI 文案结构校验失败]', parsedScript.error.issues);
         throw new Error(formatScriptValidationError(parsedScript.error.issues));

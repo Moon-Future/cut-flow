@@ -64,6 +64,7 @@ export const GenerationPanel = ({
   const [targetWordCount, setTargetWordCount] = useState(() => String(DEFAULT_TARGET_WORD_COUNT));
   const [videoType, setVideoType] = useState<VideoType>(initialVideoType);
   const [referenceText, setReferenceText] = useState('');
+  const [storyboardOnly, setStoryboardOnly] = useState(false);
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -104,13 +105,12 @@ export const GenerationPanel = ({
   const generate = async () => {
     const effectiveTopic = generationContext?.topic ?? topic;
     const effectiveVideoType = generationContext?.videoType ?? videoType;
-    const effectiveWordCount = Math.max(
-      100,
-      Math.min(5000, Number(targetWordCount) || DEFAULT_TARGET_WORD_COUNT),
-    );
+    const effectiveWordCount = storyboardOnly
+      ? Math.max(100, Math.min(5000, Array.from(referenceText.trim()).length))
+      : Math.max(100, Math.min(5000, Number(targetWordCount) || DEFAULT_TARGET_WORD_COUNT));
     setTargetWordCount(String(effectiveWordCount));
     setStatus('running');
-    setMessage('正在生成文案…');
+    setMessage(storyboardOnly ? '正在分析全文并生成分镜…' : '正在生成文案…');
     setCopyMessage('');
     try {
       const response = await fetch('/api/generate', {
@@ -120,6 +120,8 @@ export const GenerationPanel = ({
           topic: effectiveTopic,
           referenceText,
           customPrompt,
+          storyboardOnly,
+          fullScript: storyboardOnly ? referenceText : undefined,
           provider,
           targetWordCount: effectiveWordCount,
           durationTarget: generationContext?.durationTarget ?? 120,
@@ -168,14 +170,15 @@ export const GenerationPanel = ({
   const portablePrompt = useMemo(() => {
     const effectiveTopic = generationContext?.topic ?? topic;
     const effectiveVideoType = generationContext?.videoType ?? videoType;
-    const effectiveWordCount = Math.max(
-      100,
-      Math.min(5000, Number(targetWordCount) || DEFAULT_TARGET_WORD_COUNT),
-    );
+    const effectiveWordCount = storyboardOnly
+      ? Math.max(100, Math.min(5000, Array.from(referenceText.trim()).length))
+      : Math.max(100, Math.min(5000, Number(targetWordCount) || DEFAULT_TARGET_WORD_COUNT));
     return buildPortableScriptPrompt({
       topic: effectiveTopic,
       referenceText,
       customPrompt,
+      storyboardOnly,
+      fullScript: storyboardOnly ? referenceText : undefined,
       targetWordCount: effectiveWordCount,
       durationTarget: generationContext?.durationTarget ?? 120,
       videoType: effectiveVideoType,
@@ -188,7 +191,15 @@ export const GenerationPanel = ({
       tone: generationContext?.tone ?? '清晰、有画面感、节奏紧凑',
       platformLabel: generationContext?.platformLabel,
     });
-  }, [customPrompt, generationContext, referenceText, targetWordCount, topic, videoType]);
+  }, [
+    customPrompt,
+    generationContext,
+    referenceText,
+    storyboardOnly,
+    targetWordCount,
+    topic,
+    videoType,
+  ]);
   const copyPrompt = async (label: string, content: string) => {
     try {
       await navigator.clipboard.writeText(content);
@@ -210,6 +221,22 @@ export const GenerationPanel = ({
       </button>
       {open ? (
         <div className="generation-form">
+          <div className="generation-mode-switch">
+            <button
+              type="button"
+              className={!storyboardOnly ? 'active' : ''}
+              onClick={() => setStoryboardOnly(false)}
+            >
+              AI 生成文案与分镜
+            </button>
+            <button
+              type="button"
+              className={storyboardOnly ? 'active' : ''}
+              onClick={() => setStoryboardOnly(true)}
+            >
+              输入全文，仅生成分镜
+            </button>
+          </div>
           {generationContext ? (
             <div className="generation-context">
               <span>将按左侧配置生成</span>
@@ -231,16 +258,24 @@ export const GenerationPanel = ({
             </label>
           )}
           <label>
-            <span>参考原文（可选）</span>
+            <span>
+              {storyboardOnly ? '全文文案（必填，原文不会被 AI 改写）' : '参考原文（可选）'}
+            </span>
             <textarea
               className="prompt-input"
               rows={8}
               value={referenceText}
               onChange={(event) => setReferenceText(event.target.value)}
-              placeholder="粘贴已有文案、文章或口播稿。填写后，AI 会保留原文事实与核心观点，重点优化钩子、结构、节奏和口语表达。"
+              placeholder={
+                storyboardOnly
+                  ? '粘贴已经定稿的完整旁白文案'
+                  : '粘贴已有文案、文章或口播稿。填写后，AI 会保留原文事实与核心观点，重点优化钩子、结构、节奏和口语表达。'
+              }
             />
             <small className="word-count-help">
-              留空则从主题开始创作；有内容时按原文优化改写。
+              {storyboardOnly
+                ? `已输入 ${Array.from(referenceText.trim()).length} 字，AI 只生成分镜，最终旁白锁定为原文。`
+                : '留空则从主题开始创作；有内容时按原文优化改写。'}
             </small>
           </label>
           <label>
@@ -254,12 +289,15 @@ export const GenerationPanel = ({
             />
           </label>
           <label>
-            <span>目标字数</span>
+            <span>{storyboardOnly ? '全文字数（自动）' : '目标字数'}</span>
             <input
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={targetWordCount}
+              value={
+                storyboardOnly ? String(Array.from(referenceText.trim()).length) : targetWordCount
+              }
+              disabled={storyboardOnly}
               onChange={(event) => setTargetWordCount(event.target.value.replace(/[^\d]/g, ''))}
               onBlur={() =>
                 setTargetWordCount(
@@ -273,7 +311,9 @@ export const GenerationPanel = ({
               }
             />
             <small className="word-count-help">
-              默认 800 字，适合 1～2 分钟横屏视频，可自行调整
+              {storyboardOnly
+                ? '全文模式自动使用实际字数，不会扩写或缩写。'
+                : '默认 800 字，适合 1～2 分钟横屏视频，可自行调整'}
             </small>
           </label>
           {!generationContext ? (
@@ -332,17 +372,25 @@ export const GenerationPanel = ({
             disabled={
               status === 'running' ||
               !(generationContext?.topic ?? topic).trim() ||
-              !targetWordCount ||
-              Number(targetWordCount) < 100 ||
-              Number(targetWordCount) > 5000
+              (storyboardOnly && !referenceText.trim()) ||
+              (!storyboardOnly &&
+                (!targetWordCount ||
+                  Number(targetWordCount) < 100 ||
+                  Number(targetWordCount) > 5000))
             }
             onClick={() => void generate()}
           >
             {status === 'running'
-              ? '正在生成文案…'
+              ? storyboardOnly
+                ? '正在生成分镜…'
+                : '正在生成文案…'
               : status === 'success'
-                ? '再次生成'
-                : '按提示词生成'}
+                ? storyboardOnly
+                  ? '再次生成分镜'
+                  : '再次生成'
+                : storyboardOnly
+                  ? '生成分镜'
+                  : '按提示词生成'}
           </button>
           {message ? <p className={`generation-message ${status}`}>{message}</p> : null}
           <small className="provider-note">

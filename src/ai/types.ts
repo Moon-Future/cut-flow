@@ -4,6 +4,8 @@ export type GenerateInput = {
   topic: string;
   referenceText?: string;
   customPrompt?: string;
+  storyboardOnly?: boolean;
+  fullScript?: string;
   audience: string;
   purpose: string;
   coreViewpoint: string;

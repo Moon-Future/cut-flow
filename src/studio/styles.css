@@ -631,6 +631,26 @@ select {
   font-size: 9px;
   line-height: 1.55;
 }
+.generation-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.generation-mode-switch button {
+  padding: 9px;
+  border: 1px solid #303b50;
+  border-radius: 8px;
+  background: #101722;
+  color: #718097;
+  font-size: 9px;
+  cursor: pointer;
+}
+.generation-mode-switch button.active {
+  border-color: #58bfa7;
+  background: #132821;
+  color: #82e4c8;
+}
 .generation-context {
   margin-bottom: 12px;
   padding: 11px;

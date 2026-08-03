@@ -1611,6 +1611,10 @@ const localApi = (): Plugin => ({
               sendJson(response, 400, {error: '生成参数不完整'});
               return;
             }
+            if (input.storyboardOnly && !input.fullScript?.trim()) {
+              sendJson(response, 400, {error: '请先粘贴完整文案'});
+              return;
+            }
             const currentProject = projectFileSchema.parse(
               JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
             );

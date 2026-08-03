@@ -138,4 +138,32 @@ describe('generation workflow', () => {
       ),
     ).toBe(true);
   });
+
+  it('locks imported full copy while generating storyboard only', async () => {
+    const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'cut-flow-storyboard-only-'));
+    temporaryDirectories.push(projectRoot);
+    const fullScript =
+      '第一句提出生活中的问题。第二句解释背后的原因。第三句补充关键细节。第四句给出结论。第五句回到真实生活。';
+    const result = await runGenerationWorkflow(
+      {
+        provider: 'mock',
+        videoType: 'science-explainer',
+        topic: '已有全文测试',
+        audience: '大众',
+        purpose: '只生成分镜',
+        coreViewpoint: '',
+        sourceMaterial: '',
+        visualStyle: '电影级写实',
+        aspectRatio: '16:9',
+        tone: '自然',
+        targetWordCount: Math.max(100, fullScript.length),
+        storyboardOnly: true,
+        fullScript,
+      },
+      baseProject,
+      projectRoot,
+    );
+    expect(result.project.scenes.map((scene) => scene.narration).join('')).toBe(fullScript);
+    expect(result.project.scenes.every((scene) => (scene.shots?.length ?? 0) > 0)).toBe(true);
+  });
 });
