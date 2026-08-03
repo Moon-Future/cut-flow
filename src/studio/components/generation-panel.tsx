@@ -66,6 +66,8 @@ export const GenerationPanel = ({
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [debugPrompt, setDebugPrompt] = useState<{system: string; user: string} | null>(null);
+  const [copyMessage, setCopyMessage] = useState('');
 
   useEffect(() => {
     setTargetWordCount(String(DEFAULT_TARGET_WORD_COUNT));
@@ -109,6 +111,8 @@ export const GenerationPanel = ({
     setTargetWordCount(String(effectiveWordCount));
     setStatus('running');
     setMessage('正在生成文案…');
+    setDebugPrompt(null);
+    setCopyMessage('');
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -137,6 +141,7 @@ export const GenerationPanel = ({
         debugPrompt?: {system: string; user: string};
         error?: string;
       };
+      setDebugPrompt(value.debugPrompt ?? null);
       if (value.debugPrompt) {
         console.groupCollapsed(`[CutFlow AI] 最终 Prompt · ${provider}`);
         console.log('System Prompt:\n', value.debugPrompt.system);
@@ -166,6 +171,15 @@ export const GenerationPanel = ({
     } catch (error) {
       setStatus('error');
       setMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const copyPrompt = async (label: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopyMessage(`已复制${label}`);
+    } catch {
+      setCopyMessage('复制失败，请在文本框中手动选择复制');
     }
   };
 
@@ -300,6 +314,50 @@ export const GenerationPanel = ({
                 : '按提示词生成'}
           </button>
           {message ? <p className={`generation-message ${status}`}>{message}</p> : null}
+          {debugPrompt ? (
+            <details className="copy-prompt-preview" open>
+              <summary>
+                <span>本次生成实际使用的完整提示词</span>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void copyPrompt(
+                      '完整提示词',
+                      `【System Prompt】\n${debugPrompt.system}\n\n【User Prompt】\n${debugPrompt.user}`,
+                    );
+                  }}
+                >
+                  复制全部
+                </button>
+              </summary>
+              <label>
+                <span>System Prompt</span>
+                <button
+                  type="button"
+                  onClick={() => void copyPrompt('系统提示词', debugPrompt.system)}
+                >
+                  复制
+                </button>
+                <textarea rows={12} readOnly value={debugPrompt.system} />
+              </label>
+              <label>
+                <span>User Prompt</span>
+                <button
+                  type="button"
+                  onClick={() => void copyPrompt('用户提示词', debugPrompt.user)}
+                >
+                  复制
+                </button>
+                <textarea rows={12} readOnly value={debugPrompt.user} />
+              </label>
+              {copyMessage ? <small>{copyMessage}</small> : null}
+            </details>
+          ) : status === 'success' ? (
+            <p className="prompt-preview-empty">
+              本次使用本地演示或旧缓存，没有可展示的远程 AI 提示词。
+            </p>
+          ) : null}
           <small className="provider-note">
             只有点击按钮才会调用 AI。每次结果都会保留为历史版本；本地演示模式不会消耗 Token。
           </small>
