@@ -8,7 +8,7 @@ import {createOpenAIProviders} from './openai-provider';
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, VideoScript} from './types';
 import type {AiProviderId, AiProviderSetting} from './settings';
-import {splitFullScript} from './full-script-segments';
+import {recommendedStoryboardCount, splitFullScript} from './full-script-segments';
 
 export type WorkflowInput = GenerateInput & {
   provider: 'mock' | AiProviderId;
@@ -23,7 +23,7 @@ export type WorkflowResult = {
 
 const cacheKey = (input: WorkflowInput): string =>
   createHash('sha256')
-    .update(JSON.stringify({version: 3, input}))
+    .update(JSON.stringify({version: 4, input}))
     .digest('hex')
     .slice(0, 20);
 
@@ -94,7 +94,7 @@ export const runGenerationWorkflow = async (
     cacheRoot,
   );
   const fixedNarrations = input.storyboardOnly
-    ? splitFullScript(input.fullScript ?? '', input.targetWordCount > 500 ? 9 : 7)
+    ? splitFullScript(input.fullScript ?? '', recommendedStoryboardCount(input.durationTarget))
     : [];
   const script = fixedNarrations.length
     ? {

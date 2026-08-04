@@ -1,5 +1,5 @@
 ﻿import {describe, expect, it} from 'vitest';
-import {splitFullScript} from '../src/ai/full-script-segments';
+import {recommendedStoryboardCount, splitFullScript} from '../src/ai/full-script-segments';
 
 describe('全文文案分段', () => {
   it('按语义边界拆段且不改变原文内容', () => {
@@ -15,5 +15,21 @@ describe('全文文案分段', () => {
     const segments = splitFullScript(source, 3);
     expect(segments).toHaveLength(3);
     expect(segments.join('')).toBe(source);
+  });
+
+  it('均衡分配句子，不把剩余内容集中到最后一段', () => {
+    const source = Array.from({length: 18}, (_, index) => `第${index + 1}句说明知识。`).join('');
+    const segments = splitFullScript(source, 12);
+    const lengths = segments.map((segment) => Array.from(segment).length);
+    const average = lengths.reduce((sum, length) => sum + length, 0) / lengths.length;
+    expect(segments).toHaveLength(12);
+    expect(segments.join('')).toBe(source);
+    expect(lengths.at(-1)).toBeLessThanOrEqual(average * 1.5);
+  });
+
+  it('根据目标时长推荐分镜数量并限制在 3 到 20 个', () => {
+    expect(recommendedStoryboardCount(20)).toBe(3);
+    expect(recommendedStoryboardCount(120)).toBe(12);
+    expect(recommendedStoryboardCount(600)).toBe(20);
   });
 });

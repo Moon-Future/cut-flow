@@ -1,3 +1,6 @@
+export const recommendedStoryboardCount = (durationSeconds = 120): number =>
+  Math.max(3, Math.min(20, Math.ceil(durationSeconds / 10)));
+
 export const splitFullScript = (text: string, desiredSegments: number): string[] => {
   const normalized = text.trim().replace(/\r\n?/g, '\n');
   if (!normalized) return [];
@@ -32,25 +35,30 @@ export const splitFullScript = (text: string, desiredSegments: number): string[]
   if (units.length <= target) return units;
 
   const segmentCount = Math.min(target, units.length);
-  const totalCharacters = units.reduce((sum, item) => sum + Array.from(item).length, 0);
-  const targetSize = totalCharacters / segmentCount;
   const segments: string[] = [];
-  let current = '';
-  for (const unit of units) {
-    const remainingUnits = units.length - units.indexOf(unit);
-    const remainingSegments = segmentCount - segments.length;
-    if (
-      current &&
-      segments.length < segmentCount - 1 &&
-      Array.from(current + unit).length > targetSize &&
-      remainingUnits >= remainingSegments
-    ) {
-      segments.push(current);
-      current = unit;
-    } else {
-      current += unit;
+  let cursor = 0;
+  for (let segmentIndex = 0; segmentIndex < segmentCount - 1; segmentIndex += 1) {
+    const remainingSegments = segmentCount - segmentIndex;
+    const remainingCharacters = units
+      .slice(cursor)
+      .reduce((sum, item) => sum + Array.from(item).length, 0);
+    const idealSize = remainingCharacters / remainingSegments;
+    const maximumEnd = units.length - (remainingSegments - 1);
+    let bestEnd = cursor + 1;
+    let accumulated = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (let end = cursor + 1; end <= maximumEnd; end += 1) {
+      accumulated += Array.from(units[end - 1] ?? '').length;
+      const distance = Math.abs(accumulated - idealSize);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestEnd = end;
+      }
+      if (accumulated >= idealSize && distance > bestDistance) break;
     }
+    segments.push(units.slice(cursor, bestEnd).join(''));
+    cursor = bestEnd;
   }
-  if (current) segments.push(current);
+  segments.push(units.slice(cursor).join(''));
   return segments;
 };

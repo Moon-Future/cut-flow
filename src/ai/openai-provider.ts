@@ -1,7 +1,7 @@
 import {videoScriptSchema} from './script-schema';
 import type {GenerateInput, ProviderSet, TranscriptWord} from './types';
 import {buildFallbackVideoPromptZh} from './video-prompt-fallback';
-import {splitFullScript} from './full-script-segments';
+import {recommendedStoryboardCount, splitFullScript} from './full-script-segments';
 
 const videoTypeLabels: Record<GenerateInput['videoType'], string> = {
   'science-explainer': '科普讲解',
@@ -316,10 +316,7 @@ export const normalizeCompatibleScript = (value: unknown, input: GenerateInput):
 export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
   text: {
     generateScript: async (input: GenerateInput) => {
-      const desiredSceneCount = Math.max(
-        3,
-        Math.min(20, Math.ceil((input.durationTarget ?? 120) / 10)),
-      );
+      const desiredSceneCount = recommendedStoryboardCount(input.durationTarget);
       const fixedNarrations = input.storyboardOnly
         ? splitFullScript(input.fullScript ?? '', desiredSceneCount)
         : [];
@@ -333,7 +330,7 @@ export const createOpenAIProviders = (config: OpenAIConfig): ProviderSet => ({
         ? narrationTarget
         : Math.ceil(narrationTarget * 1.1);
       const requiredSceneCount = fixedNarrations.length || desiredSceneCount;
-      const minimumSceneCount = fixedNarrations.length ? requiredSceneCount : 3;
+      const minimumSceneCount = fixedNarrations.length ? requiredSceneCount : desiredSceneCount;
       const maximumSceneCount = fixedNarrations.length ? requiredSceneCount : 20;
       const prompt = `请根据以下信息创作一篇专业的短视频文案。
 
@@ -375,7 +372,7 @@ ${input.aspectRatio}
 ${
   fixedNarrations.length
     ? `必须生成 ${requiredSceneCount} 段，并逐段保留锁定旁白。`
-    : '段落数量由知识传播逻辑决定，不按字数或句子机械切分；总段落数控制在 3-20 段。'
+    : `段落数量由知识传播逻辑决定，不按字数或句子机械切分；本片至少生成 ${minimumSceneCount} 段，最多 20 段。各段旁白长度应大致均衡，最后一段不得集中承接前文未分配的内容。`
 }
 只统计 narration 中的汉字；title、hook、ending、caption、画面描述、搜索词以及图片/视频提示词均不计入目标字数。
 
@@ -431,13 +428,13 @@ ${fixedNarrations.map((narration, index) => `第 ${index + 1} 段固定旁白：
 11. ${
         fixedNarrations.length
           ? `全文必须恰好安排 ${requiredSceneCount} 个段落，并与锁定旁白逐段对应。`
-          : '先分析核心问题、知识解释过程、关键转折点和最终结论，再按知识传播逻辑安排 3-20 个段落，不得按句子或字数机械切割。'
+          : `先分析核心问题、知识解释过程、关键转折点和最终结论，再按知识传播逻辑安排 ${minimumSceneCount}-20 个段落，不得按句子或字数机械切割。各段旁白长度应大致均衡；任何一段明显超过平均长度时必须继续拆分，尤其禁止把剩余文案集中塞入最后一段。`
       }${speakerType} 与 visual-explanation 根据叙事需要合理穿插，不强制机械地逐段交替；各段长短服从口播节奏。
 12. ${speakerType} 负责钩子、提问、观点、情绪变化、关键结论和收束；visual-explanation 负责原因、案例、步骤、对比、证据和过程。两者共同推进内容，不得重复相同信息。
 13. 字数目标只针对所有 scenes[].narration 的汉字合计。生成后在内部精简或补充，使总数达到 ${minimumNarrationChars}-${maximumNarrationChars} 个汉字；不要把其他 JSON 字段计入文案字数。
 ${digitalHumanDirection}
 
-只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes ${fixedNarrations.length ? `必须恰好有 ${requiredSceneCount} 项` : '应有 3-20 项，数量服从知识传播逻辑'}，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh、motionPlan。
+只输出合法 JSON，不要 Markdown。结构必须为 {title, hook, scenes, ending}。scenes ${fixedNarrations.length ? `必须恰好有 ${requiredSceneCount} 项` : `应有 ${minimumSceneCount}-20 项，数量服从知识传播逻辑`}，每项包含 segmentType、narration、caption、visualPrompt、suggestedDuration、visualIntent、digitalHumanEmotion、digitalHumanAction、digitalHumanBackground、soundEffect、shots。segmentType 只能是 ${speakerType} 或 visual-explanation。caption 是段落短标题，不是最终字幕。shots 每项包含 visualPurpose、shotType、assetStrategy、durationWeight、searchQueries、searchQueriesZh、imagePrompt、videoPrompt、imagePromptZh、videoPromptZh、motionPlan。
 每一段都必须一次性写完整：narration、caption、visualPrompt、visualIntent 不得为空字符串，suggestedDuration 必须是 0 到 30 之间的正数，禁止先放空字段或占位符等待后续补充。
 输出 JSON 前再次检查：仅将 scenes 中每个 narration 的汉字数量相加，结果必须在 ${minimumNarrationChars}-${maximumNarrationChars} 之间。
 shotType 优先使用与来源无关的英文枚举：image、video、science-animation；只有数字人口播段可使用 digital-human。
