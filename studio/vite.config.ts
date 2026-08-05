@@ -82,6 +82,59 @@ const escapeSsml = (value: string) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
+const splitEdgeTtsText = (text: string, maximumCharacters = 600): string[] => {
+  const units = text
+    .split(/(?<=[。！？!?；;，,])/u)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const chunks: string[] = [];
+  let current = '';
+  for (const unit of units.length ? units : [text.trim()]) {
+    const parts: string[] = [];
+    const characters = Array.from(unit);
+    for (let index = 0; index < characters.length; index += maximumCharacters) {
+      parts.push(characters.slice(index, index + maximumCharacters).join(''));
+    }
+    for (const part of parts) {
+      if (current && Array.from(current + part).length > maximumCharacters) {
+        chunks.push(current);
+        current = part;
+      } else {
+        current += part;
+      }
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+};
+const synthesizeEdgeTtsChunk = async (
+  directory: string,
+  text: string,
+  voice: string,
+  rate: number,
+): Promise<string> => {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const attemptDirectory = path.join(directory, `attempt-${attempt}`);
+    await mkdir(attemptDirectory, {recursive: true});
+    const edgeTts = new MsEdgeTTS();
+    try {
+      await edgeTts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+      const generated = await edgeTts.toFile(attemptDirectory, escapeSsml(text), {
+        rate: `${rate >= 0 ? '+' : ''}${rate}%`,
+      });
+      return generated.audioFilePath;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+      }
+    } finally {
+      edgeTts.close();
+    }
+  }
+  throw lastError;
+};
 type StorageSettings = {
   configRoot: string;
   projectsRoot: string;
@@ -891,14 +944,56 @@ const localApi = (): Plugin => ({
             await mkdir(audioDirectory, {recursive: true});
             const temporaryAudioDirectory = path.join(audioDirectory, `.edge-tts-${randomUUID()}`);
             await mkdir(temporaryAudioDirectory, {recursive: true});
-            const edgeTts = new MsEdgeTTS();
             try {
-              await edgeTts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
-              const generated = await edgeTts.toFile(temporaryAudioDirectory, escapeSsml(text), {
-                rate: `${rate >= 0 ? '+' : ''}${rate}%`,
-              });
+              const chunks = splitEdgeTtsText(text);
+              const chunkFiles: string[] = [];
+              for (const [index, chunk] of chunks.entries()) {
+                chunkFiles.push(
+                  await synthesizeEdgeTtsChunk(
+                    path.join(temporaryAudioDirectory, `chunk-${index + 1}`),
+                    chunk,
+                    voice,
+                    rate,
+                  ),
+                );
+              }
               const storedName = `edge-tts-${scene.id}-${Date.now()}.mp3`;
-              await rename(generated.audioFilePath, path.join(audioDirectory, storedName));
+              const storedFile = path.join(audioDirectory, storedName);
+              if (chunkFiles.length === 1) {
+                await rename(chunkFiles[0]!, storedFile);
+              } else {
+                const args = [
+                  ...chunkFiles.flatMap((file) => ['-i', file]),
+                  '-filter_complex',
+                  `concat=n=${chunkFiles.length}:v=0:a=1[out]`,
+                  '-map',
+                  '[out]',
+                  '-c:a',
+                  'libmp3lame',
+                  '-b:a',
+                  '96k',
+                  storedFile,
+                ];
+                const mergeResult = await new Promise<{code: number | null; error: string}>(
+                  (resolve) => {
+                    const child = spawn(ffmpegExecutable, args, {
+                      cwd: projectRoot,
+                      windowsHide: true,
+                    });
+                    let error = '';
+                    child.stderr.on('data', (chunk: Buffer) => {
+                      error = `${error}${chunk.toString('utf8')}`.slice(-4000);
+                    });
+                    child.on('error', (spawnError) =>
+                      resolve({code: null, error: spawnError.message}),
+                    );
+                    child.on('close', (code) => resolve({code, error}));
+                  },
+                );
+                if (mergeResult.code !== 0) {
+                  throw new Error(`合并分段配音失败：${mergeResult.error}`);
+                }
+              }
               const audioPath = `assets/audio/${storedName}`;
               scene.narrationAudio = audioPath;
               scene.narrationAudioCandidates = [
@@ -917,10 +1012,9 @@ const localApi = (): Plugin => ({
               sendJson(response, 200, {audioPath, project});
             } catch (error) {
               sendJson(response, 502, {
-                error: `Edge TTS 生成失败：${error instanceof Error ? error.message : String(error)}`,
+                error: `Edge TTS 连续重试 3 次仍失败：${error instanceof Error ? error.message : String(error)}`,
               });
             } finally {
-              edgeTts.close();
               await rm(temporaryAudioDirectory, {recursive: true, force: true});
             }
             return;
