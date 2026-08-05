@@ -179,7 +179,7 @@ export const sceneSchema = z.object({
         id: z.string().min(1),
         path: z.string().min(1),
         label: z.string().min(1),
-        source: z.enum(['import', 'voxcpm']),
+        source: z.enum(['import', 'voxcpm', 'edge-tts']),
         createdAt: z.string().min(1),
       }),
     )

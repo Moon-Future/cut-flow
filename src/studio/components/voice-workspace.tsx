@@ -23,6 +23,8 @@ export const VoiceWorkspace = ({
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [controlInstruction, setControlInstruction] = useState('');
+  const [edgeVoice, setEdgeVoice] = useState('zh-CN-XiaoxiaoNeural');
+  const [edgeRate, setEdgeRate] = useState(0);
   const [voicePreset, setVoicePreset] = useState<'tim' | 'custom'>('tim');
   const [referenceAudioPath, setReferenceAudioPath] = useState('');
   const [referenceAudioName, setReferenceAudioName] = useState('');
@@ -136,6 +138,54 @@ export const VoiceWorkspace = ({
     }
   };
 
+  const generateEdgeTtsScene = async (sceneId: string) => {
+    const response = await fetch('/api/voice/edge-tts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sceneId, voice: edgeVoice, rate: edgeRate}),
+    });
+    const value = (await response.json()) as {project?: ProjectFile; error?: string};
+    if (!response.ok || !value.project) {
+      throw new Error(value.error ?? 'Edge TTS 生成失败');
+    }
+    onGenerated(value.project);
+    return value.project;
+  };
+
+  const generateEdgeTts = async () => {
+    if (!selectedScene) return;
+    setBusy(`edge-tts-${selectedScene.id}`);
+    setMessage('正在使用 Edge TTS 生成当前段落…');
+    try {
+      await generateEdgeTtsScene(selectedScene.id);
+      setMessage('当前段落 Edge TTS 配音已生成。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const generateAllEdgeTts = async () => {
+    setBusy('edge-tts-all');
+    setMessage(`正在生成全部 ${project.scenes.length} 个段落…`);
+    let completed = 0;
+    try {
+      for (const scene of project.scenes) {
+        await generateEdgeTtsScene(scene.id);
+        completed += 1;
+        setMessage(`Edge TTS 已完成 ${completed}/${project.scenes.length} 个段落…`);
+      }
+      setMessage(`全部 ${completed} 个段落的 Edge TTS 配音已生成。`);
+    } catch (error) {
+      setMessage(
+        `已完成 ${completed} 个段落；${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const generateVoxCpm = async () => {
     if (!selectedScene) return;
     if (voicePreset === 'custom' && (!referenceAudioPath || !promptText.trim())) {
@@ -235,10 +285,9 @@ export const VoiceWorkspace = ({
     const failed: string[] = [];
     try {
       for (const scene of runningScenes) {
-        const response = await fetch(
-          `/api/voice/task?sceneId=${encodeURIComponent(scene.id)}`,
-          {method: 'DELETE'},
-        );
+        const response = await fetch(`/api/voice/task?sceneId=${encodeURIComponent(scene.id)}`, {
+          method: 'DELETE',
+        });
         const value = (await response.json()) as {
           task?: NonNullable<typeof scene.voiceGenerationTask>;
           error?: string;
@@ -323,8 +372,7 @@ export const VoiceWorkspace = ({
               if (taskUnchanged && audioUnchanged && candidatesUnchanged) return;
               updateScene(scene.id, {
                 narrationAudio: value.narrationAudio ?? currentScene?.narrationAudio,
-                narrationAudioCandidates:
-                  nextCandidates,
+                narrationAudioCandidates: nextCandidates,
                 voiceGenerationTask: value.task,
               });
               if (value.task.status === 'succeeded') {
@@ -346,7 +394,7 @@ export const VoiceWorkspace = ({
         <header>
           <div>
             <strong>配音来源</strong>
-            <span>导入现有音频，或体验 VoxCPM</span>
+            <span>导入音频，或使用 Edge TTS、VoxCPM 生成</span>
           </div>
         </header>
         <div className="voice-source-panel">
@@ -370,9 +418,68 @@ export const VoiceWorkspace = ({
               onClick={() => fullAudioInput.current?.click()}
             >
               <b>＋</b>
-              <span>{busy === 'full' ? '正在导入…' : audioAvailable ? '替换完整配音' : '导入完整配音'}</span>
+              <span>
+                {busy === 'full' ? '正在导入…' : audioAvailable ? '替换完整配音' : '导入完整配音'}
+              </span>
             </button>
             <small>也可在中间每个段落内单独导入或替换配音。</small>
+          </section>
+          <section>
+            <div className="experimental-title">
+              <strong>Edge TTS 免费配音</strong>
+              <span>无需显卡</span>
+            </div>
+            <p>使用微软 Edge 在线朗读音色，不需要 API Key；仅提供预设声音，不支持声音克隆。</p>
+            <label>
+              <span>中文音色</span>
+              <select value={edgeVoice} onChange={(event) => setEdgeVoice(event.target.value)}>
+                <option value="zh-CN-XiaoxiaoNeural">晓晓 · 女声 · 自然通用</option>
+                <option value="zh-CN-XiaoyiNeural">晓伊 · 女声 · 活泼年轻</option>
+                <option value="zh-CN-YunxiNeural">云希 · 男声 · 年轻自然</option>
+                <option value="zh-CN-YunyangNeural">云扬 · 男声 · 新闻旁白</option>
+              </select>
+            </label>
+            <label>
+              <span>
+                语速：{edgeRate > 0 ? '+' : ''}
+                {edgeRate}%
+              </span>
+              <input
+                type="range"
+                min={-30}
+                max={30}
+                step={5}
+                value={edgeRate}
+                onChange={(event) => setEdgeRate(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              <span>当前段落文案</span>
+              <textarea rows={4} value={selectedScene?.narration ?? ''} readOnly />
+            </label>
+            <div className="voxcpm-actions">
+              <button
+                className="voice-action-button voxcpm-action"
+                disabled={!selectedScene?.narration.trim() || Boolean(busy)}
+                onClick={() => void generateEdgeTts()}
+              >
+                <b>▶</b>
+                <span>
+                  {busy === `edge-tts-${selectedScene?.id}` ? '正在生成…' : '生成当前段落'}
+                </span>
+              </button>
+            </div>
+            <div className="batch-voxcpm-actions">
+              <button
+                className="voice-action-button batch-voxcpm-action"
+                disabled={!project.scenes.length || Boolean(busy)}
+                onClick={() => void generateAllEdgeTts()}
+              >
+                <b>▶▶</b>
+                <span>{busy === 'edge-tts-all' ? '正在逐段生成…' : '一键生成所有段落'}</span>
+              </button>
+            </div>
+            <small>该功能依赖联网的 Edge 朗读服务，接口变化或网络限制可能导致暂时不可用。</small>
           </section>
           <section>
             <div className="experimental-title">
@@ -431,11 +538,16 @@ export const VoiceWorkspace = ({
                 <b>♪</b>
                 <span>
                   <strong>{referenceAudioName || '上传参考音频'}</strong>
-                  <small>{referenceAudioName ? '点击可替换' : '建议使用清晰、无背景音乐的人声片段'}</small>
+                  <small>
+                    {referenceAudioName ? '点击可替换' : '建议使用清晰、无背景音乐的人声片段'}
+                  </small>
                 </span>
               </button>
             ) : (
-              <div className="voice-preset-ready"><b>♪</b><span>已内置参考音频 tim-001.mp3</span></div>
+              <div className="voice-preset-ready">
+                <b>♪</b>
+                <span>已内置参考音频 tim-001.mp3</span>
+              </div>
             )}
             <label>
               <span>参考音频原文</span>
@@ -528,7 +640,9 @@ export const VoiceWorkspace = ({
         <header>
           <div>
             <strong>旁白段落</strong>
-            <span>{project.scenes.length} 段 · {Math.round(duration)} 秒</span>
+            <span>
+              {project.scenes.length} 段 · {Math.round(duration)} 秒
+            </span>
           </div>
           <span className={audioAvailable ? 'ready-pill' : 'pending-pill'}>
             {audioAvailable ? '完整配音已就绪' : '尚未导入完整配音'}
@@ -585,10 +699,24 @@ export const VoiceWorkspace = ({
                   </button>
                 </div>
               ) : (
-                <div className="mini-wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>
+                <div className="mini-wave">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </div>
               )}
               {(scene.narrationAudioCandidates?.length ?? 0) > 0 ? (
-                <div className="voice-candidate-select" onClick={(event) => event.stopPropagation()}>
+                <div
+                  className="voice-candidate-select"
+                  onClick={(event) => event.stopPropagation()}
+                >
                   <select
                     aria-label={`${scene.caption}配音版本`}
                     value={scene.narrationAudio ?? ''}
@@ -605,7 +733,9 @@ export const VoiceWorkspace = ({
                                 ?.slice(0, candidateIndex + 1)
                                 .filter((item) => item.source === 'voxcpm').length
                             } 次生成 · ${new Date(candidate.createdAt).toLocaleString('zh-CN')}`
-                          : `导入 · ${candidate.label}`}
+                          : candidate.source === 'edge-tts'
+                            ? `Edge TTS · ${candidate.label.replace(/^Edge TTS · /u, '')} · ${new Date(candidate.createdAt).toLocaleString('zh-CN')}`
+                            : `导入 · ${candidate.label}`}
                       </option>
                     ))}
                   </select>
@@ -660,8 +790,7 @@ export const VoiceWorkspace = ({
             type="button"
             className="voice-action-button merge-voice-action"
             disabled={
-              busy === 'merge' ||
-              !project.scenes.some((scene) => Boolean(scene.narrationAudio))
+              busy === 'merge' || !project.scenes.some((scene) => Boolean(scene.narrationAudio))
             }
             onClick={() => void mergeSceneAudio()}
           >
@@ -700,11 +829,22 @@ export const VoiceWorkspace = ({
           )}
         </section>
         <section className="stage-panel voice-check">
-          <header><strong>配音检查</strong></header>
+          <header>
+            <strong>配音检查</strong>
+          </header>
           <ul>
             <li>✓ 文案段落完整</li>
-            <li>{project.scenes.filter((scene) => scene.narrationAudio).length} / {project.scenes.length} 段已有独立配音</li>
-            <li>当前导出：{(project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments')) === 'segments' ? '分段音频' : '完整音频'}</li>
+            <li>
+              {project.scenes.filter((scene) => scene.narrationAudio).length} /{' '}
+              {project.scenes.length} 段已有独立配音
+            </li>
+            <li>
+              当前导出：
+              {(project.narrationMode ?? (project.narrationAudio ? 'full' : 'segments')) ===
+              'segments'
+                ? '分段音频'
+                : '完整音频'}
+            </li>
             <li>{audioAvailable ? '✓ 完整配音已就绪' : '○ 可导入完整配音作为主音轨'}</li>
             <li>○ 建议试听并检查配音与镜头时长</li>
           </ul>

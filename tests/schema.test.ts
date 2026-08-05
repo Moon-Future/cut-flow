@@ -66,6 +66,24 @@ describe('projectFileSchema', () => {
     ];
     expect(projectFileSchema.safeParse({...valid, scenes, copyVersions}).success).toBe(true);
   });
+  it('accepts Edge TTS narration candidates', () => {
+    const scenes = [
+      {
+        ...valid.scenes[0],
+        narrationAudio: 'assets/audio/edge-tts-one.mp3',
+        narrationAudioCandidates: [
+          {
+            id: 'edge-voice-one',
+            path: 'assets/audio/edge-tts-one.mp3',
+            label: 'Edge TTS · zh-CN-XiaoxiaoNeural',
+            source: 'edge-tts',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+    ];
+    expect(projectFileSchema.safeParse({...valid, scenes}).success).toBe(true);
+  });
   it('upgrades legacy visual shots with generation defaults', () => {
     const scenes = [
       {

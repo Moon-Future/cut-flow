@@ -16,6 +16,7 @@ import {
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import path from 'node:path';
 import type {Plugin, UserConfig} from 'vite';
+import {MsEdgeTTS, OUTPUT_FORMAT} from 'msedge-tts';
 import {projectFileSchema, videoTypeSchema} from '../src/core/schema';
 import {runGenerationWorkflow, type WorkflowInput} from '../src/ai/workflow';
 import {
@@ -66,9 +67,7 @@ const rendererRequire = createRequire(requireFromApp.resolve('@remotion/renderer
 const ffmpegExecutable =
   process.platform === 'win32'
     ? path.join(
-        path.dirname(
-          rendererRequire.resolve('@remotion/compositor-win32-x64-msvc/package.json'),
-        ),
+        path.dirname(rendererRequire.resolve('@remotion/compositor-win32-x64-msvc/package.json')),
         'ffmpeg.exe',
       )
     : 'ffmpeg';
@@ -76,6 +75,13 @@ const react = (requireFromApp('@vitejs/plugin-react') as {default: () => Plugin}
 const defaultConfigRoot = path.join(workspaceRoot, 'cut-flow-data');
 const defaultProjectsRoot = path.join(workspaceRoot, 'projects');
 const storageSettingsFile = path.join(defaultConfigRoot, 'storage-settings.json');
+const escapeSsml = (value: string) =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
 type StorageSettings = {
   configRoot: string;
   projectsRoot: string;
@@ -789,7 +795,9 @@ const localApi = (): Plugin => ({
             const selectedScenes = project.scenes
               .map((scene, sceneIndex) => ({scene, sceneIndex}))
               .filter(
-                (item): item is typeof item & {scene: typeof item.scene & {narrationAudio: string}} =>
+                (
+                  item,
+                ): item is typeof item & {scene: typeof item.scene & {narrationAudio: string}} =>
                   Boolean(item.scene.narrationAudio),
               );
             for (const [inputIndex, {scene, sceneIndex}] of selectedScenes.entries()) {
@@ -832,9 +840,7 @@ const localApi = (): Plugin => ({
               child.stderr.on('data', (chunk: Buffer) => {
                 error = `${error}${chunk.toString('utf8')}`.slice(-4000);
               });
-              child.on('error', (spawnError) =>
-                resolve({code: null, error: spawnError.message}),
-              );
+              child.on('error', (spawnError) => resolve({code: null, error: spawnError.message}));
               child.on('close', (code) => resolve({code, error}));
             });
             if (result.code !== 0) {
@@ -850,6 +856,73 @@ const localApi = (): Plugin => ({
               audioPath: project.narrationAudio,
               project,
             });
+            return;
+          }
+          if (url === '/api/voice/edge-tts' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              sceneId?: string;
+              voice?: string;
+              rate?: number;
+            };
+            const project = projectFileSchema.parse(
+              JSON.parse(await readFile(projectFile, 'utf8')) as unknown,
+            );
+            const scene = project.scenes.find((item) => item.id === input.sceneId);
+            if (!scene) {
+              sendJson(response, 404, {error: '找不到配音段落'});
+              return;
+            }
+            const text = scene.narration.trim();
+            if (!text) {
+              sendJson(response, 400, {error: '当前段落没有可配音的文案'});
+              return;
+            }
+            const allowedVoices = new Set([
+              'zh-CN-XiaoxiaoNeural',
+              'zh-CN-XiaoyiNeural',
+              'zh-CN-YunxiNeural',
+              'zh-CN-YunyangNeural',
+            ]);
+            const voice = allowedVoices.has(input.voice ?? '')
+              ? input.voice!
+              : 'zh-CN-XiaoxiaoNeural';
+            const rate = Math.max(-50, Math.min(50, Number(input.rate) || 0));
+            const audioDirectory = path.join(assetsRoot, 'audio');
+            await mkdir(audioDirectory, {recursive: true});
+            const temporaryAudioDirectory = path.join(audioDirectory, `.edge-tts-${randomUUID()}`);
+            await mkdir(temporaryAudioDirectory, {recursive: true});
+            const edgeTts = new MsEdgeTTS();
+            try {
+              await edgeTts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+              const generated = await edgeTts.toFile(temporaryAudioDirectory, escapeSsml(text), {
+                rate: `${rate >= 0 ? '+' : ''}${rate}%`,
+              });
+              const storedName = `edge-tts-${scene.id}-${Date.now()}.mp3`;
+              await rename(generated.audioFilePath, path.join(audioDirectory, storedName));
+              const audioPath = `assets/audio/${storedName}`;
+              scene.narrationAudio = audioPath;
+              scene.narrationAudioCandidates = [
+                ...(scene.narrationAudioCandidates ?? []),
+                {
+                  id: `voice-${randomUUID()}`,
+                  path: audioPath,
+                  label: `Edge TTS · ${voice}`,
+                  source: 'edge-tts',
+                  createdAt: new Date().toISOString(),
+                },
+              ];
+              const temporary = `${projectFile}.tmp`;
+              await writeFile(temporary, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+              await rename(temporary, projectFile);
+              sendJson(response, 200, {audioPath, project});
+            } catch (error) {
+              sendJson(response, 502, {
+                error: `Edge TTS 生成失败：${error instanceof Error ? error.message : String(error)}`,
+              });
+            } finally {
+              edgeTts.close();
+              await rm(temporaryAudioDirectory, {recursive: true, force: true});
+            }
             return;
           }
           if (url === '/api/voice/task' && request.method === 'POST') {
@@ -954,8 +1027,7 @@ const localApi = (): Plugin => ({
                   status: 'failed',
                   error:
                     Date.now() - now.getTime() >= 299_000 ||
-                    (error instanceof Error &&
-                      ['AbortError', 'TimeoutError'].includes(error.name))
+                    (error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name))
                       ? '生成超过 5 分钟仍未返回，已自动结束'
                       : error instanceof Error
                         ? error.message
@@ -1049,7 +1121,10 @@ const localApi = (): Plugin => ({
             });
             if (!submit.ok) {
               sendJson(response, submit.status === 429 ? 429 : 502, {
-                error: submit.status === 429 ? 'VoxCPM 公共服务繁忙，请稍后重试' : '无法提交到 VoxCPM Demo',
+                error:
+                  submit.status === 429
+                    ? 'VoxCPM 公共服务繁忙，请稍后重试'
+                    : '无法提交到 VoxCPM Demo',
               });
               return;
             }
@@ -1074,8 +1149,7 @@ const localApi = (): Plugin => ({
               return;
             }
             const output = JSON.parse(complete) as Array<{url?: string} | string | null>;
-            const remoteUrl =
-              typeof output[0] === 'string' ? output[0] : output[0]?.url;
+            const remoteUrl = typeof output[0] === 'string' ? output[0] : output[0]?.url;
             if (!remoteUrl) {
               sendJson(response, 502, {error: 'VoxCPM Demo 未返回音频'});
               return;
