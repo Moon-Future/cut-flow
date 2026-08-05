@@ -24,6 +24,7 @@ import {
   loadTopicRecommendations,
   saveTopicRecommendations,
 } from '../src/ai/topic-recommendations';
+import {fetchTrendingTopics} from '../src/ai/trending-topics';
 import {
   createMockImageProvider,
   createMockVideoProvider,
@@ -457,11 +458,13 @@ const localApi = (): Plugin => ({
             const saved = await loadTopicRecommendations();
             const pages = mode === 'append' ? (saved?.pages ?? []) : [];
             const excludedTitles = pages.flatMap((page) => page.map((topic) => topic.title));
+            const trendingTopics = await fetchTrendingTopics();
             const topics = await generateTopicRecommendations(
               provider,
               providerSetting,
               project,
               excludedTitles,
+              trendingTopics,
             );
             const result = {
               pages: [...pages, topics],
@@ -473,6 +476,7 @@ const localApi = (): Plugin => ({
               ...result,
               currentPage: result.pages.length - 1,
               heatBasis: 'ai-estimate',
+              trendSources: [...new Set(trendingTopics.map((topic) => topic.source))],
             });
             return;
           }

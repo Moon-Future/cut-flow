@@ -402,7 +402,18 @@ export const ProjectDashboard = ({
                   <small>{item.angle}</small>
                   <em>{item.reason}</em>
                 </span>
-                <i>{item.category}</i>
+                <div className="topic-recommendation-tags">
+                  {item.trendSource === 'douyin' ? (
+                    <i className="douyin-trend" title={`来源热点：${item.sourceTopic ?? ''}`}>
+                      抖音热点
+                    </i>
+                  ) : item.trendSource === 'toutiao' ? (
+                    <i className="toutiao-trend" title={`来源热点：${item.sourceTopic ?? ''}`}>
+                      网络热点
+                    </i>
+                  ) : null}
+                  <i>{item.category}</i>
+                </div>
                 <mark>
                   热度 <b>{Math.round(item.heatScore)}</b>
                 </mark>

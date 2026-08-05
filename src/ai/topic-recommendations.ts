@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type {ProjectFile} from '../core/schema';
 import {aiSettingsFile, type AiProviderId, type AiProviderSetting} from './settings';
+import type {TrendingTopic} from './trending-topics';
 
 export type TopicRecommendation = {
   title: string;
@@ -10,6 +11,8 @@ export type TopicRecommendation = {
   heatScore: number;
   reason: string;
   angle: string;
+  trendSource?: 'douyin' | 'toutiao';
+  sourceTopic?: string;
 };
 
 export type SavedTopicRecommendations = {
@@ -97,13 +100,23 @@ const topicSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['title', 'category', 'heatScore', 'reason', 'angle'],
+        required: [
+          'title',
+          'category',
+          'heatScore',
+          'reason',
+          'angle',
+          'trendSource',
+          'sourceTopic',
+        ],
         properties: {
           title: {type: 'string'},
           category: {type: 'string'},
           heatScore: {type: 'number'},
           reason: {type: 'string'},
           angle: {type: 'string'},
+          trendSource: {type: 'string', enum: ['douyin', 'toutiao', 'evergreen']},
+          sourceTopic: {type: 'string'},
         },
       },
     },
@@ -127,6 +140,7 @@ export const generateTopicRecommendations = async (
   setting: AiProviderSetting,
   project: ProjectFile,
   excludedTitles: string[] = [],
+  trendingTopics: TrendingTopic[] = [],
 ): Promise<TopicRecommendation[]> => {
   const system = `你是一名擅长大众科普系列的中文视频选题策划，请严格推荐恰好 10 条有知识增量和传播潜力的主题。
 
@@ -142,6 +156,14 @@ export const generateTopicRecommendations = async (
 4. 避免低俗、虚假夸张和无法验证的标题党。
 
 heatScore 是 0-100 的 AI 热度判断，根据当前日期、普遍社会关注、讨论潜力、受众覆盖和长期搜索价值估算，不得声称读取了抖音、微博或其他平台的实时热榜。
+热点使用规则：
+1. 下方如果提供实时热点，它们只用于发现选题机会，不是必须覆盖的任务。先判断是否存在自然、可靠且对大众有用的科学、技术、健康、自然、历史或社会机制解释。
+2. 能科普的热点应转化为独立、清晰的知识问题，不要照抄热搜词，不要在标题中生硬捆绑热点人物或事件；即使热点消退，标题也应仍有知识价值。
+3. 纯娱乐、粉圈、营销、穿搭挑战、游戏活动、未经证实的传闻，以及只有猎奇或情绪价值的事件，必须跳过。不能为了凑数量强行科普。
+4. 灾害、事故、健康和公共事件只解释可核验的通用原理与辨别方法，不消费伤亡，不根据一条热搜补写未经提供的事实。
+5. 谣言热点可以转化为信息核验或相关科学概念，但不要重复放大谣言。若合格热点不足，用高质量常青科普补足 10 条。
+6. reason 应如实说明选题来自近期热点启发或属于常青知识；heatScore 可以参考提供的榜单热度，但不等同于官方热度值。
+7. 每条都必须输出 trendSource 和 sourceTopic。只有确实由候选中的某条热点转化时，trendSource 才能填 douyin 或 toutiao，sourceTopic 必须逐字复制对应候选标题；否则 trendSource 填 evergreen、sourceTopic 填空字符串。不得为了获得热点标记虚构关联。
 reason 用一句话说明“为什么现在值得做”；angle 写清视频应该解释的核心答案方向。
 输出前按 1 到 10 逐项清点，必须恰好返回 10 条。只输出合法 JSON，不要 Markdown。`;
   const user = `当前日期：${new Date().toISOString().slice(0, 10)}
@@ -151,6 +173,7 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
 目标观众：${project.content?.audience || '短视频平台普通观众'}
 视频目的：${project.content?.purpose || '提升内容传播和互动'}
 ${excludedTitles.length ? `以下主题已经推荐过，本次不得重复，也不能只改写措辞或标点：\n${excludedTitles.map((title) => `- ${title}`).join('\n')}` : ''}
+${trendingTopics.length ? `以下是刚刚获取的公开实时热点候选（来源与热度仅供筛选，不代表事实已经完整核验）：\n${trendingTopics.slice(0, 75).map((topic) => `- [${topic.source === 'douyin' ? '抖音' : '头条'}${topic.heat ? ` / ${topic.heat}` : ''}] ${topic.title}`).join('\n')}` : '本次未获取到实时热点，请完全按科普价值生成常青选题，不要假装掌握实时热榜。'}
 请避免与已有主题和同批其他主题重复，并兼顾时效性、实用性、争议讨论度和长期价值。`;
   const apiKey = setting.apiKey || setting.secretKey;
   if (!apiKey) throw new Error('请先在设置中配置 AI 服务密钥');
@@ -248,6 +271,8 @@ ${excludedTitles.length ? `以下主题已经推荐过，本次不得重复，�
         heatScore: 72,
         reason: '问题贴近日常认知，兼具好奇心与长期搜索价值',
         angle: '从常见误解切入，用具体场景解释背后的原因',
+        trendSource: undefined,
+        sourceTopic: undefined,
       });
     }
   }
@@ -257,12 +282,19 @@ ${excludedTitles.length ? `以下主题已经推荐过，本次不得重复，�
   return completed.slice(0, 10).map((value, index) => {
     const item = value as Partial<TopicRecommendation>;
     const rawTitle = String(item.title || fallbackTitles[index]).trim();
+    const requestedSource = item.trendSource;
+    const requestedSourceTopic = String(item.sourceTopic || '').trim();
+    const matchedTrend = trendingTopics.find(
+      (topic) => topic.source === requestedSource && topic.title === requestedSourceTopic,
+    );
     return {
       title: rawTitle,
       category: String(item.category || '综合'),
       heatScore: Math.max(0, Math.min(100, Number(item.heatScore) || 0)),
       reason: String(item.reason || '具备一定内容传播潜力'),
       angle: String(item.angle || '从观众实际问题切入'),
+      trendSource: matchedTrend?.source,
+      sourceTopic: matchedTrend?.title,
     };
   });
 };

@@ -3506,6 +3506,12 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.topic-recommendation-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
 .topic-recommendation-list i {
   padding: 4px 6px;
   border-radius: 5px;
@@ -3514,6 +3520,15 @@ select:focus {
   font-size: 8px;
   font-style: normal;
   white-space: nowrap;
+}
+.topic-recommendation-list i.douyin-trend {
+  background: linear-gradient(135deg, #21d4d0 0%, #ff3b69 100%);
+  color: #fff;
+  font-weight: 700;
+}
+.topic-recommendation-list i.toutiao-trend {
+  background: #3b211f;
+  color: #ff8778;
 }
 .topic-recommendation-list mark {
   background: transparent;
