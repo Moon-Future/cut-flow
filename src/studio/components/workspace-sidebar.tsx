@@ -9,9 +9,13 @@ export type WorkspaceSection =
   | 'edit'
   | 'cover'
   | 'export'
+  | 'audio-merge'
   | 'settings';
 
-const navItems: Array<[WorkspaceSection, string, string]> = [['overview', '我的项目', '⌂']];
+const navItems: Array<[WorkspaceSection, string, string]> = [
+  ['overview', '我的项目', '⌂'],
+  ['audio-merge', '音频合并', '♫'],
+];
 
 type Props = {
   section: WorkspaceSection;

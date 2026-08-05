@@ -153,7 +153,7 @@ export const EditingWorkspace = ({
     splitAtSeconds >= 0.1 &&
     splitAtSeconds <= scene.duration - 0.1 &&
     !lockedTracks.includes('video');
-  const showWorkbench = !['overview', 'settings'].includes(section);
+  const showWorkbench = !['overview', 'settings', 'audio-merge'].includes(section);
   const clampTimelineHeight = (height: number) =>
     Math.round(Math.max(150, Math.min(Math.max(150, window.innerHeight - 320), height)));
   const saveTimelineHeight = (height: number) => {
@@ -426,9 +426,7 @@ export const EditingWorkspace = ({
             ? {
                 gridTemplateRows:
                   section === 'edit'
-                    ? `60px 48px minmax(220px, 1fr) ${
-                        timelineCollapsed ? 42 : timelineHeight
-                      }px`
+                    ? `60px 48px minmax(220px, 1fr) ${timelineCollapsed ? 42 : timelineHeight}px`
                     : '60px 48px minmax(0, 1fr)',
               }
             : undefined
@@ -501,35 +499,36 @@ export const EditingWorkspace = ({
                     {project.scenes.map((item, index) => {
                       const thumbnail = sceneCurrentMedia(item);
                       return (
-                      <article
-                        key={item.id}
-                        data-scene-navigator={item.id}
-                        className={item.id === scene.id ? 'selected' : ''}
-                        draggable
-                        onDragStart={(event) => event.dataTransfer.setData('sceneId', item.id)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={(event) =>
-                          reorderScenes(event.dataTransfer.getData('sceneId'), item.id)
-                        }
-                        onClick={() => chooseScene(item.id, index)}
-                      >
-                        <span className="drag-handle">⋮⋮</span>
-                        <div className="scene-thumb">
-                          <MediaThumb
-                            projectId={projectId}
-                            path={thumbnail.path}
-                            type={thumbnail.type}
-                          />
-                          <b>{String(index + 1).padStart(2, '0')}</b>
-                        </div>
-                        <div>
-                          <strong>{item.caption}</strong>
-                          <p>{item.narration}</p>
-                          <small>
-                            {item.duration.toFixed(1)} 秒 · {item.visualIntent || '待完善画面意图'}
-                          </small>
-                        </div>
-                      </article>
+                        <article
+                          key={item.id}
+                          data-scene-navigator={item.id}
+                          className={item.id === scene.id ? 'selected' : ''}
+                          draggable
+                          onDragStart={(event) => event.dataTransfer.setData('sceneId', item.id)}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) =>
+                            reorderScenes(event.dataTransfer.getData('sceneId'), item.id)
+                          }
+                          onClick={() => chooseScene(item.id, index)}
+                        >
+                          <span className="drag-handle">⋮⋮</span>
+                          <div className="scene-thumb">
+                            <MediaThumb
+                              projectId={projectId}
+                              path={thumbnail.path}
+                              type={thumbnail.type}
+                            />
+                            <b>{String(index + 1).padStart(2, '0')}</b>
+                          </div>
+                          <div>
+                            <strong>{item.caption}</strong>
+                            <p>{item.narration}</p>
+                            <small>
+                              {item.duration.toFixed(1)} 秒 ·{' '}
+                              {item.visualIntent || '待完善画面意图'}
+                            </small>
+                          </div>
+                        </article>
                       );
                     })}
                   </div>
@@ -785,297 +784,297 @@ export const EditingWorkspace = ({
               <section
                 className={`timeline-panel edit-panel ${timelineCollapsed ? 'collapsed' : ''}`}
               >
-              <div
-                className="timeline-resize-handle"
-                role="separator"
-                aria-label="拖动调整时间线高度"
-                aria-orientation="horizontal"
-                aria-valuemin={150}
-                aria-valuemax={Math.max(150, window.innerHeight - 320)}
-                aria-valuenow={timelineHeight}
-                tabIndex={0}
-                onPointerDown={(event) => {
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  timelineResizeStart.current = {
-                    pointerY: event.clientY,
-                    height: timelineHeight,
-                  };
-                }}
-                onPointerMove={(event) => {
-                  const start = timelineResizeStart.current;
-                  if (!start) return;
-                  setTimelineHeight(
-                    clampTimelineHeight(start.height + start.pointerY - event.clientY),
-                  );
-                }}
-                onPointerUp={(event) => {
-                  const start = timelineResizeStart.current;
-                  if (!start) return;
-                  const next = clampTimelineHeight(start.height + start.pointerY - event.clientY);
-                  timelineResizeStart.current = null;
-                  event.currentTarget.releasePointerCapture(event.pointerId);
-                  saveTimelineHeight(next);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-                  event.preventDefault();
-                  saveTimelineHeight(timelineHeight + (event.key === 'ArrowUp' ? 20 : -20));
-                }}
-              >
-                <span />
-              </div>
-              <header className="timeline-toolbar">
-                <strong>时间线</strong>
-                <button
-                  className="timeline-play"
-                  onClick={() => playerRef.current?.toggle()}
-                  aria-label={isPlaying ? '暂停时间线' : '播放时间线'}
-                >
-                  {isPlaying ? 'Ⅱ 暂停' : '▶ 播放'}
-                </button>
-                <button
-                  onClick={() => {
-                    playerRef.current?.pause();
-                    seekTimeline(0);
+                <div
+                  className="timeline-resize-handle"
+                  role="separator"
+                  aria-label="拖动调整时间线高度"
+                  aria-orientation="horizontal"
+                  aria-valuemin={150}
+                  aria-valuemax={Math.max(150, window.innerHeight - 320)}
+                  aria-valuenow={timelineHeight}
+                  tabIndex={0}
+                  onPointerDown={(event) => {
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    timelineResizeStart.current = {
+                      pointerY: event.clientY,
+                      height: timelineHeight,
+                    };
                   }}
-                  aria-label="回到时间线开头"
-                >
-                  ■ 回到开头
-                </button>
-                <button disabled>↶ 撤销</button>
-                <button disabled>↷ 重做</button>
-                <button
-                  disabled={!canSplit}
-                  onClick={() => {
-                    splitScene(scene.id, splitAtSeconds);
-                    notify('已在播放头位置分割镜头');
+                  onPointerMove={(event) => {
+                    const start = timelineResizeStart.current;
+                    if (!start) return;
+                    setTimelineHeight(
+                      clampTimelineHeight(start.height + start.pointerY - event.clientY),
+                    );
                   }}
-                  title={canSplit ? '在播放头位置分割当前镜头' : '请将播放头移动到镜头内部'}
-                >
-                  ✂ 分割
-                </button>
-                <button
-                  onClick={() => {
-                    deleteScene(scene.id);
-                    notify('已删除当前镜头');
+                  onPointerUp={(event) => {
+                    const start = timelineResizeStart.current;
+                    if (!start) return;
+                    const next = clampTimelineHeight(start.height + start.pointerY - event.clientY);
+                    timelineResizeStart.current = null;
+                    event.currentTarget.releasePointerCapture(event.pointerId);
+                    saveTimelineHeight(next);
                   }}
-                  disabled={project.scenes.length <= 1 || lockedTracks.includes('video')}
-                >
-                  ♜ 删除
-                </button>
-                <button
-                  onClick={() => {
-                    duplicateScene(scene.id);
-                    notify('已复制当前镜头');
+                  onKeyDown={(event) => {
+                    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                    event.preventDefault();
+                    saveTimelineHeight(timelineHeight + (event.key === 'ArrowUp' ? 20 : -20));
                   }}
-                  disabled={lockedTracks.includes('video')}
                 >
-                  ▣ 复制
-                </button>
-                <button disabled>◖ 静音</button>
-                <button disabled>⌘ 添加转场</button>
-                <span className="add-track-control">
+                  <span />
+                </div>
+                <header className="timeline-toolbar">
+                  <strong>时间线</strong>
                   <button
-                    className={trackMenuOpen ? 'active' : ''}
-                    onClick={() => setTrackMenuOpen((open) => !open)}
-                    aria-expanded={trackMenuOpen}
+                    className="timeline-play"
+                    onClick={() => playerRef.current?.toggle()}
+                    aria-label={isPlaying ? '暂停时间线' : '播放时间线'}
                   >
-                    ＋ 添加轨道
+                    {isPlaying ? 'Ⅱ 暂停' : '▶ 播放'}
                   </button>
-                  {trackMenuOpen ? (
-                    <span className="add-track-menu">
-                      <button
-                        onClick={() => {
-                          setTrackMenuOpen(false);
-                          onNavigate('content');
-                        }}
-                      >
-                        字幕轨道
-                        <small>从文案段落生成字幕</small>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTrackMenuOpen(false);
-                          onNavigate('voice');
-                        }}
-                      >
-                        配音轨道
-                        <small>生成或导入旁白</small>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTrackMenuOpen(false);
-                          onAssets();
-                        }}
-                      >
-                        音乐/音效轨道
-                        <small>从素材库导入音频</small>
-                      </button>
-                    </span>
-                  ) : null}
-                </span>
-                <output className="timeline-time">
-                  {(currentFrame / project.project.fps).toFixed(1)}s / {totalSeconds.toFixed(1)}s
-                </output>
-                <span className="timeline-zoom-controls">
                   <button
-                    onClick={() => setTimelineZoom((value) => Math.max(1, value - 0.25))}
-                    aria-label="缩小时间线"
+                    onClick={() => {
+                      playerRef.current?.pause();
+                      seekTimeline(0);
+                    }}
+                    aria-label="回到时间线开头"
                   >
-                    −
+                    ■ 回到开头
                   </button>
-                  <button onClick={() => setTimelineZoom(1)}>适应全部</button>
+                  <button disabled>↶ 撤销</button>
+                  <button disabled>↷ 重做</button>
                   <button
-                    onClick={() => setTimelineZoom((value) => Math.min(4, value + 0.25))}
-                    aria-label="放大时间线"
+                    disabled={!canSplit}
+                    onClick={() => {
+                      splitScene(scene.id, splitAtSeconds);
+                      notify('已在播放头位置分割镜头');
+                    }}
+                    title={canSplit ? '在播放头位置分割当前镜头' : '请将播放头移动到镜头内部'}
                   >
-                    ＋
+                    ✂ 分割
                   </button>
-                  <output>{Math.round(timelineZoom * 100)}%</output>
-                </span>
-                <button
-                  className="timeline-collapse"
-                  onClick={() => setTimelineCollapsed((current) => !current)}
-                  aria-expanded={!timelineCollapsed}
-                >
-                  {timelineCollapsed ? '展开时间线' : '收起时间线'}
-                </button>
-              </header>
-              <div
-                className="timeline-ruler"
-                style={{width: timelineCanvasWidth}}
-                onPointerDown={(event) => {
-                  const bounds = event.currentTarget.getBoundingClientRect();
-                  const position = Math.max(0, event.clientX - bounds.left - timelineLabelWidth);
-                  const ratio = position / Math.max(1, bounds.width - timelineLabelWidth);
-                  seekTimeline(ratio * timeline.durationInFrames);
-                }}
-              >
-                <span />
-                {Array.from({length: 7}, (_, index) => (
-                  <i key={index}>{Math.round((totalSeconds / 6) * index)}s</i>
-                ))}
-              </div>
-              <div className="track-row video-track" style={{width: timelineCanvasWidth}}>
-                <strong>
-                  <span>视频轨道</span>
                   <button
-                    className={lockedTracks.includes('video') ? 'active' : ''}
-                    onClick={() => toggleTrackState('video', setLockedTracks)}
-                    title="锁定视频轨道"
+                    onClick={() => {
+                      deleteScene(scene.id);
+                      notify('已删除当前镜头');
+                    }}
+                    disabled={project.scenes.length <= 1 || lockedTracks.includes('video')}
                   >
-                    {lockedTracks.includes('video') ? '锁' : '开'}
+                    ♜ 删除
                   </button>
-                </strong>
-                <div>
-                  {timeline.scenes.map(({scene: item}, index) => (
+                  <button
+                    onClick={() => {
+                      duplicateScene(scene.id);
+                      notify('已复制当前镜头');
+                    }}
+                    disabled={lockedTracks.includes('video')}
+                  >
+                    ▣ 复制
+                  </button>
+                  <button disabled>◖ 静音</button>
+                  <button disabled>⌘ 添加转场</button>
+                  <span className="add-track-control">
                     <button
-                      key={item.id}
-                      className={item.id === scene.id ? 'selected' : ''}
-                      style={{
-                        flex: (trimPreview[item.id] ?? item.duration) * project.project.fps,
-                      }}
-                      draggable={!lockedTracks.includes('video')}
-                      onDragStart={(event) => event.dataTransfer.setData('sceneId', item.id)}
-                      onDragOver={(event) => {
-                        if (!lockedTracks.includes('video')) event.preventDefault();
-                      }}
-                      onDrop={(event) => {
-                        if (lockedTracks.includes('video')) return;
-                        reorderScenes(event.dataTransfer.getData('sceneId'), item.id);
-                      }}
-                      onClick={() => chooseScene(item.id, index)}
+                      className={trackMenuOpen ? 'active' : ''}
+                      onClick={() => setTrackMenuOpen((open) => !open)}
+                      aria-expanded={trackMenuOpen}
                     >
-                      <MediaThumb
-                        projectId={projectId}
-                        path={item.assetPath}
-                        type={item.assetType}
-                      />
-                      <span>{String(index + 1).padStart(2, '0')}</span>
-                      {!lockedTracks.includes('video') ? (
-                        <i
-                          className="trim-handle trim-end"
-                          title="拖动调整片段时长"
-                          onPointerDown={(event) => beginTrim(event, item)}
-                          onPointerMove={previewTrim}
-                          onPointerUp={finishTrim}
-                          onPointerCancel={finishTrim}
-                        />
-                      ) : null}
+                      ＋ 添加轨道
                     </button>
-                  ))}
-                </div>
-              </div>
-              <div className="track-row caption-track" style={{width: timelineCanvasWidth}}>
-                <strong>
-                  <span>字幕轨道</span>
-                  <button
-                    className={lockedTracks.includes('caption') ? 'active' : ''}
-                    onClick={() => toggleTrackState('caption', setLockedTracks)}
-                    title="锁定字幕轨道"
-                  >
-                    {lockedTracks.includes('caption') ? '锁' : '开'}
-                  </button>
-                </strong>
-                <div>
-                  {timeline.scenes.map(({scene: item}, index) => (
-                    <button
-                      key={item.id}
-                      className={item.id === scene.id ? 'selected' : ''}
-                      style={{
-                        flex: (trimPreview[item.id] ?? item.duration) * project.project.fps,
-                      }}
-                      onClick={() => chooseScene(item.id, index)}
-                    >
-                      {item.caption}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="track-row audio-track" style={{width: timelineCanvasWidth}}>
-                <strong>
-                  <span>配音轨道</span>
-                  <button
-                    className={mutedTracks.includes('audio') ? 'active' : ''}
-                    onClick={() => toggleTrackState('audio', setMutedTracks)}
-                    title="静音配音轨道"
-                  >
-                    {mutedTracks.includes('audio') ? '静' : '声'}
-                  </button>
-                </strong>
-                <div className="waveform">
-                  <span>narration.wav</span>
-                </div>
-              </div>
-              <div className="track-row music-track" style={{width: timelineCanvasWidth}}>
-                <strong>
-                  <span>背景音乐</span>
-                  <button
-                    className={mutedTracks.includes('music') ? 'active' : ''}
-                    onClick={() => toggleTrackState('music', setMutedTracks)}
-                    title="静音背景音乐轨道"
-                  >
-                    {mutedTracks.includes('music') ? '静' : '声'}
-                  </button>
-                </strong>
-                <div className="waveform">
-                  <span>
-                    {project.style.backgroundMusicVolume ? '背景音乐' : '尚未添加背景音乐'}
+                    {trackMenuOpen ? (
+                      <span className="add-track-menu">
+                        <button
+                          onClick={() => {
+                            setTrackMenuOpen(false);
+                            onNavigate('content');
+                          }}
+                        >
+                          字幕轨道
+                          <small>从文案段落生成字幕</small>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTrackMenuOpen(false);
+                            onNavigate('voice');
+                          }}
+                        >
+                          配音轨道
+                          <small>生成或导入旁白</small>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTrackMenuOpen(false);
+                            onAssets();
+                          }}
+                        >
+                          音乐/音效轨道
+                          <small>从素材库导入音频</small>
+                        </button>
+                      </span>
+                    ) : null}
                   </span>
-                </div>
-              </div>
-              {timeline.durationInFrames > 0 ? (
-                <i
-                  className="playhead"
-                  style={{
-                    left:
-                      timelineLabelWidth +
-                      (Math.min(currentFrame, timeline.durationInFrames) /
-                        timeline.durationInFrames) *
-                        (timelineCanvasWidth - timelineLabelWidth),
+                  <output className="timeline-time">
+                    {(currentFrame / project.project.fps).toFixed(1)}s / {totalSeconds.toFixed(1)}s
+                  </output>
+                  <span className="timeline-zoom-controls">
+                    <button
+                      onClick={() => setTimelineZoom((value) => Math.max(1, value - 0.25))}
+                      aria-label="缩小时间线"
+                    >
+                      −
+                    </button>
+                    <button onClick={() => setTimelineZoom(1)}>适应全部</button>
+                    <button
+                      onClick={() => setTimelineZoom((value) => Math.min(4, value + 0.25))}
+                      aria-label="放大时间线"
+                    >
+                      ＋
+                    </button>
+                    <output>{Math.round(timelineZoom * 100)}%</output>
+                  </span>
+                  <button
+                    className="timeline-collapse"
+                    onClick={() => setTimelineCollapsed((current) => !current)}
+                    aria-expanded={!timelineCollapsed}
+                  >
+                    {timelineCollapsed ? '展开时间线' : '收起时间线'}
+                  </button>
+                </header>
+                <div
+                  className="timeline-ruler"
+                  style={{width: timelineCanvasWidth}}
+                  onPointerDown={(event) => {
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const position = Math.max(0, event.clientX - bounds.left - timelineLabelWidth);
+                    const ratio = position / Math.max(1, bounds.width - timelineLabelWidth);
+                    seekTimeline(ratio * timeline.durationInFrames);
                   }}
-                />
-              ) : null}
+                >
+                  <span />
+                  {Array.from({length: 7}, (_, index) => (
+                    <i key={index}>{Math.round((totalSeconds / 6) * index)}s</i>
+                  ))}
+                </div>
+                <div className="track-row video-track" style={{width: timelineCanvasWidth}}>
+                  <strong>
+                    <span>视频轨道</span>
+                    <button
+                      className={lockedTracks.includes('video') ? 'active' : ''}
+                      onClick={() => toggleTrackState('video', setLockedTracks)}
+                      title="锁定视频轨道"
+                    >
+                      {lockedTracks.includes('video') ? '锁' : '开'}
+                    </button>
+                  </strong>
+                  <div>
+                    {timeline.scenes.map(({scene: item}, index) => (
+                      <button
+                        key={item.id}
+                        className={item.id === scene.id ? 'selected' : ''}
+                        style={{
+                          flex: (trimPreview[item.id] ?? item.duration) * project.project.fps,
+                        }}
+                        draggable={!lockedTracks.includes('video')}
+                        onDragStart={(event) => event.dataTransfer.setData('sceneId', item.id)}
+                        onDragOver={(event) => {
+                          if (!lockedTracks.includes('video')) event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          if (lockedTracks.includes('video')) return;
+                          reorderScenes(event.dataTransfer.getData('sceneId'), item.id);
+                        }}
+                        onClick={() => chooseScene(item.id, index)}
+                      >
+                        <MediaThumb
+                          projectId={projectId}
+                          path={item.assetPath}
+                          type={item.assetType}
+                        />
+                        <span>{String(index + 1).padStart(2, '0')}</span>
+                        {!lockedTracks.includes('video') ? (
+                          <i
+                            className="trim-handle trim-end"
+                            title="拖动调整片段时长"
+                            onPointerDown={(event) => beginTrim(event, item)}
+                            onPointerMove={previewTrim}
+                            onPointerUp={finishTrim}
+                            onPointerCancel={finishTrim}
+                          />
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="track-row caption-track" style={{width: timelineCanvasWidth}}>
+                  <strong>
+                    <span>字幕轨道</span>
+                    <button
+                      className={lockedTracks.includes('caption') ? 'active' : ''}
+                      onClick={() => toggleTrackState('caption', setLockedTracks)}
+                      title="锁定字幕轨道"
+                    >
+                      {lockedTracks.includes('caption') ? '锁' : '开'}
+                    </button>
+                  </strong>
+                  <div>
+                    {timeline.scenes.map(({scene: item}, index) => (
+                      <button
+                        key={item.id}
+                        className={item.id === scene.id ? 'selected' : ''}
+                        style={{
+                          flex: (trimPreview[item.id] ?? item.duration) * project.project.fps,
+                        }}
+                        onClick={() => chooseScene(item.id, index)}
+                      >
+                        {item.caption}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="track-row audio-track" style={{width: timelineCanvasWidth}}>
+                  <strong>
+                    <span>配音轨道</span>
+                    <button
+                      className={mutedTracks.includes('audio') ? 'active' : ''}
+                      onClick={() => toggleTrackState('audio', setMutedTracks)}
+                      title="静音配音轨道"
+                    >
+                      {mutedTracks.includes('audio') ? '静' : '声'}
+                    </button>
+                  </strong>
+                  <div className="waveform">
+                    <span>narration.wav</span>
+                  </div>
+                </div>
+                <div className="track-row music-track" style={{width: timelineCanvasWidth}}>
+                  <strong>
+                    <span>背景音乐</span>
+                    <button
+                      className={mutedTracks.includes('music') ? 'active' : ''}
+                      onClick={() => toggleTrackState('music', setMutedTracks)}
+                      title="静音背景音乐轨道"
+                    >
+                      {mutedTracks.includes('music') ? '静' : '声'}
+                    </button>
+                  </strong>
+                  <div className="waveform">
+                    <span>
+                      {project.style.backgroundMusicVolume ? '背景音乐' : '尚未添加背景音乐'}
+                    </span>
+                  </div>
+                </div>
+                {timeline.durationInFrames > 0 ? (
+                  <i
+                    className="playhead"
+                    style={{
+                      left:
+                        timelineLabelWidth +
+                        (Math.min(currentFrame, timeline.durationInFrames) /
+                          timeline.durationInFrames) *
+                          (timelineCanvasWidth - timelineLabelWidth),
+                    }}
+                  />
+                ) : null}
               </section>
             ) : null}
           </>

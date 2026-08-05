@@ -8444,3 +8444,192 @@ select:focus {
   border-color: #38bdf866;
   box-shadow: 0 0 0 1px #38bdf822;
 }
+.audio-merge-workspace {
+  min-height: 100%;
+  padding: 32px;
+  background: #f5f7fb;
+}
+
+.audio-merge-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 28px 32px;
+  color: #fff;
+  background: linear-gradient(135deg, #171c2b, #313b58);
+  border-radius: 20px;
+}
+
+.audio-merge-hero span,
+.audio-merge-hero p {
+  color: #aeb8d0;
+}
+
+.audio-merge-hero h1 {
+  margin: 6px 0;
+  font-size: 28px;
+}
+
+.audio-merge-hero button,
+.audio-merge-submit {
+  padding: 12px 20px;
+  color: #fff;
+  background: #6857f5;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.audio-merge-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+}
+
+.audio-merge-list-panel,
+.audio-merge-result-panel {
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e4e8f0;
+  border-radius: 16px;
+}
+
+.audio-merge-list-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.audio-merge-list-panel > header div {
+  display: flex;
+  gap: 10px;
+}
+
+.audio-merge-list-panel button,
+.audio-merge-result-panel button,
+.audio-merge-output a {
+  cursor: pointer;
+}
+
+.audio-merge-list {
+  display: grid;
+  gap: 12px;
+}
+
+.audio-merge-list article {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: #f8f9fc;
+  border: 1px solid #e9ecf3;
+  border-radius: 12px;
+}
+
+.audio-merge-list article > b {
+  color: #6857f5;
+  font-size: 18px;
+}
+
+.audio-merge-list article > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.audio-merge-list article audio,
+.audio-merge-output audio {
+  width: 100%;
+  height: 34px;
+}
+
+.audio-merge-order-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.audio-merge-order-actions button,
+.audio-merge-list-panel > header button,
+.audio-merge-output button,
+.audio-merge-output a {
+  padding: 7px 10px;
+  color: #4c556b;
+  background: #fff;
+  border: 1px solid #dce1eb;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.audio-merge-dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 260px;
+  color: #667085;
+  background: #fafbfe;
+  border: 1px dashed #bbc3d4;
+  border-radius: 14px;
+}
+
+.audio-merge-dropzone b {
+  color: #6857f5;
+  font-size: 40px;
+}
+
+.audio-merge-result-panel {
+  align-self: start;
+  display: grid;
+  gap: 14px;
+}
+
+.audio-merge-result-panel p {
+  margin: 0;
+  color: #697386;
+  line-height: 1.6;
+}
+
+.audio-merge-submit:disabled,
+.audio-merge-hero button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.audio-merge-output {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.audio-merge-empty-result {
+  padding: 28px 16px;
+  color: #9098a8;
+  background: #f8f9fc;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.audio-merge-message {
+  padding: 10px 12px;
+  color: #4b5568 !important;
+  background: #f0f2f8;
+  border-radius: 8px;
+}
+
+@media (max-width: 1100px) {
+  .audio-merge-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audio-merge-list article {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .audio-merge-order-actions {
+    grid-column: 2;
+  }
+}

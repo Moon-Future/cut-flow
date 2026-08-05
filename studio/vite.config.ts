@@ -911,6 +911,83 @@ const localApi = (): Plugin => ({
             });
             return;
           }
+          if (url === '/api/audio/merge-files' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              paths?: string[];
+            };
+            const paths = Array.isArray(input.paths)
+              ? input.paths.filter((item): item is string => typeof item === 'string')
+              : [];
+            if (paths.length < 2 || paths.length > 100) {
+              sendJson(response, 400, {error: '请选择 2 到 100 条音频进行合并'});
+              return;
+            }
+            const audioDirectory = path.join(assetsRoot, 'audio');
+            await mkdir(audioDirectory, {recursive: true});
+            const resolvedAudioRoot = path.resolve(audioDirectory);
+            const audioFiles: string[] = [];
+            for (const [index, audioPath] of paths.entries()) {
+              const audioFile = path.resolve(projectRoot, audioPath);
+              if (
+                !audioFile.startsWith(`${resolvedAudioRoot}${path.sep}`) ||
+                !/\.(wav|mp3|m4a|aac|flac|ogg)$/iu.test(audioFile)
+              ) {
+                sendJson(response, 400, {error: `第 ${index + 1} 条音频路径无效`});
+                return;
+              }
+              try {
+                await stat(audioFile);
+              } catch {
+                sendJson(response, 404, {error: `第 ${index + 1} 条音频文件不存在`});
+                return;
+              }
+              audioFiles.push(audioFile);
+            }
+            const outputName = `audio-merged-${Date.now()}.mp3`;
+            const outputFile = path.join(audioDirectory, outputName);
+            const args: string[] = ['-y'];
+            const filters: string[] = [];
+            for (const [index, audioFile] of audioFiles.entries()) {
+              args.push('-i', audioFile);
+              filters.push(
+                `[${index}:a]aresample=48000,` +
+                  `aformat=sample_fmts=fltp:channel_layouts=stereo[a${index}]`,
+              );
+            }
+            filters.push(
+              `${audioFiles.map((_, index) => `[a${index}]`).join('')}` +
+                `concat=n=${audioFiles.length}:v=0:a=1[out]`,
+            );
+            args.push(
+              '-filter_complex',
+              filters.join(';'),
+              '-map',
+              '[out]',
+              '-c:a',
+              'libmp3lame',
+              '-b:a',
+              '192k',
+              outputFile,
+            );
+            const result = await new Promise<{code: number | null; error: string}>((resolve) => {
+              const child = spawn(ffmpegExecutable, args, {
+                cwd: projectRoot,
+                windowsHide: true,
+              });
+              let error = '';
+              child.stderr.on('data', (chunk: Buffer) => {
+                error = `${error}${chunk.toString('utf8')}`.slice(-4000);
+              });
+              child.on('error', (spawnError) => resolve({code: null, error: spawnError.message}));
+              child.on('close', (code) => resolve({code, error}));
+            });
+            if (result.code !== 0) {
+              sendJson(response, 500, {error: `音频合并失败：${result.error}`});
+              return;
+            }
+            sendJson(response, 200, {audioPath: `assets/audio/${outputName}`});
+            return;
+          }
           if (url === '/api/voice/edge-tts' && request.method === 'POST') {
             const input = JSON.parse((await readBody(request)).toString('utf8')) as {
               sceneId?: string;

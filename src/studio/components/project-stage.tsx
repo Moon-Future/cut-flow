@@ -9,6 +9,7 @@ import {CoverWorkspace} from './cover-workspace';
 import type {WorkspaceSection} from './workspace-sidebar';
 import {SettingsWorkspace} from './settings-workspace';
 import type {AssetSelectionTarget} from '../asset-selection';
+import {AudioMergeWorkspace} from './audio-merge-workspace';
 
 type Props = {
   section: Exclude<WorkspaceSection, 'edit'>;
@@ -32,6 +33,7 @@ const sectionTitles: Record<Exclude<WorkspaceSection, 'edit'>, [string, string]>
   assets: ['素材', '按分镜统一选用、替换和移除项目素材'],
   cover: ['封面制作', '制作适配抖音主页展示的 3:4 封面'],
   export: ['交付', '整理剪辑生产包，或生成一条粗剪参考视频'],
+  'audio-merge': ['音频合并', '将多条音频按顺序合成为一个文件'],
   settings: ['设置', '配置本机 AI 服务与密钥'],
 };
 
@@ -101,7 +103,7 @@ export const ProjectStage = ({
 
   return (
     <section className="project-stage">
-      {section !== 'overview' && section !== 'settings' ? (
+      {!['overview', 'settings', 'audio-merge'].includes(section) ? (
         <header className="stage-heading">
           <div>
             <h1>{title}</h1>
@@ -166,6 +168,7 @@ export const ProjectStage = ({
           onAudioReady={onAudioReady}
         />
       ) : null}
+      {section === 'audio-merge' ? <AudioMergeWorkspace projectId={currentProjectId} /> : null}
       {section === 'assets' ? (
         <AssetsWorkspace
           project={project}
@@ -175,10 +178,7 @@ export const ProjectStage = ({
         />
       ) : null}
       {section === 'cover' ? (
-        <CoverWorkspace
-          project={project}
-          projectId={currentProjectId}
-        />
+        <CoverWorkspace project={project} projectId={currentProjectId} />
       ) : null}
       {section === 'export' ? (
         <div className="stage-empty">
