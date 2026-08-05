@@ -8447,7 +8447,9 @@ select:focus {
 .audio-merge-workspace {
   min-height: 100%;
   padding: 32px;
-  background: #f5f7fb;
+  color-scheme: dark;
+  color: #e9edf7;
+  background: radial-gradient(circle at 75% 0%, #211a3866 0, transparent 34%), #080b12;
 }
 
 .audio-merge-hero {
@@ -8457,14 +8459,15 @@ select:focus {
   gap: 24px;
   margin-bottom: 24px;
   padding: 28px 32px;
-  color: #fff;
-  background: linear-gradient(135deg, #171c2b, #313b58);
+  color: #f2efff;
+  background: linear-gradient(135deg, #191429, #111722);
+  border: 1px solid #30254c;
   border-radius: 20px;
 }
 
 .audio-merge-hero span,
 .audio-merge-hero p {
-  color: #aeb8d0;
+  color: #9b95b4;
 }
 
 .audio-merge-hero h1 {
@@ -8476,7 +8479,7 @@ select:focus {
 .audio-merge-submit {
   padding: 12px 20px;
   color: #fff;
-  background: #6857f5;
+  background: linear-gradient(135deg, #8b5cf6, #7048d7);
   border: 0;
   border-radius: 10px;
   font-weight: 700;
@@ -8491,8 +8494,8 @@ select:focus {
 .audio-merge-list-panel,
 .audio-merge-result-panel {
   padding: 22px;
-  background: #fff;
-  border: 1px solid #e4e8f0;
+  background: #0d121a;
+  border: 1px solid #242b3a;
   border-radius: 16px;
 }
 
@@ -8525,13 +8528,13 @@ select:focus {
   align-items: center;
   gap: 14px;
   padding: 14px;
-  background: #f8f9fc;
-  border: 1px solid #e9ecf3;
+  background: #111720;
+  border: 1px solid #252d3e;
   border-radius: 12px;
 }
 
 .audio-merge-list article > b {
-  color: #6857f5;
+  color: #a77cff;
   font-size: 18px;
 }
 
@@ -8557,9 +8560,9 @@ select:focus {
 .audio-merge-output button,
 .audio-merge-output a {
   padding: 7px 10px;
-  color: #4c556b;
-  background: #fff;
-  border: 1px solid #dce1eb;
+  color: #b7bfd0;
+  background: #151b26;
+  border: 1px solid #30384a;
   border-radius: 8px;
   text-decoration: none;
 }
@@ -8570,14 +8573,14 @@ select:focus {
   gap: 8px;
   width: 100%;
   min-height: 260px;
-  color: #667085;
-  background: #fafbfe;
-  border: 1px dashed #bbc3d4;
+  color: #7f8a9f;
+  background: #0a0f17;
+  border: 1px dashed #3b4356;
   border-radius: 14px;
 }
 
 .audio-merge-dropzone b {
-  color: #6857f5;
+  color: #9a76ed;
   font-size: 40px;
 }
 
@@ -8589,7 +8592,7 @@ select:focus {
 
 .audio-merge-result-panel p {
   margin: 0;
-  color: #697386;
+  color: #7f8a9f;
   line-height: 1.6;
 }
 
@@ -8607,16 +8610,18 @@ select:focus {
 
 .audio-merge-empty-result {
   padding: 28px 16px;
-  color: #9098a8;
-  background: #f8f9fc;
+  color: #697489;
+  background: #0a0f17;
+  border: 1px dashed #282f40;
   border-radius: 10px;
   text-align: center;
 }
 
 .audio-merge-message {
   padding: 10px 12px;
-  color: #4b5568 !important;
-  background: #f0f2f8;
+  color: #b9b1d0 !important;
+  background: #191429;
+  border: 1px solid #30254c;
   border-radius: 8px;
 }
 
