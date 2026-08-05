@@ -168,7 +168,7 @@ export const ProjectStage = ({
           onAudioReady={onAudioReady}
         />
       ) : null}
-      {section === 'audio-merge' ? <AudioMergeWorkspace projectId={currentProjectId} /> : null}
+      {section === 'audio-merge' ? <AudioMergeWorkspace /> : null}
       {section === 'assets' ? (
         <AssetsWorkspace
           project={project}

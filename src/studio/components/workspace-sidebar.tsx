@@ -41,7 +41,7 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
         <button
           key={value}
           className={section === value ? 'active' : ''}
-          disabled={!project && !['overview', 'settings'].includes(value)}
+          disabled={!project && !['overview', 'audio-merge', 'settings'].includes(value)}
           onClick={() => onNavigate(value)}
         >
           <i>{icon}</i>

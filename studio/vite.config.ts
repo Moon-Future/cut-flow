@@ -911,6 +911,57 @@ const localApi = (): Plugin => ({
             });
             return;
           }
+          if (url === '/api/audio/upload' && request.method === 'POST') {
+            const contentLength = Number(request.headers['content-length'] ?? 0);
+            if (contentLength > 500 * 1024 * 1024) {
+              sendJson(response, 413, {error: '单条音频不能超过 500 MB'});
+              return;
+            }
+            const rawName = request.headers['x-file-name'];
+            const encodedName = Array.isArray(rawName) ? rawName[0] : rawName;
+            let decodedName = encodedName ?? '';
+            try {
+              decodedName = decodeURIComponent(decodedName);
+            } catch {
+              // Keep the original header when it is not URI encoded.
+            }
+            const fileName = path
+              .basename(decodedName || 'audio.bin')
+              .replace(/[^\p{L}\p{N}._-]/gu, '-');
+            if (!/\.(wav|mp3|m4a|aac|flac|ogg)$/iu.test(fileName)) {
+              sendJson(response, 400, {error: '请选择有效的音频文件'});
+              return;
+            }
+            const audioDirectory = path.join(projectsRoot, 'shared-audio');
+            await mkdir(audioDirectory, {recursive: true});
+            const storedName = `${Date.now()}-${randomUUID().slice(0, 6)}-${fileName}`;
+            await writeFile(path.join(audioDirectory, storedName), await readBody(request));
+            sendJson(response, 200, {assetPath: `shared-audio/${storedName}`});
+            return;
+          }
+          if (url === '/api/audio/open-location' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8')) as {
+              filePath?: string;
+            };
+            const audioDirectory = path.resolve(projectsRoot, 'shared-audio');
+            const file = path.resolve(projectsRoot, input.filePath ?? '');
+            if (!input.filePath || !file.startsWith(`${audioDirectory}${path.sep}`)) {
+              sendJson(response, 400, {error: '公共音频路径无效'});
+              return;
+            }
+            try {
+              await stat(file);
+            } catch {
+              sendJson(response, 404, {error: '音频文件不存在'});
+              return;
+            }
+            spawn('explorer.exe', ['/select,', file], {
+              detached: true,
+              stdio: 'ignore',
+            }).unref();
+            sendJson(response, 200, {opened: true});
+            return;
+          }
           if (url === '/api/audio/merge-files' && request.method === 'POST') {
             const input = JSON.parse((await readBody(request)).toString('utf8')) as {
               paths?: string[];
@@ -922,12 +973,12 @@ const localApi = (): Plugin => ({
               sendJson(response, 400, {error: '请选择 2 到 100 条音频进行合并'});
               return;
             }
-            const audioDirectory = path.join(assetsRoot, 'audio');
+            const audioDirectory = path.join(projectsRoot, 'shared-audio');
             await mkdir(audioDirectory, {recursive: true});
             const resolvedAudioRoot = path.resolve(audioDirectory);
             const audioFiles: string[] = [];
             for (const [index, audioPath] of paths.entries()) {
-              const audioFile = path.resolve(projectRoot, audioPath);
+              const audioFile = path.resolve(projectsRoot, audioPath);
               if (
                 !audioFile.startsWith(`${resolvedAudioRoot}${path.sep}`) ||
                 !/\.(wav|mp3|m4a|aac|flac|ogg)$/iu.test(audioFile)
@@ -971,7 +1022,7 @@ const localApi = (): Plugin => ({
             );
             const result = await new Promise<{code: number | null; error: string}>((resolve) => {
               const child = spawn(ffmpegExecutable, args, {
-                cwd: projectRoot,
+                cwd: audioDirectory,
                 windowsHide: true,
               });
               let error = '';
@@ -985,7 +1036,7 @@ const localApi = (): Plugin => ({
               sendJson(response, 500, {error: `音频合并失败：${result.error}`});
               return;
             }
-            sendJson(response, 200, {audioPath: `assets/audio/${outputName}`});
+            sendJson(response, 200, {audioPath: `shared-audio/${outputName}`});
             return;
           }
           if (url === '/api/voice/edge-tts' && request.method === 'POST') {

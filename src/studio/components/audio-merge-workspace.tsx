@@ -6,13 +6,9 @@ type AudioItem = {
   path: string;
 };
 
-type Props = {
-  projectId: string;
-};
-
 const AUDIO_ACCEPT = '.wav,.mp3,.m4a,.aac,.flac,.ogg,audio/*';
 
-export const AudioMergeWorkspace = ({projectId}: Props) => {
+export const AudioMergeWorkspace = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<AudioItem[]>([]);
   const [busy, setBusy] = useState(false);
@@ -26,12 +22,11 @@ export const AudioMergeWorkspace = ({projectId}: Props) => {
     const uploaded: AudioItem[] = [];
     try {
       for (const file of files) {
-        const response = await fetch('/api/assets', {
+        const response = await fetch('/api/audio/upload', {
           method: 'POST',
           headers: {
             'Content-Type': file.type || 'application/octet-stream',
             'X-File-Name': encodeURIComponent(file.name),
-            'X-Target-Directory': encodeURIComponent('audio'),
           },
           body: file,
         });
@@ -95,7 +90,7 @@ export const AudioMergeWorkspace = ({projectId}: Props) => {
 
   const openLocation = async () => {
     if (!outputPath) return;
-    const response = await fetch('/api/files/open-location', {
+    const response = await fetch('/api/audio/open-location', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({filePath: outputPath}),
@@ -143,7 +138,7 @@ export const AudioMergeWorkspace = ({projectId}: Props) => {
                 onClick={() => {
                   setItems([]);
                   setOutputPath('');
-                  setMessage('列表已清空，已上传的原文件仍保留在项目音频目录。');
+                  setMessage('列表已清空，已上传的原文件仍保留在公共音频目录。');
                 }}
               >
                 清空列表
@@ -157,7 +152,7 @@ export const AudioMergeWorkspace = ({projectId}: Props) => {
                   <b>{String(index + 1).padStart(2, '0')}</b>
                   <div>
                     <strong>{item.name}</strong>
-                    <audio controls preload="metadata" src={`/${projectId}/${item.path}`} />
+                    <audio controls preload="metadata" src={`/${item.path}`} />
                   </div>
                   <span className="audio-merge-order-actions">
                     <button disabled={busy || index === 0} onClick={() => move(index, -1)}>
@@ -207,8 +202,8 @@ export const AudioMergeWorkspace = ({projectId}: Props) => {
           </button>
           {outputPath ? (
             <div className="audio-merge-output">
-              <audio controls src={`/${projectId}/${outputPath}`} />
-              <a href={`/${projectId}/${outputPath}`} download>
+              <audio controls src={`/${outputPath}`} />
+              <a href={`/${outputPath}`} download>
                 下载合并音频
               </a>
               <button onClick={() => void openLocation()}>打开所在目录</button>

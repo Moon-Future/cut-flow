@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {CreateProjectPage} from './create-project-page';
 import {SettingsWorkspace} from './settings-workspace';
 import {WorkspaceSidebar, type WorkspaceSection} from './workspace-sidebar';
+import {AudioMergeWorkspace} from './audio-merge-workspace';
 
 type Props = {
   onOpen: (projectId: string, startInContent: boolean) => Promise<void>;
@@ -25,6 +26,8 @@ export const ProjectWorkspace = ({onOpen, onNavigate, onClose}: Props) => {
       <main className="edit-main stage-mode create-workspace">
         {section === 'settings' ? (
           <SettingsWorkspace />
+        ) : section === 'audio-merge' ? (
+          <AudioMergeWorkspace />
         ) : (
           <CreateProjectPage onOpen={onOpen} onClose={onClose} />
         )}
