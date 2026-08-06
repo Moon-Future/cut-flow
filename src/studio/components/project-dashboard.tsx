@@ -33,6 +33,7 @@ export const ProjectDashboard = ({
   const [topicPages, setTopicPages] = useState<TopicRecommendation[][]>([]);
   const [currentTopicPage, setCurrentTopicPage] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [topicToInspect, setTopicToInspect] = useState<TopicRecommendation | null>(null);
   const [topicStatus, setTopicStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [topicMessage, setTopicMessage] = useState('');
   const [projectToDelete, setProjectToDelete] = useState<ProjectSummary | null>(null);
@@ -100,7 +101,18 @@ export const ProjectDashboard = ({
               ? `还有 ${plannedShots.length - readyShots} 个镜头需要画面`
               : '为每段旁白准备画面',
           }
-        : {section: 'export' as const, label: '导出剪辑生产包', hint: '内容已经可以交付'};
+        : {section: 'storyboard' as const, label: '查看分镜与素材', hint: '现有制作资料已准备完成'};
+  const selectProject = async (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setProjectActionMessage('正在切换当前项目…');
+    try {
+      await onOpenProject(projectId);
+      setProjectActionMessage('当前项目已更新');
+    } catch (error) {
+      setSelectedProjectId(currentProjectId);
+      setProjectActionMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
   const enterProject = async (projectId: string) => {
     await onOpenProject(projectId);
     onNavigate('content');
@@ -254,10 +266,6 @@ export const ProjectDashboard = ({
               {plannedShots.length ? ` ${readyShots}/${plannedShots.length}` : ''}
             </span>
           </li>
-          <li className={scriptReady && voiceReady && visualsReady ? 'current' : ''}>
-            <b>4</b>
-            <span>导出交付</span>
-          </li>
         </ol>
         <button className="primary-button" onClick={() => onNavigate(nextAction.section)}>
           {nextAction.label} →
@@ -312,7 +320,7 @@ export const ProjectDashboard = ({
             <article className="recent-project-entry" key={item.id}>
               <button
                 className={`project-open-button ${item.id === selectedProjectId ? 'current' : ''}`}
-                onClick={() => setSelectedProjectId(item.id)}
+                onClick={() => void selectProject(item.id)}
                 onDoubleClick={() => void enterProject(item.id)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') void enterProject(item.id);
@@ -358,7 +366,7 @@ export const ProjectDashboard = ({
             <strong>推荐视频主题</strong>
             <span>
               AI 热度判断 · {topicPages.length ? `共 ${topicPages.length * 10} 条` : '尚未生成'} ·
-              单击选择，双击创建项目并进入
+              单击选择，双击查看完整推荐详情
             </span>
           </div>
           <div className="topic-recommendation-actions">
@@ -390,11 +398,11 @@ export const ProjectDashboard = ({
                 key={`${item.title}-${index}`}
                 className={selectedTopic === item.title ? 'selected' : ''}
                 onClick={() => setSelectedTopic(item.title)}
-                onDoubleClick={() => void createFromRecommendedTopic(item)}
+                onDoubleClick={() => setTopicToInspect(item)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') void createFromRecommendedTopic(item);
+                  if (event.key === 'Enter') setTopicToInspect(item);
                 }}
-                title="单击选择，双击创建新项目"
+                title="单击选择，双击查看详情"
               >
                 <b>{String(index + 1).padStart(2, '0')}</b>
                 <span>
@@ -467,6 +475,52 @@ export const ProjectDashboard = ({
           热度分数为 AI 根据当前日期与内容传播潜力作出的估算，不代表抖音等平台的实时官方榜单。
         </footer>
       </section>
+
+      {topicToInspect ? (
+        <div className="project-delete-backdrop" role="presentation">
+          <section className="project-delete-dialog topic-detail-dialog" role="dialog" aria-modal="true">
+            <header>
+              <strong>推荐主题详情</strong>
+              <button onClick={() => setTopicToInspect(null)}>×</button>
+            </header>
+            <h3>{topicToInspect.title}</h3>
+            <div className="topic-detail-meta">
+              <span>{topicToInspect.category}</span>
+              <span>推荐热度 {Math.round(topicToInspect.heatScore)}</span>
+              <span>
+                {topicToInspect.trendSource
+                  ? topicToInspect.trendSource === 'douyin'
+                    ? '抖音热点'
+                    : '网络热点'
+                  : '常青选题'}
+              </span>
+            </div>
+            {topicToInspect.sourceTopic ? (
+              <article>
+                <small>关联热点</small>
+                <p>{topicToInspect.sourceTopic}</p>
+              </article>
+            ) : null}
+            <article>
+              <small>推荐理由</small>
+              <p>{topicToInspect.reason}</p>
+            </article>
+            <article>
+              <small>建议科普角度</small>
+              <p>{topicToInspect.angle}</p>
+            </article>
+            <footer>
+              <button onClick={() => setTopicToInspect(null)}>关闭</button>
+              <button
+                className="danger"
+                onClick={() => void createFromRecommendedTopic(topicToInspect)}
+              >
+                用此主题创建项目
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
 
       {projectToDelete ? (
         <div className="project-delete-backdrop" role="presentation">

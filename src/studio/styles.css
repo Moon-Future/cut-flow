@@ -3090,6 +3090,7 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  margin-top: 18px;
 }
 .dashboard-stats article {
   position: relative;
@@ -3288,6 +3289,61 @@ select:focus {
   border-radius: 14px;
   background: #10151f;
   box-shadow: 0 30px 100px #000b;
+}
+.topic-detail-dialog {
+  width: min(560px, 100%);
+}
+.topic-detail-dialog h3 {
+  margin: 16px 0 10px;
+  font-size: 20px;
+  line-height: 1.45;
+}
+.project-delete-dialog > div.topic-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.topic-detail-meta span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #1d2635;
+  color: #aebad0;
+  font-size: 11px;
+}
+.topic-detail-dialog article {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #293346;
+  border-radius: 8px;
+  background: #121923;
+}
+.topic-detail-dialog article small {
+  color: #8f9bb0;
+}
+.topic-detail-dialog article p {
+  margin: 6px 0 0;
+  color: #dce3ee;
+  line-height: 1.65;
+}
+.topic-detail-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.topic-detail-dialog footer button {
+  padding: 9px 13px;
+  border: 1px solid #344052;
+  border-radius: 8px;
+  background: #171f2b;
+  color: #dce3ee;
+  cursor: pointer;
+}
+.topic-detail-dialog footer button.danger {
+  border-color: #66519c;
+  background: #5d43a0;
+  color: #fff;
 }
 .project-delete-dialog > header {
   display: flex;

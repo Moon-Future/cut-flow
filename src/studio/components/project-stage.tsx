@@ -49,9 +49,6 @@ const previousSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, Workspa
 const nextSection: Partial<Record<Exclude<WorkspaceSection, 'edit'>, WorkspaceSection>> = {
   content: 'voice',
   voice: 'storyboard',
-  storyboard: 'cover',
-  assets: 'cover',
-  cover: 'export',
 };
 
 export const ProjectStage = ({

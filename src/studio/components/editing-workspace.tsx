@@ -54,15 +54,13 @@ const sceneCurrentMedia = (scene: Scene) => {
 const timelineLabelWidth = 112;
 
 const workspaceTabs: Array<{
-  section: Extract<WorkspaceSection, 'content' | 'voice' | 'storyboard' | 'cover' | 'export'>;
+  section: Extract<WorkspaceSection, 'content' | 'voice' | 'storyboard'>;
   label: string;
   hint: string;
 }> = [
   {section: 'content', label: '1 主题与脚本', hint: '确定内容'},
   {section: 'voice', label: '2 配音与字幕', hint: '生成声音'},
   {section: 'storyboard', label: '3 分镜与素材', hint: '准备画面'},
-  {section: 'cover', label: '4 封面制作', hint: '适配抖音展示'},
-  {section: 'export', label: '5 导出交付', hint: '交给剪辑软件'},
 ];
 
 const MediaThumb = ({
@@ -455,11 +453,6 @@ export const EditingWorkspace = ({
                       onClick={() => setWorkspaceInspectorOpen((open) => !open)}
                     >
                       属性
-                    </button>
-                  ) : null}
-                  {section !== 'export' ? (
-                    <button className="header-next" onClick={() => onNavigate('export')}>
-                      导出交付
                     </button>
                   ) : null}
                 </>

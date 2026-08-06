@@ -5,23 +5,15 @@ type Props = {
   onOpen: (projectId: string, startInContent: boolean) => Promise<void>;
   onClose: () => void;
 };
-type CreationMode = 'ai-generate' | 'import-copy' | 'import-script' | 'blank';
 type Platform = 'douyin' | 'xiaohongshu' | 'wechat-video' | 'bilibili' | 'youtube' | 'custom';
 
 const steps = [
-  ['选择创作方式', '选择如何开始项目'],
   ['基本信息', '设置标题与描述'],
   ['内容输入', '提供主题、文案或脚本'],
   ['视频风格', '选择类型、平台与比例'],
   ['进阶设置', '设置时长、语言与帧率'],
   ['确认创建', '检查信息并创建项目'],
 ] as const;
-const creationModes: Array<[CreationMode, string, string, string]> = [
-  ['ai-generate', 'AI 智能生成', '输入主题，由 AI 生成文案、分镜和素材建议', '⌘'],
-  ['import-copy', '导入文案', '粘贴已有口播文案，继续生成镜头', '▤'],
-  ['import-script', '导入脚本', '粘贴专业脚本，按结构拆分分镜', '▥'],
-  ['blank', '空白项目', '创建空白时间线，从零自由制作', '□'],
-];
 const platforms: Array<[Platform, string, string, string]> = [
   ['douyin', '抖音/快手', '9:16', '♪'],
   ['xiaohongshu', '小红书', '3:4', '红'],
@@ -48,7 +40,6 @@ const platformDefaults: Record<Platform, (typeof ratios)[number]> = {
 
 export const CreateProjectPage = ({onOpen, onClose}: Props) => {
   const [step, setStep] = useState(0);
-  const [creationMode, setCreationMode] = useState<CreationMode>('ai-generate');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sourceText, setSourceText] = useState('');
@@ -67,15 +58,7 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
     () => ({aspectRatio: `${ratio[1]} / ${ratio[2]}`, maxHeight: ratio[1] < ratio[2] ? 360 : 230}),
     [ratio],
   );
-  const canContinue = step === 1 ? Boolean(title.trim()) : true;
-  const inputTitle =
-    creationMode === 'ai-generate'
-      ? '输入视频主题'
-      : creationMode === 'import-copy'
-        ? '粘贴完整文案'
-        : creationMode === 'import-script'
-          ? '粘贴脚本内容'
-          : '空白项目说明';
+  const canContinue = step === 0 ? Boolean(title.trim()) : true;
 
   const choosePlatform = (value: Platform) => {
     setPlatform(value);
@@ -95,7 +78,7 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
           description,
           sourceText,
           keywords,
-          creationMode,
+          creationMode: 'ai-generate',
           platform,
           width: ratio[1],
           height: ratio[2],
@@ -151,32 +134,9 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
 
         <main className="create-form-panel create-wizard-panel">
           {step === 0 ? (
-            <section>
-              <header>
-                <h2>1. 选择创作方式</h2>
-                <p>选择最适合你的起点，之后仍可自由修改。</p>
-              </header>
-              <div className="creation-mode-grid">
-                {creationModes.map(([value, label, hint, icon]) => (
-                  <button
-                    key={value}
-                    className={creationMode === value ? 'selected' : ''}
-                    onClick={() => setCreationMode(value)}
-                  >
-                    <i>{icon}</i>
-                    <strong>{label}</strong>
-                    <small>{hint}</small>
-                    {creationMode === value ? <em>✓</em> : null}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {step === 1 ? (
             <section className="basic-section">
               <header>
-                <h2>2. 基本信息</h2>
+                <h2>1. 基本信息</h2>
                 <p>项目标题用于本地管理，描述帮助 AI 理解视频目标。</p>
               </header>
               <label>
@@ -206,30 +166,20 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
             </section>
           ) : null}
 
-          {step === 2 ? (
+          {step === 1 ? (
             <section className="content-input-section">
               <header>
-                <h2>3. {inputTitle}</h2>
-                <p>
-                  {creationMode === 'ai-generate'
-                    ? '写清主题和你想回答的问题，AI 会据此生成文案与分镜。'
-                    : creationMode === 'blank'
-                      ? '空白项目可以跳过内容输入，也可留下制作备注。'
-                      : '保留段落结构粘贴内容，后续会按段落拆分。'}
-                </p>
+                <h2>2. 输入视频主题</h2>
+                <p>写清主题和你想回答的问题，作为项目的选题备注。</p>
               </header>
               <label>
-                <span>{creationMode === 'ai-generate' ? '主题与核心问题' : '内容正文'}</span>
+                <span>主题与核心问题</span>
                 <textarea
                   autoFocus
                   rows={12}
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
-                  placeholder={
-                    creationMode === 'ai-generate'
-                      ? '例如：为什么天空是蓝色的？希望用通俗易懂的方式解释瑞利散射。'
-                      : '在这里粘贴文案或脚本…'
-                  }
+                  placeholder="例如：为什么天空是蓝色的？希望用通俗易懂的方式解释瑞利散射。"
                 />
               </label>
               <label>
@@ -250,10 +200,10 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
             </section>
           ) : null}
 
-          {step === 3 ? (
+          {step === 2 ? (
             <section className="video-settings-section">
               <header>
-                <h2>4. 视频风格</h2>
+                <h2>3. 视频风格</h2>
                 <p>选择内容表达方式、发布平台和画面比例。</p>
               </header>
               <label>
@@ -332,10 +282,10 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
             </section>
           ) : null}
 
-          {step === 4 ? (
+          {step === 3 ? (
             <section className="advanced-settings-step">
               <header>
-                <h2>5. 进阶设置</h2>
+                <h2>4. 进阶设置</h2>
                 <p>这些参数会影响脚本长度、画面流畅度和最终渲染。</p>
               </header>
               <div className="advanced-cards">
@@ -390,20 +340,16 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
             </section>
           ) : null}
 
-          {step === 5 ? (
+          {step === 4 ? (
             <section className="confirm-create-step">
               <header>
-                <h2>6. 确认创建</h2>
+                <h2>5. 确认创建</h2>
                 <p>检查下面的信息，创建后仍可以在项目内修改。</p>
               </header>
               <div className="confirm-grid">
                 <article>
                   <span>项目标题</span>
                   <strong>{title || '尚未填写'}</strong>
-                </article>
-                <article>
-                  <span>创作方式</span>
-                  <strong>{creationModes.find((item) => item[0] === creationMode)?.[1]}</strong>
                 </article>
                 <article>
                   <span>内容输入</span>
@@ -440,11 +386,11 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
             <span>
               第 {step + 1} / {steps.length} 步
             </span>
-            {step < 5 ? (
+            {step < 4 ? (
               <button
                 className="next"
                 disabled={!canContinue}
-                onClick={() => setStep((value) => Math.min(5, value + 1))}
+                onClick={() => setStep((value) => Math.min(4, value + 1))}
               >
                 下一步 →
               </button>
@@ -474,10 +420,6 @@ export const CreateProjectPage = ({onOpen, onClose}: Props) => {
           <section>
             <h3>项目概览</h3>
             <dl>
-              <div>
-                <dt>创作方式</dt>
-                <dd>{creationModes.find((item) => item[0] === creationMode)?.[1]}</dd>
-              </div>
               <div>
                 <dt>视频类型</dt>
                 <dd>{videoType}</dd>
