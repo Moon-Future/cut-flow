@@ -67,6 +67,7 @@
     ],
     "files": [
       "dist/desktop/**",
+      "dist/studio/**",
       "src/**",
       "studio/**",
       "scripts/**",

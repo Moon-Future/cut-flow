@@ -238,30 +238,6 @@ export const ProjectDashboard = ({
       setTopicMessage(error instanceof Error ? error.message : String(error));
     }
   };
-  const createFromRecommendedTopic = async (item: TopicRecommendation) => {
-    setTopicStatus('loading');
-    setTopicMessage('正在创建新项目…');
-    const response = await fetch('/api/projects', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        title: item.title,
-        topic: item.title,
-        description: item.angle,
-        creationMode: 'ai-generate',
-        videoType: 'science-explainer',
-      }),
-    });
-    const value = (await response.json()) as {id?: string; error?: string};
-    if (!response.ok || !value.id) {
-      setTopicStatus('error');
-      setTopicMessage(value.error ?? '创建项目失败');
-      return;
-    }
-    await onOpenProject(value.id);
-    onNavigate('content');
-  };
-
   return (
     <section className="dashboard-page">
       <header className="dashboard-heading">
@@ -602,12 +578,6 @@ export const ProjectDashboard = ({
                 {favoriteTitleKeys.has(topicToInspect.title.trim().toLocaleLowerCase('zh-CN'))
                   ? '取消收藏'
                   : '收藏主题'}
-              </button>
-              <button
-                className="danger"
-                onClick={() => void createFromRecommendedTopic(topicToInspect)}
-              >
-                用此主题创建项目
               </button>
             </footer>
           </section>

@@ -1,4 +1,5 @@
 import {cp, mkdir, readFile, writeFile} from 'node:fs/promises';
+import {createServer as createHttpServer, type Server as HttpServer} from 'node:http';
 import Module from 'node:module';
 import path from 'node:path';
 import {app, BrowserWindow, dialog, ipcMain, shell, type OpenDialogOptions} from 'electron';
@@ -6,6 +7,7 @@ import type {ViteDevServer} from 'vite';
 
 let mainWindow: BrowserWindow | null = null;
 let localServer: ViteDevServer | null = null;
+let localHttpServer: HttpServer | null = null;
 
 const log = async (message: string) => {
   const line = `${new Date().toISOString()} ${message}\n`;
@@ -73,6 +75,60 @@ const startLocalServer = async (appRoot: string, workspaceRoot: string): Promise
     );
   }
   const {createServer} = await import('vite');
+  if (app.isPackaged) {
+    localServer = await createServer({
+      configFile: path.join(runtimeRoot, 'studio', 'vite.config.ts'),
+      appType: 'custom',
+      server: {middlewareMode: true, hmr: false, watch: null},
+      clearScreen: false,
+    });
+    const studioRoot = path.join(appRoot, 'dist', 'studio');
+    const contentTypes: Record<string, string> = {
+      '.css': 'text/css; charset=utf-8',
+      '.html': 'text/html; charset=utf-8',
+      '.js': 'text/javascript; charset=utf-8',
+      '.json': 'application/json; charset=utf-8',
+      '.map': 'application/json; charset=utf-8',
+      '.png': 'image/png',
+      '.svg': 'image/svg+xml',
+      '.webp': 'image/webp',
+    };
+    localHttpServer = createHttpServer((request, response) => {
+      const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
+      const isStudioAsset = pathname === '/' || pathname === '/index.html' || pathname.startsWith('/assets/');
+      if (!isStudioAsset) {
+        localServer!.middlewares(request, response, () => {
+          response.statusCode = 404;
+          response.end('Not found');
+        });
+        return;
+      }
+      const relativePath = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+      const file = path.resolve(studioRoot, relativePath);
+      if (!file.startsWith(path.resolve(studioRoot) + path.sep) && file !== path.join(studioRoot, 'index.html')) {
+        response.statusCode = 403;
+        response.end('Forbidden');
+        return;
+      }
+      void readFile(file)
+        .then((content) => {
+          response.statusCode = 200;
+          response.setHeader('Content-Type', contentTypes[path.extname(file)] ?? 'application/octet-stream');
+          response.end(content);
+        })
+        .catch(() => {
+          response.statusCode = 404;
+          response.end('Not found');
+        });
+    });
+    await new Promise<void>((resolve, reject) => {
+      localHttpServer!.once('error', reject);
+      localHttpServer!.listen(0, '127.0.0.1', resolve);
+    });
+    const address = localHttpServer.address();
+    if (!address || typeof address === 'string') throw new Error('桌面本地服务端口获取失败');
+    return `http://127.0.0.1:${address.port}/`;
+  }
   localServer = await createServer({
     configFile: path.join(runtimeRoot, 'studio', 'vite.config.ts'),
     server: {host: '127.0.0.1', port: 0, strictPort: false},
@@ -103,6 +159,15 @@ const createWindow = async () => {
     },
   });
   mainWindow.removeMenu();
+  mainWindow.webContents.on('did-fail-load', (_event, code, description, targetUrl) => {
+    void log(`Renderer load failed (${code}) ${description}: ${targetUrl}`);
+  });
+  mainWindow.webContents.on('console-message', (_event, level, message) => {
+    if (level >= 2) void log(`Renderer console level ${level}: ${message}`);
+  });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    void log(`Renderer gone: ${details.reason} (${details.exitCode})`);
+  });
   mainWindow.webContents.on('before-input-event', (event, input) => {
     const isDevToolsShortcut =
       input.key === 'F12' ||
@@ -167,6 +232,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  void new Promise<void>((resolve) => localHttpServer?.close(() => resolve()) ?? resolve());
   void localServer?.close();
 });
 

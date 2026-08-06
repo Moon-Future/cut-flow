@@ -430,7 +430,7 @@ export const EditingWorkspace = ({
             : undefined
         }
       >
-        {section !== 'overview' ? (
+        {!['overview', 'audio-merge', 'settings'].includes(section) ? (
           <header className="edit-header">
             <div>
               <button onClick={() => onNavigate('overview')}>我的项目</button>
