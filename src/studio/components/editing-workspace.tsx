@@ -430,7 +430,7 @@ export const EditingWorkspace = ({
         {!['overview', 'audio-merge', 'settings'].includes(section) ? (
           <header className="edit-header">
             <div>
-              <button onClick={() => onNavigate('overview')}>我的项目</button>
+              <button onClick={() => onNavigate('overview')}>主题推荐</button>
               <span>/</span>
               <strong>{project.project.title}</strong>
             </div>
