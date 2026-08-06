@@ -3496,6 +3496,10 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.topic-recommendation-list small.topic-trend-context {
+  color: #de8fa8;
+  font-weight: 600;
+}
 .topic-recommendation-list small,
 .topic-recommendation-list em {
   margin-top: 4px;

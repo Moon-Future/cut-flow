@@ -399,6 +399,12 @@ export const ProjectDashboard = ({
                 <b>{String(index + 1).padStart(2, '0')}</b>
                 <span>
                   <strong>{item.title}</strong>
+                  {item.trendSource && item.sourceTopic ? (
+                    <small className="topic-trend-context">
+                      {item.trendSource === 'douyin' ? '抖音热榜' : '网络热点'}：
+                      {item.sourceTopic}
+                    </small>
+                  ) : null}
                   <small>{item.angle}</small>
                   <em>{item.reason}</em>
                 </span>
