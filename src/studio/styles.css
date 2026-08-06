@@ -1651,6 +1651,7 @@ select:focus {
 .edit-sidebar nav {
   display: grid;
   gap: 5px;
+  margin-top: 28px;
 }
 .edit-sidebar nav button {
   display: grid;
