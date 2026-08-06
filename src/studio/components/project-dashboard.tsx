@@ -20,6 +20,8 @@ const formatDuration = (seconds: number) => {
   return `${minutes}m ${Math.round(seconds % 60)}s`;
 };
 
+const favoritePageSize = 10;
+
 export const ProjectDashboard = ({
   project,
   currentProjectId,
@@ -32,6 +34,8 @@ export const ProjectDashboard = ({
   const [topicPages, setTopicPages] = useState<TopicRecommendation[][]>([]);
   const [favoriteTopics, setFavoriteTopics] = useState<FavoriteTopic[]>([]);
   const [currentTopicPage, setCurrentTopicPage] = useState(0);
+  const [currentFavoritePage, setCurrentFavoritePage] = useState(0);
+  const [topicView, setTopicView] = useState<'recommended' | 'favorites'>('recommended');
   const [selectedTopic, setSelectedTopic] = useState('');
   const [topicToInspect, setTopicToInspect] = useState<TopicRecommendation | null>(null);
   const [topicStatus, setTopicStatus] = useState<'idle' | 'loading' | 'error'>('idle');
@@ -66,10 +70,19 @@ export const ProjectDashboard = ({
   }, []);
 
   const recommendedTopics = topicPages[currentTopicPage] ?? [];
+  const favoritePageCount = Math.ceil(favoriteTopics.length / favoritePageSize);
+  const visibleFavoriteTopics = favoriteTopics.slice(
+    currentFavoritePage * favoritePageSize,
+    (currentFavoritePage + 1) * favoritePageSize,
+  );
+  const visibleTopics = topicView === 'recommended' ? recommendedTopics : visibleFavoriteTopics;
   const favoriteTitleKeys = useMemo(
     () => new Set(favoriteTopics.map((item) => item.title.trim().toLocaleLowerCase('zh-CN'))),
     [favoriteTopics],
   );
+  useEffect(() => {
+    setCurrentFavoritePage((page) => Math.min(page, Math.max(0, favoritePageCount - 1)));
+  }, [favoritePageCount]);
   const stats = useMemo(
     () => ({
       projects: projects.length,
@@ -365,65 +378,60 @@ export const ProjectDashboard = ({
         ) : null}
       </section>
 
-      {favoriteTopics.length ? (
-        <section className="favorite-topics">
-          <header>
-            <div>
-              <strong>已收藏主题</strong>
-              <span>{favoriteTopics.length} 条 · 独立保存，不受重新生成影响</span>
-            </div>
-          </header>
-          <div className="favorite-topic-list">
-            {favoriteTopics.map((item) => (
-              <article key={item.title} onDoubleClick={() => setTopicToInspect(item)}>
-                <button className="favorite-topic-main" onClick={() => setTopicToInspect(item)}>
-                  <strong>{item.title}</strong>
-                  <small>{item.angle}</small>
-                </button>
-                <span>{item.category}</span>
-                <button className="favorite-topic-remove" onClick={() => void toggleFavorite(item)}>
-                  取消收藏
-                </button>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       <section className="topic-recommendations">
         <header>
-          <div>
-            <strong>推荐视频主题</strong>
+          <div className="topic-view-heading">
+            <div className="topic-view-tabs" role="tablist" aria-label="主题列表">
+              <button
+                className={topicView === 'recommended' ? 'active' : ''}
+                onClick={() => setTopicView('recommended')}
+                role="tab"
+                aria-selected={topicView === 'recommended'}
+              >
+                推荐视频主题
+              </button>
+              <button
+                className={topicView === 'favorites' ? 'active' : ''}
+                onClick={() => setTopicView('favorites')}
+                role="tab"
+                aria-selected={topicView === 'favorites'}
+              >
+                已收藏主题 <b>{favoriteTopics.length}</b>
+              </button>
+            </div>
             <span>
-              AI 热度判断 · {topicPages.length ? `共 ${topicPages.length * 10} 条` : '尚未生成'} ·
-              单击选择，双击查看完整推荐详情
+              {topicView === 'recommended'
+                ? `AI 热度判断 · ${topicPages.length ? `共 ${topicPages.length * 10} 条` : '尚未生成'} · 单击选择，双击查看完整推荐详情`
+                : `${favoriteTopics.length} 条 · 独立保存，不受重新生成影响 · 双击查看完整详情`}
             </span>
           </div>
-          <div className="topic-recommendation-actions">
-            {topicPages.length ? (
+          {topicView === 'recommended' ? (
+            <div className="topic-recommendation-actions">
+              {topicPages.length ? (
+                <button
+                  className="secondary"
+                  disabled={topicStatus === 'loading'}
+                  onClick={() => void refreshTopics('reset')}
+                >
+                  全部重新生成
+                </button>
+              ) : null}
               <button
-                className="secondary"
                 disabled={topicStatus === 'loading'}
-                onClick={() => void refreshTopics('reset')}
+                onClick={() => void refreshTopics(topicPages.length ? 'append' : 'reset')}
               >
-                全部重新生成
+                {topicStatus === 'loading'
+                  ? '正在分析…'
+                  : topicPages.length
+                    ? '＋ 生成下一批'
+                    : '生成 10 条推荐'}
               </button>
-            ) : null}
-            <button
-              disabled={topicStatus === 'loading'}
-              onClick={() => void refreshTopics(topicPages.length ? 'append' : 'reset')}
-            >
-              {topicStatus === 'loading'
-                ? '正在分析…'
-                : topicPages.length
-                  ? '＋ 生成下一批'
-                  : '生成 10 条推荐'}
-            </button>
-          </div>
+            </div>
+          ) : null}
         </header>
-        {recommendedTopics.length ? (
+        {visibleTopics.length ? (
           <div className="topic-recommendation-list">
-            {recommendedTopics.map((item, index) => (
+            {visibleTopics.map((item, index) => (
               <article
                 key={`${item.title}-${index}`}
                 className={selectedTopic === item.title ? 'selected' : ''}
@@ -436,7 +444,13 @@ export const ProjectDashboard = ({
                 tabIndex={0}
                 title="单击选择，双击查看详情"
               >
-                <b>{String(index + 1).padStart(2, '0')}</b>
+                <b>
+                  {String(
+                    index +
+                      1 +
+                      (topicView === 'favorites' ? currentFavoritePage * favoritePageSize : 0),
+                  ).padStart(2, '0')}
+                </b>
                 <span>
                   <strong>{item.title}</strong>
                   {item.trendSource && item.sourceTopic ? (
@@ -445,8 +459,8 @@ export const ProjectDashboard = ({
                         ? '抖音热榜'
                         : item.trendSource === 'toutiao'
                           ? '网络热点'
-                          : '临近节日节气'}：
-                      {item.sourceTopic}
+                          : '临近节日节气'}
+                      ：{item.sourceTopic}
                     </small>
                   ) : null}
                   <small>{item.angle}</small>
@@ -462,7 +476,10 @@ export const ProjectDashboard = ({
                       网络热点
                     </i>
                   ) : item.trendSource === 'festival' ? (
-                    <i className="festival-trend" title={`临近节日或节气：${item.sourceTopic ?? ''}`}>
+                    <i
+                      className="festival-trend"
+                      title={`临近节日或节气：${item.sourceTopic ?? ''}`}
+                    >
                       节日节气
                     </i>
                   ) : null}
@@ -491,32 +508,60 @@ export const ProjectDashboard = ({
           </div>
         ) : (
           <div className="topic-recommendation-empty">
-            <b>还没有推荐主题</b>
-            <span>点击“生成 10 条推荐”才会调用默认 AI 服务，不会在进入页面时自动消耗 Token。</span>
+            <b>{topicView === 'recommended' ? '还没有推荐主题' : '还没有收藏主题'}</b>
+            <span>
+              {topicView === 'recommended'
+                ? '点击“生成 10 条推荐”才会调用默认 AI 服务，不会在进入页面时自动消耗 Token。'
+                : '在推荐列表点击星标后，主题会收藏到这里。'}
+            </span>
           </div>
         )}
-        {topicPages.length > 1 ? (
-          <nav className="topic-pagination" aria-label="推荐主题分页">
+        {(topicView === 'recommended' ? topicPages.length : favoritePageCount) > 1 ? (
+          <nav
+            className="topic-pagination"
+            aria-label={`${topicView === 'recommended' ? '推荐' : '收藏'}主题分页`}
+          >
             <button
-              disabled={currentTopicPage === 0}
-              onClick={() => setCurrentTopicPage((page) => Math.max(0, page - 1))}
+              disabled={
+                (topicView === 'recommended' ? currentTopicPage : currentFavoritePage) === 0
+              }
+              onClick={() =>
+                topicView === 'recommended'
+                  ? setCurrentTopicPage((page) => Math.max(0, page - 1))
+                  : setCurrentFavoritePage((page) => Math.max(0, page - 1))
+              }
             >
               上一页
             </button>
-            {topicPages.map((_, index) => (
+            {Array.from({
+              length: topicView === 'recommended' ? topicPages.length : favoritePageCount,
+            }).map((_, index) => (
               <button
-                className={currentTopicPage === index ? 'current' : ''}
+                className={
+                  (topicView === 'recommended' ? currentTopicPage : currentFavoritePage) === index
+                    ? 'current'
+                    : ''
+                }
                 key={index}
-                onClick={() => setCurrentTopicPage(index)}
+                onClick={() =>
+                  topicView === 'recommended'
+                    ? setCurrentTopicPage(index)
+                    : setCurrentFavoritePage(index)
+                }
                 aria-label={`第 ${index + 1} 页`}
               >
                 {index + 1}
               </button>
             ))}
             <button
-              disabled={currentTopicPage === topicPages.length - 1}
+              disabled={
+                (topicView === 'recommended' ? currentTopicPage : currentFavoritePage) ===
+                (topicView === 'recommended' ? topicPages.length : favoritePageCount) - 1
+              }
               onClick={() =>
-                setCurrentTopicPage((page) => Math.min(topicPages.length - 1, page + 1))
+                topicView === 'recommended'
+                  ? setCurrentTopicPage((page) => Math.min(topicPages.length - 1, page + 1))
+                  : setCurrentFavoritePage((page) => Math.min(favoritePageCount - 1, page + 1))
               }
             >
               下一页
@@ -526,14 +571,20 @@ export const ProjectDashboard = ({
         {topicMessage ? (
           <p className={topicStatus === 'error' ? 'error' : ''}>{topicMessage}</p>
         ) : null}
-        <footer>
-          热度分数为 AI 根据当前日期与内容传播潜力作出的估算，不代表抖音等平台的实时官方榜单。
-        </footer>
+        {topicView === 'recommended' ? (
+          <footer>
+            热度分数为 AI 根据当前日期与内容传播潜力作出的估算，不代表抖音等平台的实时官方榜单。
+          </footer>
+        ) : null}
       </section>
 
       {topicToInspect ? (
         <div className="project-delete-backdrop" role="presentation">
-          <section className="project-delete-dialog topic-detail-dialog" role="dialog" aria-modal="true">
+          <section
+            className="project-delete-dialog topic-detail-dialog"
+            role="dialog"
+            aria-modal="true"
+          >
             <header>
               <strong>推荐主题详情</strong>
               <button onClick={() => setTopicToInspect(null)}>×</button>

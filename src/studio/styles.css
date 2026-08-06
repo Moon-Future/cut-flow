@@ -3553,6 +3553,40 @@ select:focus {
   color: #667186;
   font-size: 9px;
 }
+.topic-view-heading {
+  min-width: 0;
+}
+.topic-view-tabs {
+  display: flex;
+  gap: 6px;
+}
+.topic-recommendations > header .topic-view-tabs button {
+  padding: 7px 11px;
+  border-color: transparent;
+  background: transparent;
+  color: #778399;
+  font-weight: 600;
+}
+.topic-recommendations > header .topic-view-tabs button:hover {
+  color: #c6b5ef;
+}
+.topic-recommendations > header .topic-view-tabs button.active {
+  border-color: #694aaf;
+  background: #251b3c;
+  color: #d0baff;
+}
+.topic-view-tabs button b {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #342650;
+  color: #d7c4ff;
+  font-size: 9px;
+}
 .topic-recommendations > header button {
   padding: 8px 12px;
   border: 1px solid #4b3a72;
