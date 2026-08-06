@@ -23,8 +23,11 @@ import {
   generateTopicRecommendations,
   loadTopicRecommendations,
   saveTopicRecommendations,
+  type TopicRecommendation,
 } from '../src/ai/topic-recommendations';
 import {fetchTrendingTopics} from '../src/ai/trending-topics';
+import {findNearbyCulturalDates} from '../src/ai/festival-context';
+import {loadTopicFavorites, setTopicFavorite} from '../src/ai/topic-favorites';
 import {
   createMockImageProvider,
   createMockVideoProvider,
@@ -459,12 +462,14 @@ const localApi = (): Plugin => ({
             const pages = mode === 'append' ? (saved?.pages ?? []) : [];
             const excludedTitles = pages.flatMap((page) => page.map((topic) => topic.title));
             const trendingTopics = await fetchTrendingTopics();
+            const culturalDates = findNearbyCulturalDates(new Date());
             const topics = await generateTopicRecommendations(
               provider,
               providerSetting,
               project,
               excludedTitles,
               trendingTopics,
+              culturalDates,
             );
             const result = {
               pages: [...pages, topics],
@@ -477,6 +482,7 @@ const localApi = (): Plugin => ({
               currentPage: result.pages.length - 1,
               heatBasis: 'ai-estimate',
               trendSources: [...new Set(trendingTopics.map((topic) => topic.source))],
+              culturalDates,
             });
             return;
           }
@@ -484,6 +490,24 @@ const localApi = (): Plugin => ({
             sendJson(response, 200, {
               ...(await loadTopicRecommendations()),
               heatBasis: 'ai-estimate',
+            });
+            return;
+          }
+          if (url === '/api/topic-favorites' && request.method === 'GET') {
+            sendJson(response, 200, {favorites: await loadTopicFavorites()});
+            return;
+          }
+          if (url === '/api/topic-favorites' && request.method === 'POST') {
+            const input = JSON.parse((await readBody(request)).toString('utf8') || '{}') as {
+              topic?: TopicRecommendation;
+              favorite?: boolean;
+            };
+            if (!input.topic?.title || typeof input.favorite !== 'boolean') {
+              sendJson(response, 400, {error: '收藏主题参数不完整'});
+              return;
+            }
+            sendJson(response, 200, {
+              favorites: await setTopicFavorite(input.topic, input.favorite),
             });
             return;
           }

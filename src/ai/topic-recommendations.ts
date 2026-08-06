@@ -4,6 +4,7 @@ import path from 'node:path';
 import type {ProjectFile} from '../core/schema';
 import {aiSettingsFile, type AiProviderId, type AiProviderSetting} from './settings';
 import type {TrendingTopic} from './trending-topics';
+import type {CulturalDate} from './festival-context';
 
 export type TopicRecommendation = {
   title: string;
@@ -11,7 +12,7 @@ export type TopicRecommendation = {
   heatScore: number;
   reason: string;
   angle: string;
-  trendSource?: 'douyin' | 'toutiao';
+  trendSource?: 'douyin' | 'toutiao' | 'festival';
   sourceTopic?: string;
 };
 
@@ -115,7 +116,7 @@ const topicSchema = {
           heatScore: {type: 'number'},
           reason: {type: 'string'},
           angle: {type: 'string'},
-          trendSource: {type: 'string', enum: ['douyin', 'toutiao', 'evergreen']},
+          trendSource: {type: 'string', enum: ['douyin', 'toutiao', 'festival', 'evergreen']},
           sourceTopic: {type: 'string'},
         },
       },
@@ -141,6 +142,7 @@ export const generateTopicRecommendations = async (
   project: ProjectFile,
   excludedTitles: string[] = [],
   trendingTopics: TrendingTopic[] = [],
+  culturalDates: CulturalDate[] = [],
 ): Promise<TopicRecommendation[]> => {
   const system = `你是一名擅长大众科普系列的中文视频选题策划，请严格推荐恰好 10 条有知识增量和传播潜力的主题。
 
@@ -163,7 +165,11 @@ heatScore 是 0-100 的 AI 热度判断，根据当前日期、普遍社会关�
 4. 灾害、事故、健康和公共事件只解释可核验的通用原理与辨别方法，不消费伤亡，不根据一条热搜补写未经提供的事实。
 5. 谣言热点可以转化为信息核验或相关科学概念，但不要重复放大谣言。若合格热点不足，用高质量常青科普补足 10 条。
 6. reason 应如实说明选题来自近期热点启发或属于常青知识；heatScore 可以参考提供的榜单热度，但不等同于官方热度值。
-7. 每条都必须输出 trendSource 和 sourceTopic。只有确实由候选中的某条热点转化时，trendSource 才能填 douyin 或 toutiao，sourceTopic 必须逐字复制对应候选标题；否则 trendSource 填 evergreen、sourceTopic 填空字符串。不得为了获得热点标记虚构关联。
+7. 每条都必须输出 trendSource 和 sourceTopic。只有确实由候选中的某条热点转化时，trendSource 才能填 douyin 或 toutiao，sourceTopic 必须逐字复制对应候选标题；节日与节气按下方规则填写 festival；其余情况填 evergreen 和空字符串。不得为了获得来源标记虚构关联。
+节日与节气规则：
+1. 下方若提供当前日期前后 5 天内的国内节日、国际纪念日、农历节日或二十四节气，优先判断其中是否有一个自然、有知识增量的科普切口。
+2. 合适时，10 条中恰好安排 1 条相关主题，trendSource 填 festival，sourceTopic 必须逐字复制节日或节气名称。可解释来源、历史演变、自然物候、历法原理或相关俗语，例如立秋可以自然引出“秋后算账”的制度来源。
+3. 不得把任何节日强行包装成科普；如果候选与受众无自然知识连接，宁可不生成节日主题，改用常青科普。不得只做祝福、节日攻略、营销消费或情绪表达。
 reason 用一句话说明“为什么现在值得做”；angle 写清视频应该解释的核心答案方向。
 输出前按 1 到 10 逐项清点，必须恰好返回 10 条。只输出合法 JSON，不要 Markdown。`;
   const user = `当前日期：${new Date().toISOString().slice(0, 10)}
@@ -174,6 +180,7 @@ reason 用一句话说明“为什么现在值得做”；angle 写清视频应�
 视频目的：${project.content?.purpose || '提升内容传播和互动'}
 ${excludedTitles.length ? `以下主题已经推荐过，本次不得重复，也不能只改写措辞或标点：\n${excludedTitles.map((title) => `- ${title}`).join('\n')}` : ''}
 ${trendingTopics.length ? `以下是刚刚获取的公开实时热点候选（来源与热度仅供筛选，不代表事实已经完整核验）：\n${trendingTopics.slice(0, 75).map((topic) => `- [${topic.source === 'douyin' ? '抖音' : '头条'}${topic.heat ? ` / ${topic.heat}` : ''}] ${topic.title}`).join('\n')}` : '本次未获取到实时热点，请完全按科普价值生成常青选题，不要假装掌握实时热榜。'}
+${culturalDates.length ? `当前日期前后 5 天内的节日与节气候选：\n${culturalDates.map((item) => `- [${item.kind} / ${item.date} / ${item.offsetDays === 0 ? '今天' : item.offsetDays > 0 ? `${item.offsetDays} 天后` : `${Math.abs(item.offsetDays)} 天前`}] ${item.name}`).join('\n')}` : '当前日期前后 5 天内没有已收录的节日或节气，不要虚构节日主题。'}
 请避免与已有主题和同批其他主题重复，并兼顾时效性、实用性、争议讨论度和长期价值。`;
   const apiKey = setting.apiKey || setting.secretKey;
   if (!apiKey) throw new Error('请先在设置中配置 AI 服务密钥');
@@ -287,14 +294,18 @@ ${trendingTopics.length ? `以下是刚刚获取的公开实时热点候选（�
     const matchedTrend = trendingTopics.find(
       (topic) => topic.source === requestedSource && topic.title === requestedSourceTopic,
     );
+    const matchedCulturalDate =
+      requestedSource === 'festival'
+        ? culturalDates.find((item) => item.name === requestedSourceTopic)
+        : undefined;
     return {
       title: rawTitle,
       category: String(item.category || '综合'),
       heatScore: Math.max(0, Math.min(100, Number(item.heatScore) || 0)),
       reason: String(item.reason || '具备一定内容传播潜力'),
       angle: String(item.angle || '从观众实际问题切入'),
-      trendSource: matchedTrend?.source,
-      sourceTopic: matchedTrend?.title,
+      trendSource: matchedCulturalDate ? 'festival' : matchedTrend?.source,
+      sourceTopic: matchedCulturalDate?.name ?? matchedTrend?.title,
     };
   });
 };

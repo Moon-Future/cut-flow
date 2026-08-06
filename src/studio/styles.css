@@ -3086,6 +3086,12 @@ select:focus {
   border-radius: 8px;
   cursor: pointer;
 }
+.dashboard-page > .production-next-card,
+.dashboard-page > .dashboard-stats,
+.dashboard-page > .recent-projects,
+.dashboard-page .dashboard-heading-actions {
+  display: none;
+}
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -3465,6 +3471,71 @@ select:focus {
   margin-top: 14px;
   padding: 15px;
 }
+.favorite-topics {
+  padding: 16px;
+  border: 1px solid #3a3121;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #17150f, #10141c);
+}
+.favorite-topics > header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.favorite-topics > header strong,
+.favorite-topics > header span {
+  display: block;
+}
+.favorite-topics > header span {
+  margin-top: 4px;
+  color: #8e98aa;
+  font-size: 9px;
+}
+.favorite-topic-list {
+  display: grid;
+  gap: 7px;
+}
+.favorite-topic-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid #302c23;
+  border-radius: 8px;
+  background: #121720;
+}
+.favorite-topic-main {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #e5e8ee;
+  text-align: left;
+  cursor: pointer;
+}
+.favorite-topic-main strong,
+.favorite-topic-main small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.favorite-topic-main small {
+  margin-top: 4px;
+  color: #7f899b;
+}
+.favorite-topic-list article > span {
+  color: #d5a54f;
+  font-size: 9px;
+}
+.favorite-topic-remove {
+  padding: 6px 8px;
+  border: 1px solid #4b3b28;
+  border-radius: 6px;
+  background: #211a12;
+  color: #d9a75b;
+  cursor: pointer;
+}
 .topic-recommendations > header {
   display: flex;
   align-items: center;
@@ -3508,9 +3579,9 @@ select:focus {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
-.topic-recommendation-list > button {
+.topic-recommendation-list > article {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto 30px;
   gap: 9px;
   align-items: center;
   min-width: 0;
@@ -3525,20 +3596,20 @@ select:focus {
     border-color 150ms ease,
     background 150ms ease;
 }
-.topic-recommendation-list > button:hover {
+.topic-recommendation-list > article:hover {
   border-color: #654c9b;
   background: #151b27;
 }
-.topic-recommendation-list > button.selected {
+.topic-recommendation-list > article.selected {
   border-color: #8a62e8;
   background: #19142a;
   box-shadow: inset 3px 0 #8a62e8;
 }
-.topic-recommendation-list > button > b {
+.topic-recommendation-list > article > b {
   color: #7658bd;
   font-size: 11px;
 }
-.topic-recommendation-list > button > span {
+.topic-recommendation-list > article > span {
   min-width: 0;
 }
 .topic-recommendation-list strong,
@@ -3589,6 +3660,28 @@ select:focus {
 .topic-recommendation-list i.toutiao-trend {
   background: #3b211f;
   color: #ff8778;
+}
+.topic-recommendation-list i.festival-trend {
+  background: #3b2b16;
+  color: #ffc66d;
+  font-weight: 700;
+}
+.topic-favorite-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #354156;
+  border-radius: 7px;
+  background: #141b26;
+  color: #78869c;
+  cursor: pointer;
+}
+.topic-favorite-button:hover,
+.topic-favorite-button.active {
+  border-color: #a77932;
+  color: #ffc45e;
 }
 .topic-recommendation-list mark {
   background: transparent;
@@ -4829,11 +4922,11 @@ select:focus {
   .provider-form {
     grid-template-columns: 1fr;
   }
-  .topic-recommendation-list > button {
+  .topic-recommendation-list > article {
     grid-template-columns: 26px minmax(0, 1fr);
   }
-  .topic-recommendation-list > button > i,
-  .topic-recommendation-list > button > mark {
+  .topic-recommendation-list > article > i,
+  .topic-recommendation-list > article > mark {
     grid-column: 2;
   }
   .create-steps {
@@ -8094,18 +8187,18 @@ select:focus {
   }
 }
 
-.edit-app .topic-recommendation-list > button span > strong {
+.edit-app .topic-recommendation-list > article span > strong {
   font-size: clamp(15px, calc(12px + 0.3vw), 18px);
   line-height: 1.45;
 }
-.edit-app .topic-recommendation-list > button > i {
+.edit-app .topic-recommendation-list > article > i {
   padding: 5px 8px;
   font-size: clamp(12px, calc(10px + 0.18vw), 14px) !important;
 }
-.edit-app .topic-recommendation-list > button > mark {
+.edit-app .topic-recommendation-list > article > mark {
   font-size: clamp(12px, calc(10px + 0.18vw), 14px);
 }
-.edit-app .topic-recommendation-list > button > mark b {
+.edit-app .topic-recommendation-list > article > mark b {
   margin-left: 3px;
   font-size: clamp(15px, calc(12px + 0.3vw), 18px);
 }

@@ -30,7 +30,7 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
       <b>◆</b>
       <span>
         <strong>CutFlow</strong>
-        <small>从选题到剪辑生产包</small>
+        <small>科普选题工作台</small>
       </span>
     </button>
     <button className="new-project-nav" onClick={onNewProject}>

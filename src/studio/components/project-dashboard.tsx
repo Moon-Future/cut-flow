@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from 'react';
 import type {ProjectFile} from '../../core/schema';
 import type {TopicRecommendation} from '../../ai/topic-recommendations';
+import type {FavoriteTopic} from '../../ai/topic-favorites';
 import type {ProjectSummary} from './project-hub';
 import type {WorkspaceSection} from './workspace-sidebar';
 
@@ -31,6 +32,7 @@ export const ProjectDashboard = ({
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState(currentProjectId);
   const [topicPages, setTopicPages] = useState<TopicRecommendation[][]>([]);
+  const [favoriteTopics, setFavoriteTopics] = useState<FavoriteTopic[]>([]);
   const [currentTopicPage, setCurrentTopicPage] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState('');
   const [topicToInspect, setTopicToInspect] = useState<TopicRecommendation | null>(null);
@@ -58,7 +60,18 @@ export const ProjectDashboard = ({
       .catch(() => setTopicPages([]));
   }, []);
 
+  useEffect(() => {
+    fetch('/api/topic-favorites')
+      .then((response) => response.json())
+      .then((value: {favorites?: FavoriteTopic[]}) => setFavoriteTopics(value.favorites ?? []))
+      .catch(() => setFavoriteTopics([]));
+  }, []);
+
   const recommendedTopics = topicPages[currentTopicPage] ?? [];
+  const favoriteTitleKeys = useMemo(
+    () => new Set(favoriteTopics.map((item) => item.title.trim().toLocaleLowerCase('zh-CN'))),
+    [favoriteTopics],
+  );
   const stats = useMemo(
     () => ({
       projects: projects.length,
@@ -171,7 +184,9 @@ export const ProjectDashboard = ({
     if (
       mode === 'reset' &&
       topicPages.length > 0 &&
-      !window.confirm('将清除当前所有推荐主题和历史分页，并重新生成第 1 页。是否继续？')
+      !window.confirm(
+        '将清除当前推荐主题和历史分页，并重新生成第 1 页；已收藏主题会继续保留。是否继续？',
+      )
     ) {
       return;
     }
@@ -198,6 +213,26 @@ export const ProjectDashboard = ({
           ? '已清除旧推荐并重新生成第 1 页'
           : `已去重生成第 ${value.pages.length} 页`,
       );
+    } catch (error) {
+      setTopicStatus('error');
+      setTopicMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+  const toggleFavorite = async (item: TopicRecommendation) => {
+    const key = item.title.trim().toLocaleLowerCase('zh-CN');
+    const favorite = !favoriteTitleKeys.has(key);
+    setTopicMessage(favorite ? '正在收藏主题…' : '正在取消收藏…');
+    try {
+      const response = await fetch('/api/topic-favorites', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({topic: item, favorite}),
+      });
+      const value = (await response.json()) as {favorites?: FavoriteTopic[]; error?: string};
+      if (!response.ok || !value.favorites) throw new Error(value.error ?? '主题收藏失败');
+      setFavoriteTopics(value.favorites);
+      setTopicStatus('idle');
+      setTopicMessage(favorite ? '主题已收藏，重新生成推荐也不会丢失' : '已取消收藏');
     } catch (error) {
       setTopicStatus('error');
       setTopicMessage(error instanceof Error ? error.message : String(error));
@@ -231,8 +266,8 @@ export const ProjectDashboard = ({
     <section className="dashboard-page">
       <header className="dashboard-heading">
         <div>
-          <h1>{greeting}，继续创作吧 👋</h1>
-          <p>所有项目与素材都保存在你的本地工作区。</p>
+          <h1>{greeting}，来挑一个值得讲的主题吧 👋</h1>
+          <p>结合实时热点、临近节日与常青知识，筛选真正适合科普的选题。</p>
         </div>
         <div className="dashboard-heading-actions">
           <button className="secondary-button" onClick={onAssets}>
@@ -360,6 +395,31 @@ export const ProjectDashboard = ({
         ) : null}
       </section>
 
+      {favoriteTopics.length ? (
+        <section className="favorite-topics">
+          <header>
+            <div>
+              <strong>已收藏主题</strong>
+              <span>{favoriteTopics.length} 条 · 独立保存，不受重新生成影响</span>
+            </div>
+          </header>
+          <div className="favorite-topic-list">
+            {favoriteTopics.map((item) => (
+              <article key={item.title} onDoubleClick={() => setTopicToInspect(item)}>
+                <button className="favorite-topic-main" onClick={() => setTopicToInspect(item)}>
+                  <strong>{item.title}</strong>
+                  <small>{item.angle}</small>
+                </button>
+                <span>{item.category}</span>
+                <button className="favorite-topic-remove" onClick={() => void toggleFavorite(item)}>
+                  取消收藏
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="topic-recommendations">
         <header>
           <div>
@@ -394,7 +454,7 @@ export const ProjectDashboard = ({
         {recommendedTopics.length ? (
           <div className="topic-recommendation-list">
             {recommendedTopics.map((item, index) => (
-              <button
+              <article
                 key={`${item.title}-${index}`}
                 className={selectedTopic === item.title ? 'selected' : ''}
                 onClick={() => setSelectedTopic(item.title)}
@@ -402,6 +462,8 @@ export const ProjectDashboard = ({
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') setTopicToInspect(item);
                 }}
+                role="button"
+                tabIndex={0}
                 title="单击选择，双击查看详情"
               >
                 <b>{String(index + 1).padStart(2, '0')}</b>
@@ -409,7 +471,11 @@ export const ProjectDashboard = ({
                   <strong>{item.title}</strong>
                   {item.trendSource && item.sourceTopic ? (
                     <small className="topic-trend-context">
-                      {item.trendSource === 'douyin' ? '抖音热榜' : '网络热点'}：
+                      {item.trendSource === 'douyin'
+                        ? '抖音热榜'
+                        : item.trendSource === 'toutiao'
+                          ? '网络热点'
+                          : '临近节日节气'}：
                       {item.sourceTopic}
                     </small>
                   ) : null}
@@ -425,13 +491,32 @@ export const ProjectDashboard = ({
                     <i className="toutiao-trend" title={`来源热点：${item.sourceTopic ?? ''}`}>
                       网络热点
                     </i>
+                  ) : item.trendSource === 'festival' ? (
+                    <i className="festival-trend" title={`临近节日或节气：${item.sourceTopic ?? ''}`}>
+                      节日节气
+                    </i>
                   ) : null}
                   <i>{item.category}</i>
                 </div>
                 <mark>
                   热度 <b>{Math.round(item.heatScore)}</b>
                 </mark>
-              </button>
+                <button
+                  className={`topic-favorite-button ${
+                    favoriteTitleKeys.has(item.title.trim().toLocaleLowerCase('zh-CN'))
+                      ? 'active'
+                      : ''
+                  }`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void toggleFavorite(item);
+                  }}
+                  aria-label={`收藏或取消收藏 ${item.title}`}
+                  title="收藏主题"
+                >
+                  {favoriteTitleKeys.has(item.title.trim().toLocaleLowerCase('zh-CN')) ? '★' : '☆'}
+                </button>
+              </article>
             ))}
           </div>
         ) : (
@@ -491,7 +576,9 @@ export const ProjectDashboard = ({
                 {topicToInspect.trendSource
                   ? topicToInspect.trendSource === 'douyin'
                     ? '抖音热点'
-                    : '网络热点'
+                    : topicToInspect.trendSource === 'toutiao'
+                      ? '网络热点'
+                      : '节日节气'
                   : '常青选题'}
               </span>
             </div>
@@ -511,6 +598,11 @@ export const ProjectDashboard = ({
             </article>
             <footer>
               <button onClick={() => setTopicToInspect(null)}>关闭</button>
+              <button onClick={() => void toggleFavorite(topicToInspect)}>
+                {favoriteTitleKeys.has(topicToInspect.title.trim().toLocaleLowerCase('zh-CN'))
+                  ? '取消收藏'
+                  : '收藏主题'}
+              </button>
               <button
                 className="danger"
                 onClick={() => void createFromRecommendedTopic(topicToInspect)}
