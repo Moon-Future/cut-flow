@@ -31,7 +31,6 @@ type Props = {
   renderState: RenderState;
   section: WorkspaceSection;
   onNavigate: (section: WorkspaceSection) => void;
-  onNewProject: () => void;
   onAssets: (target?: AssetSelectionTarget) => void;
   onRender: () => void;
   onGenerated: (project: ProjectFile) => void;
@@ -85,7 +84,6 @@ export const EditingWorkspace = ({
   renderState,
   section,
   onNavigate,
-  onNewProject,
   onAssets,
   onRender,
   onGenerated,
@@ -412,12 +410,11 @@ export const EditingWorkspace = ({
         section={section}
         project={project}
         onNavigate={onNavigate}
-        onNewProject={onNewProject}
       />
 
       <main
         className={`edit-main ${showWorkbench ? 'workbench-mode' : 'stage-mode'} ${
-          section === 'overview' ? 'overview-mode' : ''
+          ['overview', 'audio-merge', 'settings'].includes(section) ? 'full-height-mode' : ''
         }`}
         style={
           showWorkbench
@@ -767,7 +764,6 @@ export const EditingWorkspace = ({
                 onAssets={onAssets}
                 onRender={onRender}
                 currentProjectId={projectId}
-                onNewProject={onNewProject}
                 onOpenProject={onOpenProject}
                 audioAvailable={audioAvailable}
               />
@@ -1081,7 +1077,6 @@ export const EditingWorkspace = ({
             onAssets={onAssets}
             onRender={onRender}
             currentProjectId={projectId}
-            onNewProject={onNewProject}
             onOpenProject={onOpenProject}
             audioAvailable={audioAvailable}
           />

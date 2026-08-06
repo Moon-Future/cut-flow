@@ -20,7 +20,6 @@ type Props = {
   onAssets: (target?: AssetSelectionTarget) => void;
   onRender: () => void;
   currentProjectId: string;
-  onNewProject: () => void;
   onOpenProject: (projectId: string) => Promise<void>;
   audioAvailable: boolean;
 };
@@ -60,7 +59,6 @@ export const ProjectStage = ({
   onAssets,
   onRender,
   currentProjectId,
-  onNewProject,
   onOpenProject,
   audioAvailable,
 }: Props) => {
@@ -133,7 +131,6 @@ export const ProjectStage = ({
         <ProjectDashboard
           project={project}
           currentProjectId={currentProjectId}
-          onNewProject={onNewProject}
           onOpenProject={onOpenProject}
           onNavigate={onNavigate}
           onAssets={onAssets}

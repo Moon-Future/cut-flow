@@ -8,7 +8,6 @@ import type {WorkspaceSection} from './workspace-sidebar';
 type Props = {
   project: ProjectFile;
   currentProjectId: string;
-  onNewProject: () => void;
   onOpenProject: (projectId: string) => Promise<void>;
   onNavigate: (section: WorkspaceSection) => void;
   onAssets: () => void;
@@ -24,7 +23,6 @@ const formatDuration = (seconds: number) => {
 export const ProjectDashboard = ({
   project,
   currentProjectId,
-  onNewProject,
   onOpenProject,
   onNavigate,
   onAssets,
@@ -249,9 +247,6 @@ export const ProjectDashboard = ({
           <button className="secondary-button" onClick={onAssets}>
             打开素材库
           </button>
-          <button className="primary-button" onClick={onNewProject}>
-            ＋ 新建项目
-          </button>
         </div>
       </header>
 
@@ -323,7 +318,6 @@ export const ProjectDashboard = ({
               </button>
             ) : null}
             <button onClick={() => void importProject()}>导入项目</button>
-            <button onClick={onNewProject}>新建项目</button>
           </div>
         </header>
         <div>

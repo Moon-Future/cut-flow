@@ -21,9 +21,12 @@ export const ProjectWorkspace = ({onOpen, onNavigate, onClose}: Props) => {
           setSection(value);
           onNavigate(value);
         }}
-        onNewProject={() => setSection('overview')}
       />
-      <main className="edit-main stage-mode create-workspace">
+      <main
+        className={`edit-main stage-mode create-workspace ${
+          ['settings', 'audio-merge'].includes(section) ? 'full-height-mode' : ''
+        }`}
+      >
         {section === 'settings' ? (
           <SettingsWorkspace />
         ) : section === 'audio-merge' ? (

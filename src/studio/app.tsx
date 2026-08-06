@@ -174,7 +174,6 @@ export const App = () => {
         renderState={renderState}
         section={section}
         onNavigate={setSection}
-        onNewProject={() => setShowProjects(true)}
         onAssets={(target) => {
           setAssetSelectionTarget(target ?? null);
           setAssetLibraryOpen(true);

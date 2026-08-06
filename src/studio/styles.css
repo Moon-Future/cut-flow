@@ -1738,7 +1738,7 @@ select:focus {
 .edit-main.stage-mode {
   grid-template-rows: 60px minmax(0, 1fr);
 }
-.edit-main.stage-mode.overview-mode {
+.edit-main.stage-mode.full-height-mode {
   grid-template-rows: minmax(0, 1fr);
 }
 .edit-main.workbench-mode {
@@ -3761,6 +3761,8 @@ select:focus {
   color: #7e899c;
 }
 .settings-workspace {
+  width: 100%;
+  min-height: 100%;
   max-width: 1080px;
   margin: 0 auto;
   padding: 28px;

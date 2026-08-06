@@ -21,10 +21,9 @@ type Props = {
   section: WorkspaceSection;
   project: ProjectFile | null;
   onNavigate: (section: WorkspaceSection) => void;
-  onNewProject: () => void;
 };
 
-export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: Props) => (
+export const WorkspaceSidebar = ({section, project, onNavigate}: Props) => (
   <aside className="edit-sidebar">
     <button className="edit-logo" onClick={() => onNavigate('overview')}>
       <b>◆</b>
@@ -32,9 +31,6 @@ export const WorkspaceSidebar = ({section, project, onNavigate, onNewProject}: P
         <strong>CutFlow</strong>
         <small>科普选题工作台</small>
       </span>
-    </button>
-    <button className="new-project-nav" onClick={onNewProject}>
-      ＋ 新建项目
     </button>
     <nav>
       {navItems.map(([value, label, icon]) => (
